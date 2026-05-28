@@ -1,13 +1,12 @@
 package com.example.artrinx.core.navigation
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.artrinx.feature.auth.presentation.InviteCodeScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
 
 @Composable
@@ -32,11 +31,14 @@ fun AppNavGraph(
         }
 
         composable(NavRoutes.AUTH) {
-            // Placeholder — Auth screen coming next
-            Text(
-                text = "Auth Screen — Coming Soon",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground,
+            InviteCodeScreen(
+                onNavigateToHome = {
+                    navController.navigate(NavRoutes.HOME) {
+                        popUpTo(NavRoutes.AUTH) { inclusive = true }
+                    }
+                },
+                onJoinWaitlist = { /* TODO: Waitlist flow */ },
+                onNavigateToLogin = { /* TODO: Login flow */ },
             )
         }
     }

@@ -55,6 +55,10 @@ data class ResponsiveDimens(
     val buttonInnerSize: Dp    = w(0.144f, 42.dp, 68.dp)
     val buttonArcStroke: Dp    = w(0.007f, 2.dp, 4.dp)
     val buttonIconSize: Dp     = w(0.056f, 16.dp, 28.dp)
+
+    // ── Auth full-width buttons ───────────────────────────────────────────
+    // 800h × 0.068 ≈ 54dp  |  standard touch target is 48dp min
+    val authButtonHeight: Dp   = h(0.068f, 48.dp, 60.dp)
 }
 
 /** Default matches the 360×800dp reference phone so previews look correct. */
