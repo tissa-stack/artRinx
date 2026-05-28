@@ -4,4 +4,6 @@ data class OnboardingPage(
     val label: String,
     val headline: String,
     val imageRes: List<Int>,
+    val flipLayout: Boolean = false,
+    val aspectRatios: List<Float> = emptyList(),
 )

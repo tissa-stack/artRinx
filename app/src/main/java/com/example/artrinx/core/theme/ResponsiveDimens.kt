@@ -32,7 +32,7 @@ data class ResponsiveDimens(
 
     // ── Art Mosaic Grid ───────────────────────────────────────────────────
     // 360w × 0.017 ≈ 6dp gap  |  360w × 0.033 ≈ 12dp corner
-    val gridCellGap: Dp        = w(0.017f, 4.dp, 10.dp)
+    val gridCellGap: Dp        = w(0.028f, 6.dp, 14.dp)
     val gridCornerRadius: Dp   = w(0.033f, 8.dp, 18.dp)
     val gridPaddingHorizontal: Dp = w(0.044f, 12.dp, 24.dp)
 

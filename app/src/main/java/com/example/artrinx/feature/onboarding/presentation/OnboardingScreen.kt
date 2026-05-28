@@ -96,6 +96,9 @@ fun OnboardingScreen(
 
                     ArtMosaicGrid(
                         images = page.imageRes,
+                        flipLayout = page.flipLayout,
+                        aspectRatios = page.aspectRatios,
+                        isSettled = pagerState.currentPage == pageIndex,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = dimens.gridPaddingHorizontal),
