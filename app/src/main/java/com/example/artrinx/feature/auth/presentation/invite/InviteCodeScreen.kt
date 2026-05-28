@@ -1,4 +1,4 @@
-package com.example.artrinx.feature.auth.presentation
+package com.example.artrinx.feature.auth.presentation.invite
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -8,8 +8,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,23 +40,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.ArtRinxTheme
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.InactiveButton
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
-import com.example.artrinx.feature.auth.presentation.components.InviteCodeTextField
+import com.example.artrinx.feature.auth.presentation.invite.components.InviteCodeTextField
 
 @Composable
 fun InviteCodeScreen(
     onNavigateToHome: () -> Unit,
     onJoinWaitlist: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    viewModel: InviteCodeViewModel = viewModel(),
+    viewModel: InviteCodeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val dimens = LocalDimens.current
@@ -67,7 +66,6 @@ fun InviteCodeScreen(
         if (uiState.isSuccess) onNavigateToHome()
     }
 
-    // Outer column: handles system bar insets + keyboard avoidance
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -76,15 +74,12 @@ fun InviteCodeScreen(
             .navigationBarsPadding()
             .imePadding(),
     ) {
-        // ── SCROLLABLE SECTION ──────────────────────────────────────────────
-        // weight(1f) ensures the scroll area never pushes the bottom link off screen
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
         ) {
-            // ── Logo ─────────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,7 +103,6 @@ fun InviteCodeScreen(
 
             Spacer(modifier = Modifier.height(Spacing.xxxl))
 
-            // ── Form ─────────────────────────────────────────────────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -142,7 +136,6 @@ fun InviteCodeScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                // Animated error message below the field
                 AnimatedVisibility(visible = uiState.errorMessage != null) {
                     Column {
                         Spacer(modifier = Modifier.height(Spacing.xs))
@@ -157,10 +150,8 @@ fun InviteCodeScreen(
                     }
                 }
 
-                // Larger gap between field and action buttons
                 Spacer(modifier = Modifier.height(Spacing.xxxl))
 
-                // Continue button — smoothly animates between brand blue (active) and gray (inactive)
                 val continueColor by animateColorAsState(
                     targetValue = if (uiState.isSubmitEnabled) BrandPrimary else InactiveButton,
                     animationSpec = tween(durationMillis = 200),
@@ -176,7 +167,6 @@ fun InviteCodeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(dimens.authButtonHeight),
-                    // Pill shape — 50% = fully rounded ends
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = continueColor,
@@ -202,7 +192,6 @@ fun InviteCodeScreen(
 
                 Spacer(modifier = Modifier.height(Spacing.sm))
 
-                // Join Waitlist outlined pill button
                 OutlinedButton(
                     onClick = onJoinWaitlist,
                     modifier = Modifier
@@ -221,11 +210,9 @@ fun InviteCodeScreen(
                 }
             }
 
-            // Breathing room at the bottom of the scrollable area
             Spacer(modifier = Modifier.height(Spacing.xxxl))
         }
 
-        // ── BOTTOM LINK — always visible, sits above the keyboard ───────────
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -247,21 +234,5 @@ fun InviteCodeScreen(
                     .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
             )
         }
-    }
-}
-
-@Preview(name = "Invite Code — Empty", showBackground = true)
-@Composable
-private fun InviteCodeEmptyPreview() {
-    ArtRinxTheme {
-        InviteCodeScreen(onNavigateToHome = {}, onJoinWaitlist = {}, onNavigateToLogin = {})
-    }
-}
-
-@Preview(name = "Invite Code — Dark Empty", showBackground = true)
-@Composable
-private fun InviteCodeDarkPreview() {
-    ArtRinxTheme(darkTheme = true) {
-        InviteCodeScreen(onNavigateToHome = {}, onJoinWaitlist = {}, onNavigateToLogin = {})
     }
 }

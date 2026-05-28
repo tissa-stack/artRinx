@@ -1,4 +1,4 @@
-package com.example.artrinx.feature.auth.presentation.components
+package com.example.artrinx.feature.auth.presentation.invite.components
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -36,7 +36,6 @@ fun InviteCodeTextField(
         },
         isError = hasError,
         singleLine = true,
-        // Larger corner radius for a softer rounded-rect field shape
         shape = RoundedCornerShape(dimens.authButtonHeight / 4),
         textStyle = MaterialTheme.typography.bodyMedium,
         keyboardOptions = KeyboardOptions(
@@ -49,7 +48,6 @@ fun InviteCodeTextField(
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             errorContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
             focusedBorderColor = BrandPrimary,
-            // Unfocused border matches container so it disappears visually
             unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
             errorBorderColor = MaterialTheme.colorScheme.error,
             cursorColor = BrandPrimary,

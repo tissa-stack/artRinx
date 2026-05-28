@@ -1,4 +1,4 @@
-package com.example.artrinx.feature.auth.presentation
+package com.example.artrinx.feature.auth.presentation.invite
 
 data class InviteCodeUiState(
     val inviteCode: String = "",

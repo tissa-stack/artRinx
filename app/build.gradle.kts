@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -53,6 +55,18 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.text.google.fonts)
+    // Hilt
+    implementation(libs.dagger.hilt.core)
+    ksp(libs.dagger.hilt.compiler)
+    implementation(libs.dagger.hilt.navigation.compose)
+
+    // Retrofit + OkHttp
+    implementation(libs.squareup.retrofit.core)
+    implementation(libs.squareup.retrofit.converter.gson)
+    implementation(libs.squareup.retrofit.converter.scalars)
+    implementation(libs.squareup.okhttp.core)
+    implementation(libs.squareup.okhttp.logging)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -61,3 +75,4 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+

@@ -11,7 +11,9 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.artrinx.core.navigation.AppNavGraph
 import com.example.artrinx.core.navigation.NavRoutes
 import com.example.artrinx.core.theme.ArtRinxTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
@@ -20,7 +22,6 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Hold splash until DataStore resolves the onboarding state
         splashScreen.setKeepOnScreenCondition {
             mainViewModel.hasSeenOnboarding.value == null
         }
