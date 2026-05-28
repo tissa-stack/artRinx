@@ -2,12 +2,16 @@ package com.example.artrinx.core.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 
 private val LightColorScheme = lightColorScheme(
     primary = BrandPrimary,
@@ -59,11 +63,34 @@ fun ArtRinxTheme(
         screenHeightDp = configuration.screenHeightDp.toFloat(),
     )
 
+    val typography = remember(dimens.fontScale) {
+        buildResponsiveTypography(dimens.fontScale)
+    }
+
     CompositionLocalProvider(LocalDimens provides dimens) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = ArtRinxTypography,
+            typography = typography,
             content = content,
         )
     }
+}
+
+private fun buildResponsiveTypography(scale: Float): Typography {
+    fun TextStyle.scaled() = copy(
+        fontSize = (fontSize.value * scale).sp,
+        lineHeight = (lineHeight.value * scale).sp,
+    )
+    return Typography(
+        displayLarge   = ArtRinxTypography.displayLarge.scaled(),
+        headlineLarge  = ArtRinxTypography.headlineLarge.scaled(),
+        headlineMedium = ArtRinxTypography.headlineMedium.scaled(),
+        headlineSmall  = ArtRinxTypography.headlineSmall.scaled(),
+        bodyLarge      = ArtRinxTypography.bodyLarge.scaled(),
+        bodyMedium     = ArtRinxTypography.bodyMedium.scaled(),
+        bodySmall      = ArtRinxTypography.bodySmall.scaled(),
+        labelLarge     = ArtRinxTypography.labelLarge.scaled(),
+        labelMedium    = ArtRinxTypography.labelMedium.scaled(),
+        labelSmall     = ArtRinxTypography.labelSmall.scaled(),
+    )
 }

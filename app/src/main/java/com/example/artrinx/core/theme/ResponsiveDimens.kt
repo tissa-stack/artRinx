@@ -59,6 +59,17 @@ data class ResponsiveDimens(
     // ── Auth full-width buttons ───────────────────────────────────────────
     // 800h × 0.068 ≈ 54dp  |  standard touch target is 48dp min
     val authButtonHeight: Dp   = h(0.068f, 48.dp, 60.dp)
+
+    // ── Text fields ───────────────────────────────────────────────────────
+    // Height matches Material3 default (56dp) on small phones and scales up
+    // on larger screens so inputs remain comfortable touch targets.
+    val textFieldHeight: Dp    = h(0.075f, 56.dp, 76.dp)
+
+    // ── Typography scale ──────────────────────────────────────────────────
+    // Dimensionless multiplier: 1.0 at 360dp reference width. Applied to all
+    // sp font sizes in ArtRinxTheme so text grows proportionally on large
+    // screens and never looks tiny on tablets or large phones.
+    val fontScale: Float       = (screenWidthDp / 360f).coerceIn(0.85f, 1.45f)
 }
 
 /** Default matches the 360×800dp reference phone so previews look correct. */

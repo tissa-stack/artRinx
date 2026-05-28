@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.artrinx.feature.auth.presentation.invite.InviteCodeScreen
+import com.example.artrinx.feature.auth.presentation.waitlist.WaitlistScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
 
 @Composable
@@ -37,9 +38,13 @@ fun AppNavGraph(
                         popUpTo(NavRoutes.AUTH) { inclusive = true }
                     }
                 },
-                onJoinWaitlist = { /* TODO: Waitlist flow */ },
+                onJoinWaitlist = { navController.navigate(NavRoutes.WAITLIST) },
                 onNavigateToLogin = { /* TODO: Login flow */ },
             )
+        }
+
+        composable(NavRoutes.WAITLIST) {
+            WaitlistScreen(onBack = { navController.popBackStack() })
         }
     }
 }

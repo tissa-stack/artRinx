@@ -1,4 +1,4 @@
-package com.example.artrinx.feature.auth.presentation.invite.components
+package com.example.artrinx.feature.auth.presentation.waitlist.components
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -11,17 +11,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 
 @Composable
-fun InviteCodeTextField(
+fun WaitlistTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    hasError: Boolean,
+    label: String,
     modifier: Modifier = Modifier,
-    onDone: () -> Unit = {},
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
+    hasError: Boolean = false,
 ) {
     val dimens = LocalDimens.current
 
@@ -29,21 +32,19 @@ fun InviteCodeTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier.heightIn(min = dimens.textFieldHeight),
-        label = {
-            Text(
-                text = "Enter invite code",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
+        label = { Text(text = label, style = MaterialTheme.typography.bodyMedium) },
         isError = hasError,
         singleLine = true,
         shape = RoundedCornerShape(dimens.authButtonHeight / 4),
         textStyle = MaterialTheme.typography.bodyMedium,
         keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Characters,
-            imeAction = ImeAction.Done,
+            keyboardType = keyboardType,
+            imeAction = imeAction,
         ),
-        keyboardActions = KeyboardActions(onDone = { onDone() }),
+        keyboardActions = KeyboardActions(
+            onNext = { onImeAction() },
+            onDone = { onImeAction() },
+        ),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
