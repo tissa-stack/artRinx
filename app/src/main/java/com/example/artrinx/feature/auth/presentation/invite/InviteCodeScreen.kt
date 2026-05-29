@@ -43,7 +43,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.artrinx.R
-import com.example.artrinx.core.theme.ArtRinxTheme
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.InactiveButton
 import com.example.artrinx.core.theme.LocalDimens

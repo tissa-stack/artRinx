@@ -21,6 +21,7 @@ fun WaitlistTextField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    maxChars: Int = Int.MAX_VALUE,
     keyboardType: KeyboardType = KeyboardType.Text,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: () -> Unit = {},
@@ -30,7 +31,7 @@ fun WaitlistTextField(
 
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { if (it.length <= maxChars) onValueChange(it) },
         modifier = modifier.heightIn(min = dimens.textFieldHeight),
         label = { Text(text = label, style = MaterialTheme.typography.bodyMedium) },
         isError = hasError,

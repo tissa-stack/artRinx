@@ -3,6 +3,7 @@ package com.example.artrinx.feature.auth.data.repository
 import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.auth.data.remote.AuthApiService
 import com.example.artrinx.feature.auth.data.remote.dto.ApiErrorResponse
+import com.example.artrinx.feature.auth.data.remote.dto.ApiMessageResponse
 import com.example.artrinx.feature.auth.data.remote.dto.WaitlistRequest
 import com.example.artrinx.feature.auth.data.remote.dto.WaitlistResponse
 import com.example.artrinx.feature.auth.domain.repository.AuthRepository
@@ -46,6 +47,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val rawError = response.errorBody()?.string()
                 when (response.code()) {
                     422 -> ApiResult.Error.Validation(parseValidationMessage(rawError, DEFAULT_WAITLIST_ERROR))
+                    in 400..499 -> ApiResult.Error.Validation(parseApiMessage(rawError, DEFAULT_WAITLIST_ERROR))
                     in 500..599 -> ApiResult.Error.Server(response.code())
                     else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
                 }
@@ -54,6 +56,16 @@ class AuthRepositoryImpl @Inject constructor(
             ApiResult.Error.Network(e)
         } catch (e: Exception) {
             ApiResult.Error.Unknown(e)
+        }
+    }
+
+    private fun parseApiMessage(body: String?, fallback: String): String {
+        if (body == null) return fallback
+        return try {
+            gson.fromJson(body, ApiMessageResponse::class.java)
+                ?.message?.takeIf { it.isNotBlank() } ?: fallback
+        } catch (_: Exception) {
+            fallback
         }
     }
 

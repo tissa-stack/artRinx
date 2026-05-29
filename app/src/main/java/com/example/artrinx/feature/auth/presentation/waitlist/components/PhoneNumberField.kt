@@ -88,7 +88,7 @@ fun PhoneNumberField(
 
         WaitlistTextField(
             value = rawPhone,
-            onValueChange = { onPhoneChange(it.filter { c -> c.isDigit() }) },
+            onValueChange = { onPhoneChange(it.filter { c -> c.isDigit() }.take(15)) },
             label = "Mobile Number",
             modifier = Modifier.weight(1f),
             keyboardType = KeyboardType.Phone,

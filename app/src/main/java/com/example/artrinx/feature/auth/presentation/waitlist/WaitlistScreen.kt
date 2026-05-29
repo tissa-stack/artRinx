@@ -26,8 +26,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,7 +33,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,6 +46,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -98,17 +96,14 @@ private fun WaitlistFormContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    horizontal = dimens.logoPaddingHorizontal,
-                    vertical = dimens.logoPaddingVertical,
-                ),
+                .padding(vertical = dimens.logoPaddingVertical),
         ) {
             IconButton(
                 onClick = onBack,
                 modifier = Modifier.align(Alignment.CenterStart),
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onBackground,
                 )
@@ -152,6 +147,8 @@ private fun WaitlistFormContent(
                 onValueChange = viewModel::onEmailChange,
                 label = "Email",
                 modifier = Modifier.fillMaxWidth(),
+                maxChars = 100,
+                keyboardType = KeyboardType.Email,
             )
 
             Spacer(modifier = Modifier.height(Spacing.md))
@@ -171,6 +168,7 @@ private fun WaitlistFormContent(
                 onValueChange = viewModel::onFirstNameChange,
                 label = "First Name",
                 modifier = Modifier.fillMaxWidth(),
+                maxChars = 50,
             )
 
             Spacer(modifier = Modifier.height(Spacing.md))
@@ -188,6 +186,7 @@ private fun WaitlistFormContent(
                 onValueChange = viewModel::onInstagramHandleChange,
                 label = "IG Handle (optional)",
                 modifier = Modifier.fillMaxWidth(),
+                maxChars = 30,
             )
 
             Spacer(modifier = Modifier.height(Spacing.xxl))
@@ -209,6 +208,7 @@ private fun WaitlistFormContent(
                 onValueChange = viewModel::onReferralCodeChange,
                 label = "Enter Code",
                 modifier = Modifier.fillMaxWidth(),
+                maxChars = 20,
             )
 
             Spacer(modifier = Modifier.height(Spacing.xxl))
@@ -341,89 +341,103 @@ private fun AvatarRow(modifier: Modifier = Modifier) {
 @Composable
 private fun WaitlistSuccessContent(onBack: () -> Unit) {
     val dimens = LocalDimens.current
-    val isDark = isSystemInDarkTheme()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFF0A0A0A))
             .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = dimens.screenPaddingHorizontal),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+            .navigationBarsPadding(),
     ) {
-        Image(
-            painter = painterResource(
-                if (isDark) R.drawable.ic_white_logo else R.drawable.ic_black_logo,
-            ),
-            contentDescription = "RiNX logo",
-            modifier = Modifier
-                .height(dimens.logoHeight)
-                .aspectRatio(4f),
-            contentScale = ContentScale.Fit,
-        )
-
-        Spacer(modifier = Modifier.height(Spacing.xxxl))
-
-        Text(
-            text = "You've joined the waitlist!",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
-        )
-
-        Spacer(modifier = Modifier.height(Spacing.md))
-
-        Text(
-            text = "What's next? Follow us on our socials to stay up to date.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-
-        Spacer(modifier = Modifier.height(Spacing.xxxl))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-            SocialButton(label = "𝕏")
-            SocialButton(label = "IG")
-            SocialButton(label = "FB")
-        }
-
-        Spacer(modifier = Modifier.height(Spacing.xxxl))
-
-        Button(
-            onClick = onBack,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(dimens.authButtonHeight),
-            shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = BrandPrimary,
-                contentColor = Color.White,
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                .padding(vertical = dimens.logoPaddingVertical),
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.align(Alignment.CenterStart),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = "Back",
+                    tint = Color.White,
+                )
+            }
+            Image(
+                painter = painterResource(R.drawable.ic_white_logo),
+                contentDescription = "RiNX logo",
+                modifier = Modifier
+                    .height(dimens.logoHeight)
+                    .aspectRatio(4f)
+                    .align(Alignment.Center),
+                contentScale = ContentScale.Fit,
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = dimens.screenPaddingHorizontal),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                text = "Back to Home",
-                style = MaterialTheme.typography.labelLarge,
+                text = "You've joined the waitlist!",
+                style = MaterialTheme.typography.headlineLarge,
+                color = Color.White,
+                textAlign = TextAlign.Center,
             )
+
+            Spacer(modifier = Modifier.height(Spacing.md))
+
+            Text(
+                text = "What's next? Follow us on our socials to stay up to date.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.55f),
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.height(Spacing.xxxl))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xl),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SocialIconButton(iconRes = null, label = "𝕏")
+                SocialIconButton(iconRes = R.drawable.ic_instagram, contentDescription = "Instagram")
+                SocialIconButton(iconRes = R.drawable.ic_linkedin, contentDescription = "LinkedIn")
+            }
         }
     }
 }
 
 @Composable
-private fun SocialButton(label: String) {
-    Surface(
-        modifier = Modifier.size(Spacing.giant),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+private fun SocialIconButton(
+    iconRes: Int?,
+    label: String = "",
+    contentDescription: String = label,
+) {
+    Box(
+        modifier = Modifier
+            .size(Spacing.giant)
+            .clip(RoundedCornerShape(Spacing.md))
+            .background(Color(0xFF1A1A1A)),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        if (iconRes != null) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = contentDescription,
+                tint = Color.White,
+                modifier = Modifier.size(Spacing.xl),
+            )
+        } else {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
             )
         }
     }
