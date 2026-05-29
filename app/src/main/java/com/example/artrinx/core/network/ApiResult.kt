@@ -8,5 +8,9 @@ sealed class ApiResult<out T> {
         data class Validation(val message: String) : Error()
         data class Server(val code: Int) : Error()
         data class Unknown(val cause: Throwable) : Error()
+        data class Blocked(val message: String) : Error()
+        data class NotFound(val message: String) : Error()
+        data class Conflict(val message: String) : Error()
+        data class RateLimited(val message: String, val retryAfterSeconds: Int = 60) : Error()
     }
 }

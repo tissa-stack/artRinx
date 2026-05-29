@@ -49,6 +49,10 @@ class WaitlistViewModel @Inject constructor(
     fun onSmsOptInChange(value: Boolean) =
         _uiState.update { it.copy(smsOptIn = value) }
 
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     fun onJoin() {
         val state = _uiState.value
         if (!state.isJoinEnabled) return
@@ -67,24 +71,22 @@ class WaitlistViewModel @Inject constructor(
             when (val result = joinWaitlist(request)) {
                 is ApiResult.Success ->
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-
                 is ApiResult.Error.Network ->
-                    _uiState.update {
-                        it.copy(isLoading = false, errorMessage = "No internet connection. Please try again.")
-                    }
-
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "No internet connection. Please try again.") }
                 is ApiResult.Error.Validation ->
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
-
+                is ApiResult.Error.Blocked ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                is ApiResult.Error.NotFound ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                is ApiResult.Error.Conflict ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                is ApiResult.Error.RateLimited ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
                 is ApiResult.Error.Server ->
-                    _uiState.update {
-                        it.copy(isLoading = false, errorMessage = "Something went wrong. Please try again later.")
-                    }
-
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Something went wrong. Please try again later.") }
                 is ApiResult.Error.Unknown ->
-                    _uiState.update {
-                        it.copy(isLoading = false, errorMessage = "An unexpected error occurred.")
-                    }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "An unexpected error occurred.") }
             }
         }
     }

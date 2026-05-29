@@ -30,9 +30,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,7 +55,7 @@ import com.example.artrinx.feature.auth.presentation.invite.components.InviteCod
 
 @Composable
 fun InviteCodeScreen(
-    onNavigateToHome: () -> Unit,
+    onNavigateToSignup: (inviteCode: String) -> Unit,
     onJoinWaitlist: () -> Unit,
     onNavigateToLogin: () -> Unit,
     viewModel: InviteCodeViewModel = hiltViewModel(),
@@ -61,8 +65,17 @@ fun InviteCodeScreen(
     val isDark = isSystemInDarkTheme()
     val focusManager = LocalFocusManager.current
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) viewModel.clearError()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) onNavigateToHome()
+        if (uiState.isSuccess) onNavigateToSignup(uiState.inviteCode)
     }
 
     Column(

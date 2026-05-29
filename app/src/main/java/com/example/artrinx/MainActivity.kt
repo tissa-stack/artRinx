@@ -9,7 +9,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.artrinx.core.navigation.AppNavGraph
-import com.example.artrinx.core.navigation.NavRoutes
 import com.example.artrinx.core.theme.ArtRinxTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -23,19 +22,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         splashScreen.setKeepOnScreenCondition {
-            mainViewModel.hasSeenOnboarding.value == null
+            mainViewModel.startDestination.value == null
         }
 
         enableEdgeToEdge()
 
         setContent {
             ArtRinxTheme {
-                val hasSeenOnboarding by mainViewModel.hasSeenOnboarding.collectAsState()
+                val startDestination by mainViewModel.startDestination.collectAsState()
 
-                hasSeenOnboarding?.let { seen ->
-                    AppNavGraph(
-                        startDestination = if (seen) NavRoutes.AUTH else NavRoutes.ONBOARDING
-                    )
+                startDestination?.let { destination ->
+                    AppNavGraph(startDestination = destination)
                 }
             }
         }

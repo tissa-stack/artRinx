@@ -118,7 +118,7 @@ fun OnboardingScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                        )
+                            )
                         Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
                             text = page.headline,

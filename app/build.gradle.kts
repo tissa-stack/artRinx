@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.squareup.retrofit.converter.scalars)
     implementation(libs.squareup.okhttp.core)
     implementation(libs.squareup.okhttp.logging)
+    implementation(libs.androidx.security.crypto)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
