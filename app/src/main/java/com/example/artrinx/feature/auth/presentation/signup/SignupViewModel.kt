@@ -29,6 +29,22 @@ class SignupViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SignupUiState())
     val uiState: StateFlow<SignupUiState> = _uiState.asStateFlow()
 
+    init {
+        // ── TESTING BYPASS ────────────────────────────────────────────────
+        // Skip the email/phone entry screen and jump straight to OTP.
+        _uiState.update {
+            it.copy(
+                navigateToOtp = OtpArgs(
+                    mode = AuthMode.SIGNUP.apiValue,
+                    contactType = ContactType.EMAIL.name,
+                    contactValue = "test@example.com",
+                    inviteCode = inviteCode,
+                ),
+            )
+        }
+        // ─────────────────────────────────────────────────────────────────
+    }
+
     fun onContactTypeToggle() {
         _uiState.update {
             val next = if (it.contactType == ContactType.EMAIL) ContactType.PHONE else ContactType.EMAIL
@@ -56,6 +72,11 @@ class SignupViewModel @Inject constructor(
     }
 
     fun onContinue() {
+        // ── TESTING BYPASS ────────────────────────────────────────────────
+        // onContinue is never reached because init auto-navigates to OTP.
+        // ─────────────────────────────────────────────────────────────────
+
+        /*
         val state = _uiState.value
         if (!state.isContinueEnabled) return
         viewModelScope.launch {
@@ -98,5 +119,6 @@ class SignupViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, errorMessage = "An unexpected error occurred.") }
             }
         }
+        */
     }
 }

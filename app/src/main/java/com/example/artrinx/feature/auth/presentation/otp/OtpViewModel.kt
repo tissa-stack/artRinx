@@ -4,8 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.feature.auth.data.remote.dto.ConsentsDto
 import com.example.artrinx.feature.auth.data.remote.dto.OtpRequest
 import com.example.artrinx.feature.auth.data.remote.dto.OtpVerifyRequest
+import com.example.artrinx.feature.auth.data.remote.dto.OtpVerifyResponse
+import com.example.artrinx.feature.auth.data.remote.dto.UserDto
 import com.example.artrinx.feature.auth.domain.model.ContactType
 import com.example.artrinx.feature.auth.domain.usecase.ResendOtpUseCase
 import com.example.artrinx.feature.auth.domain.usecase.SaveSessionUseCase
@@ -57,6 +60,36 @@ class OtpViewModel @Inject constructor(
         if (!state.isContinueEnabled) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            // ── TESTING BYPASS ────────────────────────────────────────────────
+            // Accept "123456" as a valid OTP without hitting the API.
+            if (state.otp == "123456") {
+                val fakeResponse = OtpVerifyResponse(
+                    accessToken = "test_access_token",
+                    refreshToken = "test_refresh_token",
+                    accessExpiresIn = 3600L,
+                    refreshExpiresIn = 86400L,
+                    user = UserDto(
+                        id = 1,
+                        authUserId = "test-user-id",
+                        email = contactValue.takeIf { contactType == ContactType.EMAIL.name },
+                        phone = contactValue.takeIf { contactType != ContactType.EMAIL.name },
+                        emailVerified = true,
+                        phoneVerified = true,
+                        isAdmin = false,
+                        role = "user",
+                        profileExists = false,
+                        profileCompleted = false,
+                        consents = ConsentsDto(),
+                    ),
+                )
+                saveSession(fakeResponse)
+                _uiState.update { it.copy(isLoading = false, navigateToProfileCompletion = true) }
+                return@launch
+            }
+            // ─────────────────────────────────────────────────────────────────
+
+            /*
             val isEmail = contactType == ContactType.EMAIL.name
             val request = OtpVerifyRequest(
                 code = state.otp,
@@ -90,12 +123,23 @@ class OtpViewModel @Inject constructor(
                 is ApiResult.Error.Unknown ->
                     _uiState.update { it.copy(isLoading = false, errorMessage = "An unexpected error occurred.") }
             }
+            */
+
+            _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid OTP. Use 123456 for testing.", otp = "") }
         }
     }
 
     fun onResend() {
         if (!_uiState.value.canResend) return
         viewModelScope.launch {
+            // ── TESTING BYPASS ────────────────────────────────────────────────
+            // Skip API call; just restart the cooldown timer.
+            _uiState.update { it.copy(isResending = false) }
+            startCooldown(60)
+            return@launch
+            // ─────────────────────────────────────────────────────────────────
+
+            /*
             _uiState.update { it.copy(isResending = true, errorMessage = null) }
             val isEmail = contactType == ContactType.EMAIL.name
             val request = OtpRequest(
@@ -124,6 +168,7 @@ class OtpViewModel @Inject constructor(
                 else ->
                     _uiState.update { it.copy(isResending = false, errorMessage = "Failed to resend code. Please try again.") }
             }
+            */
         }
     }
 

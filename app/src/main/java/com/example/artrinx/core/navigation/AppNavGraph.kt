@@ -17,7 +17,7 @@ import androidx.navigation.navArgument
 import com.example.artrinx.feature.auth.presentation.invite.InviteCodeScreen
 import com.example.artrinx.feature.auth.presentation.login.LoginScreen
 import com.example.artrinx.feature.auth.presentation.otp.OtpScreen
-import com.example.artrinx.feature.auth.presentation.profile_completion.ProfileCompletionScreen
+import com.example.artrinx.feature.profile.presentation.ProfileCreationScreen
 import com.example.artrinx.feature.auth.presentation.signup.SignupScreen
 import com.example.artrinx.feature.auth.presentation.waitlist.WaitlistScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
@@ -119,12 +119,20 @@ fun AppNavGraph(
         }
 
         composable(NavRoutes.PROFILE_COMPLETION) {
-            ProfileCompletionScreen()
+            ProfileCreationScreen(
+                onNavigateToHome = {
+                    navController.navigate(NavRoutes.HOME) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+            )
         }
 
         composable(NavRoutes.HOME) {
             // HOME placeholder — replace with actual HomeScreen once implemented
-            ProfileCompletionScreen()
+            ProfileCreationScreen(
+                onNavigateToHome = {},
+            )
         }
     }
 }

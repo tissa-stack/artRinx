@@ -19,5 +19,7 @@ interface AuthRepository {
     fun getRefreshToken(): String?
     fun isSessionValid(): Boolean
     fun isAccessTokenExpired(): Boolean
+    fun isProfileCompleted(): Boolean
+    suspend fun saveProfileCompleted(completed: Boolean)
     suspend fun clearSession()
 }

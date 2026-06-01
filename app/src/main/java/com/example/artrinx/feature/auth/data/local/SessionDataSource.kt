@@ -52,6 +52,10 @@ class SessionDataSource @Inject constructor(
 
     fun isProfileCompleted(): Boolean = prefs.getBoolean(KEY_PROFILE_COMPLETED, false)
 
+    suspend fun saveProfileCompleted(completed: Boolean) = withContext(Dispatchers.IO) {
+        prefs.edit().putBoolean(KEY_PROFILE_COMPLETED, completed).apply()
+    }
+
     suspend fun clearSession() = withContext(Dispatchers.IO) {
         prefs.edit()
             .remove(KEY_ACCESS_TOKEN)

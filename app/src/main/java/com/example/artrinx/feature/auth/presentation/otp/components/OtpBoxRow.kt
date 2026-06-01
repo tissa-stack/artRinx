@@ -7,7 +7,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -28,7 +30,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.artrinx.core.theme.BrandPrimary
-import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 
 @Composable
@@ -39,22 +40,24 @@ fun OtpBoxRow(
     otpLength: Int = 6,
 ) {
     val focusRequester = remember { FocusRequester() }
-    val dimens = LocalDimens.current
-    val boxSize = dimens.authButtonHeight
-    val cornerRadius = dimens.authButtonHeight / 4
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
 
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+    ) {
         Row(
+            // fillMaxWidth so boxes share all available space, regardless of screen size
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            modifier = Modifier.clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = { focusRequester.requestFocus() },
-            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = { focusRequester.requestFocus() },
+                ),
         ) {
             repeat(otpLength) { index ->
                 val char = otp.getOrNull(index)
@@ -62,15 +65,14 @@ fun OtpBoxRow(
 
                 Box(
                     modifier = Modifier
-                        .size(boxSize)
-                        .clip(RoundedCornerShape(cornerRadius))
+                        .weight(1f)          // each box gets an equal share of the width
+                        .aspectRatio(1f)     // height = width → always square
+                        .clip(RoundedCornerShape(Spacing.md))
                         .background(Color(0xFF1A1A1A))
                         .then(
-                            if (isFocused) {
-                                Modifier.border(2.dp, BrandPrimary, RoundedCornerShape(cornerRadius))
-                            } else {
-                                Modifier
-                            },
+                            if (isFocused) Modifier.border(
+                                2.dp, BrandPrimary, RoundedCornerShape(Spacing.md),
+                            ) else Modifier,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {

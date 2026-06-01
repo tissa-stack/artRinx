@@ -148,6 +148,11 @@ class AuthRepositoryImpl @Inject constructor(
 
     override fun isAccessTokenExpired(): Boolean = sessionDataSource.isAccessTokenExpired()
 
+    override fun isProfileCompleted(): Boolean = sessionDataSource.isProfileCompleted()
+
+    override suspend fun saveProfileCompleted(completed: Boolean) =
+        sessionDataSource.saveProfileCompleted(completed)
+
     override suspend fun clearSession() = sessionDataSource.clearSession()
 
     // ── Error Parsing ────────────────────────────────────────────────────────

@@ -55,7 +55,8 @@ class MainViewModel @Inject constructor(
                     when (val result = refreshToken(storedRefreshToken)) {
                         is ApiResult.Success -> {
                             saveSession(result.data)
-                            _startDestination.value = NavRoutes.HOME
+                            _startDestination.value = if (authRepository.isProfileCompleted())
+                                NavRoutes.HOME else NavRoutes.PROFILE_COMPLETION
                         }
                         else -> {
                             authRepository.clearSession()
@@ -67,7 +68,8 @@ class MainViewModel @Inject constructor(
                     _startDestination.value = NavRoutes.AUTH
                 }
             } else {
-                _startDestination.value = NavRoutes.HOME
+                _startDestination.value = if (authRepository.isProfileCompleted())
+                    NavRoutes.HOME else NavRoutes.PROFILE_COMPLETION
             }
         }
     }
