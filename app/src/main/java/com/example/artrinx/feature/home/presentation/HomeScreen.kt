@@ -34,6 +34,7 @@ import com.example.artrinx.feature.home.presentation.components.DiscoverFeedItem
 import com.example.artrinx.feature.home.presentation.components.FeaturedCarousel
 import com.example.artrinx.feature.home.presentation.components.RecentlyViewedCard
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
+import com.example.artrinx.feature.home.presentation.components.ShoppableFeedItem
 import com.example.artrinx.feature.home.presentation.components.TopTabs
 import com.example.artrinx.feature.home.presentation.components.shimmer.BannerShimmer
 import com.example.artrinx.feature.home.presentation.components.shimmer.CollectionShimmer
@@ -52,6 +53,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         onRetry = viewModel::onRetry,
         onLike = viewModel::onLikeToggled,
         onBookmark = viewModel::onBookmarkToggled,
+        onShopLike = viewModel::onShopLikeToggled,
+        onShopBookmark = viewModel::onShopBookmarkToggled,
     )
 }
 
@@ -62,6 +65,8 @@ fun HomeScreenContent(
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
     onBookmark: (String) -> Unit,
+    onShopLike: (String) -> Unit = {},
+    onShopBookmark: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -80,6 +85,8 @@ fun HomeScreenContent(
             onRetry = onRetry,
             onLike = onLike,
             onBookmark = onBookmark,
+            onShopLike = onShopLike,
+            onShopBookmark = onShopBookmark,
             modifier = Modifier.fillMaxSize(),
             bottomPadding = innerPadding,
         )
@@ -95,6 +102,8 @@ fun HomeContent(
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
     onBookmark: (String) -> Unit,
+    onShopLike: (String) -> Unit = {},
+    onShopBookmark: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
@@ -114,6 +123,31 @@ fun HomeContent(
             )
         }
 
+        // ── Shop tab: shoppable feed only ─────────────────────────────
+        if (uiState.activeTab == HomeTab.SHOP) {
+            if (uiState.isLoading) {
+                items(count = 3, key = { "shop-shimmer-$it" }) { FeedShimmer() }
+            } else if (uiState.shoppableItems.isEmpty()) {
+                item(key = "shop-empty") {
+                    EmptyView(
+                        icon = Icons.Outlined.Collections,
+                        title = "No shoppable art yet",
+                        subtitle = "Check back later for art you can buy.",
+                    )
+                }
+            } else {
+                items(uiState.shoppableItems, key = { it.id }) { post ->
+                    ShoppableFeedItem(
+                        post = post,
+                        onLike = { onShopLike(post.id) },
+                        onBookmark = { onShopBookmark(post.id) },
+                    )
+                }
+            }
+            return@LazyColumn
+        }
+
+        // ── Discover / For You tab ─────────────────────────────────────
         if (uiState.error != null) {
             item(key = "error-state") {
                 ErrorView(

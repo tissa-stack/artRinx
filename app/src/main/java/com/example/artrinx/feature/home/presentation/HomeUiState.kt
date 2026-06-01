@@ -5,6 +5,7 @@ import com.example.artrinx.feature.home.domain.model.ArtworkItem
 import com.example.artrinx.feature.home.domain.model.BannerItem
 import com.example.artrinx.feature.home.domain.model.CurationItem
 import com.example.artrinx.feature.home.domain.model.FeedPost
+import com.example.artrinx.feature.home.domain.model.ShoppablePost
 
 enum class HomeTab(val displayName: String) {
     DISCOVER("Discover"),
@@ -25,6 +26,7 @@ data class HomeUiState(
     val popularCurations: List<CurationItem> = emptyList(),
     val recentlyViewed: List<ArtworkItem> = emptyList(),
     val feedItems: List<FeedPost> = emptyList(),
+    val shoppableItems: List<ShoppablePost> = emptyList(),
     val isLoading: Boolean = true,
     val error: HomeError? = null,
 )

@@ -34,6 +34,7 @@ class HomeViewModel @Inject constructor() : ViewModel() {
                     popularCurations = MockHomeData.popularCurations,
                     recentlyViewed = MockHomeData.recentlyViewed,
                     feedItems = MockHomeData.feedItems,
+                    shoppableItems = MockHomeData.shopItems,
                 )
             }
         }
@@ -67,6 +68,29 @@ class HomeViewModel @Inject constructor() : ViewModel() {
         _uiState.update { state ->
             state.copy(
                 feedItems = state.feedItems.map { post ->
+                    if (post.id == postId) post.copy(isBookmarked = !post.isBookmarked) else post
+                },
+            )
+        }
+    }
+
+    fun onShopLikeToggled(postId: String) {
+        _uiState.update { state ->
+            state.copy(
+                shoppableItems = state.shoppableItems.map { post ->
+                    if (post.id == postId) post.copy(
+                        isLiked = !post.isLiked,
+                        likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1,
+                    ) else post
+                },
+            )
+        }
+    }
+
+    fun onShopBookmarkToggled(postId: String) {
+        _uiState.update { state ->
+            state.copy(
+                shoppableItems = state.shoppableItems.map { post ->
                     if (post.id == postId) post.copy(isBookmarked = !post.isBookmarked) else post
                 },
             )

@@ -1,5 +1,6 @@
 package com.example.artrinx.feature.home.presentation.components
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.HorizontalDivider
@@ -21,6 +23,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,20 +40,22 @@ import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
-import com.example.artrinx.feature.home.domain.model.FeedPost
+import com.example.artrinx.feature.home.domain.model.ShoppablePost
 
 @Composable
-fun DiscoverFeedItem(
-    post: FeedPost,
+fun ShoppableFeedItem(
+    post: ShoppablePost,
     onLike: () -> Unit,
     onBookmark: () -> Unit,
+    onShopArt: () -> Unit = {},
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
 ) {
     val d = LocalDimens.current
+    var descriptionExpanded by remember { mutableStateOf(false) }
+
     Column(modifier = modifier.fillMaxWidth()) {
 
-        // ── Header: avatar + name + role ──────────────────────────────
+        // ── Header: avatar + name + role ─────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -96,12 +104,11 @@ fun DiscoverFeedItem(
             }
         }
 
-        // ── Artwork image — full width ─────────────────────────────────
+        // ── Artwork image — full width, no corner radius ──────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(d.feedImageHeight)
-                .clickable(onClick = onClick),
+                .height(d.feedImageHeight),
         ) {
             AsyncImage(
                 model = post.imageRes,
@@ -111,17 +118,13 @@ fun DiscoverFeedItem(
             )
         }
 
-        // ── Footer: title + artist LEFT | actions RIGHT ────────────────
+        // ── Title + actions ───────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    horizontal = Spacing.md,
-                    vertical = Spacing.sm,
-                ),
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Title + artist name
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = post.title,
@@ -139,10 +142,8 @@ fun DiscoverFeedItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-
             Spacer(Modifier.width(Spacing.sm))
-
-            // Action icons: 3 icons in a row, count right-aligned below
+            // Icons column: 3 icons row + count below (same as DiscoverFeedItem)
             Column(horizontalAlignment = Alignment.End) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -154,7 +155,7 @@ fun DiscoverFeedItem(
                         tint = if (post.isBookmarked) BrandPrimary
                         else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
-                            .size(Spacing.xl)
+                            .size(Spacing.xxl)
                             .clickable { onBookmark() },
                     )
                     Icon(
@@ -169,7 +170,7 @@ fun DiscoverFeedItem(
                         tint = if (post.isLiked) BrandPrimary
                         else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
-                            .size(Spacing.xl)
+                            .size(Spacing.xxl)
                             .clickable { onLike() },
                     )
                 }
@@ -184,9 +185,77 @@ fun DiscoverFeedItem(
             }
         }
 
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = Spacing.md),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-        )
+        // ── Medium + Shop Art button ──────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Medium",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = post.medium,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+            // Shop Art — theme-aware button: light gray in light mode, dark gray in dark mode
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(Spacing.sm))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onShopArt() }
+                    .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Shop Art",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+
+
+        // ── Description ───────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Description",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = if (descriptionExpanded) "less" else "more",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { descriptionExpanded = !descriptionExpanded },
+                )
+            }
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                text = post.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = if (descriptionExpanded) Int.MAX_VALUE else 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.animateContentSize(),
+            )
+        }
+
     }
 }

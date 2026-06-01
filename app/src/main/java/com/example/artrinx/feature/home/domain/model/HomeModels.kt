@@ -46,6 +46,23 @@ data class FeedPost(
     val isBookmarked: Boolean = false,
 )
 
+@Immutable
+data class ShoppablePost(
+    val id: String,
+    val artistName: String,
+    val artistHandle: String,
+    val artistRole: String = "Artist",
+    @DrawableRes val artistAvatarRes: Int? = null,
+    @DrawableRes val imageRes: Int,
+    val title: String,
+    val medium: String,
+    val description: String,
+    val likeCount: Int = 0,
+    val commentCount: Int = 0,
+    val isLiked: Boolean = false,
+    val isBookmarked: Boolean = false,
+)
+
 object MockHomeData {
 
     val bannerItems = listOf(
@@ -113,6 +130,49 @@ object MockHomeData {
         ArtworkItem("r3", R.drawable.sample_image_3, "Morning Mist", "leon"),
         ArtworkItem("r4", R.drawable.art_sample_chrysler_building, "Chrysler", "aiden"),
         ArtworkItem("r5", R.drawable.art_and_artist, "The Artist", "priya"),
+    )
+
+    val shopItems = listOf(
+        ShoppablePost(
+            "s1", "Wade Huston", "@wadehuston", "Artist", null,
+            R.drawable.art_sample_artist_outdoors, "Lando", "Painting",
+            "Beautiful landscape inspired by the land before the storm came through the valley", 26,
+        ),
+        ShoppablePost(
+            "s2", "Wade Huston", "@wadehuston", "Artist", null,
+            R.drawable.art_and_artist, "Plumes", "Painting",
+            "Swirling fish schools, bright corals and sparkling underwater light", 26,
+        ),
+        ShoppablePost(
+            "s3", "lena", "@lena.art", "Artist", null,
+            R.drawable.art_sample_cosmic_swirl, "Cosmic Drift", "Acrylic",
+            "Abstract cosmic series exploring the vastness of space and colour", 14,
+        ),
+        ShoppablePost(
+            "s4", "marco", "@marco_paints", "Collector", null,
+            R.drawable.art_sample_fluid_purple, "Fluid No. III", "Oil on Canvas",
+            "Third instalment in the fluid motion series — deep purples and oceanic blues", 8,
+        ),
+        ShoppablePost(
+            "s5", "aria", "@aria.creates", "Artist", null,
+            R.drawable.art_heaven, "Heaven's Gate", "Oil on Board",
+            "Inspired by classical mythology, painted over three months in natural light", 31,
+        ),
+        ShoppablePost(
+            "s6", "saketh", "@saketh", "Gallery", null,
+            R.drawable.art_sample_neon_corridor, "Neon Passage", "Digital Print",
+            "Limited edition digital artwork capturing urban night life through a neon lens", 19,
+        ),
+        ShoppablePost(
+            "s7", "yuki", "@yuki.art", "Artist", null,
+            R.drawable.art_sample_painted_hands, "Hands I", "Watercolour",
+            "Study of human gesture — the first in a series of twelve hand studies", 5,
+        ),
+        ShoppablePost(
+            "s8", "carlos", "@carlos_v", "Artist", null,
+            R.drawable.art_sample_brush_red, "Red Study", "Mixed Media",
+            "Exploration of the colour red across materials — oil, pigment ink, and wax", 12,
+        ),
     )
 
     val feedItems = listOf(
