@@ -74,6 +74,7 @@ private const val ADVANCE_AFTER_MS  = 160L
 fun CurationCardStack(
     artworks: List<Int>,
     modifier: Modifier = Modifier,
+    onTopIndexChanged: (Int) -> Unit = {},
 ) {
     if (artworks.isEmpty()) return
 
@@ -88,6 +89,9 @@ fun CurationCardStack(
 
     val dragX = remember { Animatable(0f) }
     val dragY = remember { Animatable(0f) }
+
+    // Notify parent whenever the focused card changes
+    androidx.compose.runtime.LaunchedEffect(topIndex) { onTopIndexChanged(topIndex % count) }
 
     val thresholdPx = with(density) { DISMISS_THRESHOLD.dp.toPx() }
 

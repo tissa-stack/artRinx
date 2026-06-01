@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,6 +53,7 @@ import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.CollectionCard
 import com.example.artrinx.feature.home.presentation.components.CurationCardStack
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
+import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
 
 @Composable
 fun CurationDetailScreen(
@@ -125,15 +127,30 @@ private fun CurationDetailContent(
 ) {
     val d        = LocalDimens.current
     val curation = uiState.curation ?: return
-    var descExpanded by remember { mutableStateOf(true) }   // expanded by default
+    var descExpanded by remember { mutableStateOf(true) }
+    var showSendSheet by remember { mutableStateOf(false) }
+    var currentArtworkIndex by remember { mutableIntStateOf(0) }
+    val currentArtworkRes = curation.artworkRes.getOrElse(currentArtworkIndex) { curation.artworkRes.first() }
+
+    if (showSendSheet) {
+        SendMessageBottomSheet(
+            artistName      = curation.curatorName,
+            artistRole      = "Artist",
+            artistAvatarRes = curation.curatorAvatarRes,
+            artworkTitle    = curation.title,
+            artworkImageRes = currentArtworkRes,
+            onDismiss       = { showSendSheet = false },
+        )
+    }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
 
         // ── Card stack — directly below the top bar, clean start ──────────
         item(key = "card-stack") {
             CurationCardStack(
-                artworks = curation.artworkRes,
-                modifier = Modifier.fillMaxWidth(),
+                artworks           = curation.artworkRes,
+                modifier           = Modifier.fillMaxWidth(),
+                onTopIndexChanged  = { currentArtworkIndex = it },
             )
         }
 
@@ -303,7 +320,7 @@ private fun CurationDetailContent(
                     modifier         = Modifier
                         .clip(RoundedCornerShape(Spacing.sm))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { }
+                        .clickable { showSendSheet = true }
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                     contentAlignment = Alignment.Center,
                 ) {

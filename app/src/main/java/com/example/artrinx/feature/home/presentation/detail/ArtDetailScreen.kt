@@ -53,6 +53,7 @@ import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.ArtworkCard
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
+import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
 
 @Composable
 fun ArtDetailScreen(
@@ -135,6 +136,18 @@ private fun ArtDetailContent(
     val d = LocalDimens.current
     val post = uiState.post ?: return
     var descExpanded by remember { mutableStateOf(false) }
+    var showSendSheet by remember { mutableStateOf(false) }
+
+    if (showSendSheet) {
+        SendMessageBottomSheet(
+            artistName      = post.artistName,
+            artistRole      = post.artistRole,
+            artistAvatarRes = post.artistAvatarRes,
+            artworkTitle    = post.title,
+            artworkImageRes = post.imageRes,
+            onDismiss       = { showSendSheet = false },
+        )
+    }
 
     LazyColumn(modifier = modifier) {
 
@@ -371,7 +384,7 @@ private fun ArtDetailContent(
                     modifier = Modifier
                         .clip(RoundedCornerShape(Spacing.sm))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { }
+                        .clickable { showSendSheet = true }
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                     contentAlignment = Alignment.Center,
                 ) {
