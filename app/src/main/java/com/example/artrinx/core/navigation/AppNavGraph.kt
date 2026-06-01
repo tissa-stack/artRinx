@@ -20,6 +20,7 @@ import com.example.artrinx.feature.auth.presentation.otp.OtpScreen
 import com.example.artrinx.feature.profile.presentation.ProfileCreationScreen
 import com.example.artrinx.feature.auth.presentation.signup.SignupScreen
 import com.example.artrinx.feature.auth.presentation.waitlist.WaitlistScreen
+import com.example.artrinx.feature.home.presentation.HomeScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
 
 @Composable
@@ -129,10 +130,7 @@ fun AppNavGraph(
         }
 
         composable(NavRoutes.HOME) {
-            // HOME placeholder — replace with actual HomeScreen once implemented
-            ProfileCreationScreen(
-                onNavigateToHome = {},
-            )
+            HomeScreen()
         }
     }
 }

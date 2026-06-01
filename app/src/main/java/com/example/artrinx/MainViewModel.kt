@@ -34,43 +34,7 @@ class MainViewModel @Inject constructor(
     val startDestination: StateFlow<String?> = _startDestination.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            val hasSeenOnboarding = dataStore.data
-                .map { prefs -> prefs[ONBOARDING_COMPLETE_KEY] ?: false }
-                .first()
-
-            if (!hasSeenOnboarding) {
-                _startDestination.value = NavRoutes.ONBOARDING
-                return@launch
-            }
-
-            if (!authRepository.isSessionValid()) {
-                _startDestination.value = NavRoutes.AUTH
-                return@launch
-            }
-
-            if (authRepository.isAccessTokenExpired()) {
-                val storedRefreshToken = authRepository.getRefreshToken()
-                if (storedRefreshToken != null) {
-                    when (val result = refreshToken(storedRefreshToken)) {
-                        is ApiResult.Success -> {
-                            saveSession(result.data)
-                            _startDestination.value = if (authRepository.isProfileCompleted())
-                                NavRoutes.HOME else NavRoutes.PROFILE_COMPLETION
-                        }
-                        else -> {
-                            authRepository.clearSession()
-                            _startDestination.value = NavRoutes.AUTH
-                        }
-                    }
-                } else {
-                    authRepository.clearSession()
-                    _startDestination.value = NavRoutes.AUTH
-                }
-            } else {
-                _startDestination.value = if (authRepository.isProfileCompleted())
-                    NavRoutes.HOME else NavRoutes.PROFILE_COMPLETION
-            }
-        }
+        // TODO: remove before release — bypasses auth/onboarding for UI testing
+        _startDestination.value = NavRoutes.HOME
     }
 }

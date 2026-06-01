@@ -2,29 +2,21 @@ package com.example.artrinx.core.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
 import com.example.artrinx.R
 
-private val googleFontProvider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs,
-)
-
-private val poppinsFont = GoogleFont("Poppins")
-
-val PoppinsFamily = androidx.compose.ui.text.font.FontFamily(
-    Font(googleFont = poppinsFont, fontProvider = googleFontProvider, weight = FontWeight.Normal),
-    Font(googleFont = poppinsFont, fontProvider = googleFontProvider, weight = FontWeight.Medium),
-    Font(googleFont = poppinsFont, fontProvider = googleFontProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = poppinsFont, fontProvider = googleFontProvider, weight = FontWeight.Bold),
+// Bundled Poppins — always available offline, no GMS dependency
+val PoppinsFamily = FontFamily(
+    Font(R.font.poppins_regular,  FontWeight.Normal),
+    Font(R.font.poppins_medium,   FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold,     FontWeight.Bold),
 )
 
 val ArtRinxTypography = Typography(
-    // Display Large — splash / hero
     displayLarge = TextStyle(
         fontFamily = PoppinsFamily,
         fontWeight = FontWeight.Bold,
@@ -32,7 +24,6 @@ val ArtRinxTypography = Typography(
         lineHeight = 56.sp,
         letterSpacing = 0.sp,
     ),
-    // H1 — main headings
     headlineLarge = TextStyle(
         fontFamily = PoppinsFamily,
         fontWeight = FontWeight.SemiBold,
@@ -40,7 +31,6 @@ val ArtRinxTypography = Typography(
         lineHeight = 36.sp,
         letterSpacing = 0.sp,
     ),
-    // H2 — section titles
     headlineMedium = TextStyle(
         fontFamily = PoppinsFamily,
         fontWeight = FontWeight.Medium,
@@ -55,7 +45,6 @@ val ArtRinxTypography = Typography(
         lineHeight = 26.sp,
         letterSpacing = 0.sp,
     ),
-    // Body Large — main content
     bodyLarge = TextStyle(
         fontFamily = PoppinsFamily,
         fontWeight = FontWeight.Normal,
@@ -63,7 +52,6 @@ val ArtRinxTypography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.sp,
     ),
-    // Body Medium — secondary content
     bodyMedium = TextStyle(
         fontFamily = PoppinsFamily,
         fontWeight = FontWeight.Normal,
@@ -78,7 +66,6 @@ val ArtRinxTypography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.sp,
     ),
-    // Label — buttons / inputs
     labelLarge = TextStyle(
         fontFamily = PoppinsFamily,
         fontWeight = FontWeight.SemiBold,
@@ -93,7 +80,6 @@ val ArtRinxTypography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.sp,
     ),
-    // Caption — metadata
     labelSmall = TextStyle(
         fontFamily = PoppinsFamily,
         fontWeight = FontWeight.Normal,

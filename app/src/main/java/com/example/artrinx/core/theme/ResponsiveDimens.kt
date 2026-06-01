@@ -70,6 +70,22 @@ data class ResponsiveDimens(
     // sp font sizes in ArtRinxTheme so text grows proportionally on large
     // screens and never looks tiny on tablets or large phones.
     val fontScale: Float       = (screenWidthDp / 360f).coerceIn(0.85f, 1.45f)
+
+    // Home screen dimensions
+    val tabPillHeight: Dp          = h(0.055f,  40.dp,  54.dp)   // ~44dp at 800h reference
+    val bannerHeight: Dp           = h(0.330f, 230.dp, 380.dp)   // ~264dp — close to reference
+    val artCardWidth: Dp           = w(0.620f, 200.dp, 320.dp)   // ~62% of screen — 1 full + 1 peeking
+    val artCardHeight: Dp          = w(0.490f, 158.dp, 265.dp)   // portrait ratio matches reference
+    val collectionCardWidth: Dp    = w(0.590f, 190.dp, 300.dp)   // ~59% of screen — 1 full + 1 peeking
+    val collectionCardHeight: Dp   = w(0.360f, 116.dp, 190.dp)   // image section only (text row below)
+    val feedImageHeight: Dp        = w(0.720f, 245.dp, 400.dp)   // ~259dp at 360w — slightly reduced
+    val avatarSize: Dp             = w(0.089f,  32.dp,  52.dp)
+    val avatarSizeLg: Dp           = w(0.111f,  40.dp,  64.dp)
+    val bottomNavHeight: Dp        = h(0.072f,  52.dp,  72.dp)
+    val indicatorDotActive: Dp     = w(0.022f,   8.dp,  14.dp)
+    val indicatorDotMedium: Dp     = w(0.017f,   6.dp,  10.dp)
+    val indicatorDotSmall: Dp      = w(0.011f,   4.dp,   8.dp)
+    val cardCornerRadius: Dp       = w(0.033f,  10.dp,  20.dp)
 }
 
 /** Default matches the 360×800dp reference phone so previews look correct. */
