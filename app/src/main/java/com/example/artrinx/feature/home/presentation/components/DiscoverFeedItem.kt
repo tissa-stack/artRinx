@@ -188,5 +188,6 @@ fun DiscoverFeedItem(
             modifier = Modifier.padding(horizontal = Spacing.md),
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
         )
+        Spacer(Modifier.height(Spacing.md))
     }
 }

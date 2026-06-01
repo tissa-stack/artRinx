@@ -3,9 +3,15 @@ package com.example.artrinx.feature.home.presentation
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -34,6 +40,8 @@ import com.example.artrinx.feature.home.presentation.components.DiscoverFeedItem
 import com.example.artrinx.feature.home.presentation.components.FeaturedCarousel
 import com.example.artrinx.feature.home.presentation.components.RecentlyViewedCard
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
+import com.example.artrinx.feature.home.domain.model.ForYouItem
+import com.example.artrinx.feature.home.presentation.components.FeaturedCarouselItem
 import com.example.artrinx.feature.home.presentation.components.ShoppableFeedItem
 import com.example.artrinx.feature.home.presentation.components.TopTabs
 import com.example.artrinx.feature.home.presentation.components.shimmer.BannerShimmer
@@ -147,7 +155,60 @@ fun HomeContent(
             return@LazyColumn
         }
 
-        // ── Discover / For You tab ─────────────────────────────────────
+        // ── For You tab: finite mixed feed (posts + sponsored banners) ─
+        if (uiState.activeTab == HomeTab.FOR_YOU) {
+            if (uiState.isLoading) {
+                items(count = 3, key = { "foryou-shimmer-$it" }) { FeedShimmer() }
+            } else if (uiState.forYouItems.isEmpty()) {
+                item(key = "foryou-empty") {
+                    EmptyView(
+                        icon = Icons.Outlined.Palette,
+                        title = "Nothing here yet",
+                        subtitle = "Curated art is on its way.",
+                    )
+                }
+            } else {
+                items(
+                    count = uiState.forYouItems.size,
+                    key = { i ->
+                        when (val it = uiState.forYouItems[i]) {
+                            is ForYouItem.Post -> "foryou-post-${it.post.id}"
+                            is ForYouItem.Sponsored -> "foryou-sponsor-${it.banner.id}"
+                        }
+                    },
+                ) { i ->
+                    when (val forYouItem = uiState.forYouItems[i]) {
+                        is ForYouItem.Post -> DiscoverFeedItem(
+                            post = forYouItem.post,
+                            onLike = { onLike(forYouItem.post.id) },
+                            onBookmark = { onBookmark(forYouItem.post.id) },
+                        )
+                        is ForYouItem.Sponsored -> Column(
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = "Sponsored",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    horizontal = Spacing.md,
+                                    vertical = Spacing.xs,
+                                ),
+                            )
+                            FeaturedCarouselItem(
+                                item = forYouItem.banner,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(d.bannerHeight),
+                            )
+                        }
+                    }
+                }
+            }
+            return@LazyColumn
+        }
+
+        // ── Discover tab ───────────────────────────────────────────────
         if (uiState.error != null) {
             item(key = "error-state") {
                 ErrorView(

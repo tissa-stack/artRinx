@@ -63,6 +63,12 @@ data class ShoppablePost(
     val isBookmarked: Boolean = false,
 )
 
+/** Mixed "For You" feed item — either a regular post or an inline sponsored banner. */
+sealed class ForYouItem {
+    @Immutable data class Post(val post: FeedPost) : ForYouItem()
+    @Immutable data class Sponsored(val banner: BannerItem) : ForYouItem()
+}
+
 object MockHomeData {
 
     val bannerItems = listOf(
@@ -174,6 +180,24 @@ object MockHomeData {
             "Exploration of the colour red across materials — oil, pigment ink, and wax", 12,
         ),
     )
+
+    val forYouItems: List<ForYouItem> by lazy {
+        // Interleave regular posts with sponsored banners
+        val posts = feedItems
+        val banners = bannerItems
+        buildList {
+            add(ForYouItem.Post(posts[0]))
+            add(ForYouItem.Sponsored(banners[0]))
+            add(ForYouItem.Post(posts[1]))
+            add(ForYouItem.Post(posts[2]))
+            add(ForYouItem.Sponsored(banners[1]))
+            add(ForYouItem.Post(posts[3]))
+            add(ForYouItem.Post(posts[4]))
+            add(ForYouItem.Sponsored(banners[2]))
+            add(ForYouItem.Post(posts[5]))
+            add(ForYouItem.Post(posts[6]))
+        }
+    }
 
     val feedItems = listOf(
         FeedPost(

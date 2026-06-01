@@ -35,6 +35,7 @@ class HomeViewModel @Inject constructor() : ViewModel() {
                     recentlyViewed = MockHomeData.recentlyViewed,
                     feedItems = MockHomeData.feedItems,
                     shoppableItems = MockHomeData.shopItems,
+                    forYouItems = MockHomeData.forYouItems,
                 )
             }
         }

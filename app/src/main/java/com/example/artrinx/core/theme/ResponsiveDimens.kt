@@ -73,7 +73,7 @@ data class ResponsiveDimens(
 
     // Home screen dimensions
     val tabPillHeight: Dp          = h(0.055f,  40.dp,  54.dp)   // ~44dp at 800h reference
-    val bannerHeight: Dp           = h(0.330f, 230.dp, 380.dp)   // ~264dp — close to reference
+    val bannerHeight: Dp           = h(0.450f, 300.dp, 460.dp)   // ~360dp — prominent hero banner
     val artCardWidth: Dp           = w(0.620f, 200.dp, 320.dp)   // ~62% of screen — 1 full + 1 peeking
     val artCardHeight: Dp          = w(0.490f, 158.dp, 265.dp)   // portrait ratio matches reference
     val collectionCardWidth: Dp    = w(0.590f, 190.dp, 300.dp)   // ~59% of screen — 1 full + 1 peeking
