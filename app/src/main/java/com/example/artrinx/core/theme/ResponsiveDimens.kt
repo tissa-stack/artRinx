@@ -86,6 +86,7 @@ data class ResponsiveDimens(
     val indicatorDotMedium: Dp     = w(0.017f,   6.dp,  10.dp)
     val indicatorDotSmall: Dp      = w(0.011f,   4.dp,   8.dp)
     val cardCornerRadius: Dp       = w(0.033f,  10.dp,  20.dp)
+    val artDetailImageHeight: Dp   = h(0.420f, 280.dp, 430.dp)   // ~336dp — larger hero in detail view
 }
 
 /** Default matches the 360×800dp reference phone so previews look correct. */

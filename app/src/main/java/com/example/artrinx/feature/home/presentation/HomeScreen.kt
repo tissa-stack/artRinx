@@ -52,7 +52,10 @@ import com.example.artrinx.feature.home.presentation.components.state.EmptyView
 import com.example.artrinx.feature.home.presentation.components.state.ErrorView
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+    onNavigateToDetail: (String) -> Unit = {},
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     HomeScreenContent(
@@ -63,6 +66,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         onBookmark = viewModel::onBookmarkToggled,
         onShopLike = viewModel::onShopLikeToggled,
         onShopBookmark = viewModel::onShopBookmarkToggled,
+        onNavigateToDetail = onNavigateToDetail,
     )
 }
 
@@ -75,6 +79,7 @@ fun HomeScreenContent(
     onBookmark: (String) -> Unit,
     onShopLike: (String) -> Unit = {},
     onShopBookmark: (String) -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -95,6 +100,7 @@ fun HomeScreenContent(
             onBookmark = onBookmark,
             onShopLike = onShopLike,
             onShopBookmark = onShopBookmark,
+            onNavigateToDetail = onNavigateToDetail,
             modifier = Modifier.fillMaxSize(),
             bottomPadding = innerPadding,
         )
@@ -112,6 +118,7 @@ fun HomeContent(
     onBookmark: (String) -> Unit,
     onShopLike: (String) -> Unit = {},
     onShopBookmark: (String) -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
@@ -149,6 +156,7 @@ fun HomeContent(
                         post = post,
                         onLike = { onShopLike(post.id) },
                         onBookmark = { onShopBookmark(post.id) },
+                        onClick = { onNavigateToDetail(post.id) },
                     )
                 }
             }
@@ -182,6 +190,7 @@ fun HomeContent(
                             post = forYouItem.post,
                             onLike = { onLike(forYouItem.post.id) },
                             onBookmark = { onBookmark(forYouItem.post.id) },
+                            onClick = { onNavigateToDetail(forYouItem.post.id) },
                         )
                         is ForYouItem.Sponsored -> Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -200,6 +209,7 @@ fun HomeContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(d.bannerHeight),
+                                onClick = { onNavigateToDetail(forYouItem.banner.id) },
                             )
                         }
                     }
@@ -227,7 +237,10 @@ fun HomeContent(
                         title = "No featured art",
                         subtitle = "Check back later for new artwork.",
                     )
-                    else -> FeaturedCarousel(items = uiState.bannerItems)
+                    else -> FeaturedCarousel(
+                        items = uiState.bannerItems,
+                        onClick = { banner -> onNavigateToDetail(banner.id) },
+                    )
                 }
             }
 
@@ -251,7 +264,7 @@ fun HomeContent(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
                         items(uiState.newArtItems, key = { it.id }) { item ->
-                            ArtworkCard(item = item)
+                            ArtworkCard(item = item, onClick = { onNavigateToDetail(item.id) })
                         }
                     }
                 }
@@ -303,7 +316,7 @@ fun HomeContent(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
                         items(uiState.recentlyViewed, key = { it.id }) { item ->
-                            RecentlyViewedCard(item = item)
+                            RecentlyViewedCard(item = item, onClick = { onNavigateToDetail(item.id) })
                         }
                     }
                 }
@@ -332,6 +345,7 @@ fun HomeContent(
                         post = post,
                         onLike = { onLike(post.id) },
                         onBookmark = { onBookmark(post.id) },
+                        onClick = { onNavigateToDetail(post.id) },
                     )
                 }
             }

@@ -48,6 +48,7 @@ fun ShoppableFeedItem(
     onLike: () -> Unit,
     onBookmark: () -> Unit,
     onShopArt: () -> Unit = {},
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
@@ -108,7 +109,8 @@ fun ShoppableFeedItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(d.feedImageHeight),
+                .height(d.feedImageHeight)
+                .clickable(onClick = onClick),
         ) {
             AsyncImage(
                 model = post.imageRes,

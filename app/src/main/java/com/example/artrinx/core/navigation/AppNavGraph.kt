@@ -21,6 +21,7 @@ import com.example.artrinx.feature.profile.presentation.ProfileCreationScreen
 import com.example.artrinx.feature.auth.presentation.signup.SignupScreen
 import com.example.artrinx.feature.auth.presentation.waitlist.WaitlistScreen
 import com.example.artrinx.feature.home.presentation.HomeScreen
+import com.example.artrinx.feature.home.presentation.detail.ArtDetailScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
 
 @Composable
@@ -130,7 +131,31 @@ fun AppNavGraph(
         }
 
         composable(NavRoutes.HOME) {
-            HomeScreen()
+            HomeScreen(
+                onNavigateToDetail = { postId ->
+                    navController.navigate(NavRoutes.artDetail(postId))
+                },
+            )
+        }
+
+        composable(
+            route = NavRoutes.ART_DETAIL,
+            arguments = listOf(
+                navArgument("postId") { type = NavType.StringType },
+            ),
+        ) {
+            ArtDetailScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToDetail = { postId ->
+                    navController.navigate(NavRoutes.artDetail(postId))
+                },
+                onNavigateHome = {
+                    navController.navigate(NavRoutes.HOME) {
+                        popUpTo(NavRoutes.HOME) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }
