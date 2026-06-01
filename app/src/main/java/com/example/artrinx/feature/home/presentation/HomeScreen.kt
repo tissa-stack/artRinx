@@ -55,6 +55,7 @@ import com.example.artrinx.feature.home.presentation.components.state.ErrorView
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToCurationDetail: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -67,6 +68,7 @@ fun HomeScreen(
         onShopLike = viewModel::onShopLikeToggled,
         onShopBookmark = viewModel::onShopBookmarkToggled,
         onNavigateToDetail = onNavigateToDetail,
+        onNavigateToCurationDetail = onNavigateToCurationDetail,
     )
 }
 
@@ -80,6 +82,7 @@ fun HomeScreenContent(
     onShopLike: (String) -> Unit = {},
     onShopBookmark: (String) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToCurationDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -101,6 +104,7 @@ fun HomeScreenContent(
             onShopLike = onShopLike,
             onShopBookmark = onShopBookmark,
             onNavigateToDetail = onNavigateToDetail,
+            onNavigateToCurationDetail = onNavigateToCurationDetail,
             modifier = Modifier.fillMaxSize(),
             bottomPadding = innerPadding,
         )
@@ -119,6 +123,7 @@ fun HomeContent(
     onShopLike: (String) -> Unit = {},
     onShopBookmark: (String) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToCurationDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
@@ -290,7 +295,10 @@ fun HomeContent(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
                         items(uiState.popularCurations, key = { it.id }) { item ->
-                            CollectionCard(item = item)
+                            CollectionCard(
+                                item = item,
+                                onClick = { onNavigateToCurationDetail(item.id) },
+                            )
                         }
                     }
                 }

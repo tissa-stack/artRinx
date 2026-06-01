@@ -27,8 +27,11 @@ data class CurationItem(
     val id: String,
     val title: String,
     val curatorHandle: String,
+    val curatorName: String = "Curator",
     @DrawableRes val curatorAvatarRes: Int? = null,
     val artworkRes: List<Int>,
+    val styles: String = "Painting",
+    val description: String = "A carefully curated collection of remarkable artworks.",
 )
 
 @Immutable
@@ -92,41 +95,53 @@ object MockHomeData {
             id = "c1",
             title = "everything is blue",
             curatorHandle = "@evanicole",
+            curatorName = "Eva Nicole",
             artworkRes = listOf(
                 R.drawable.art_sample_chrysler_building,
                 R.drawable.art_sample_cosmic_swirl,
                 R.drawable.art_sample_fluid_purple,
             ),
+            styles = "Photography, Painting, Conceptual",
+            description = "A journey through shades of blue across mediums and movements — from midnight cityscapes to oceanic abstractions.",
         ),
         CurationItem(
             id = "c2",
             title = "European Greats",
             curatorHandle = "@wadahuston",
+            curatorName = "Wade Huston",
             artworkRes = listOf(
                 R.drawable.art_sample_artist_outdoors,
                 R.drawable.art_sample_street_poster,
                 R.drawable.art_sample_painted_hands,
             ),
+            styles = "Painting, Sculpture, Conceptual, Digital Art",
+            description = "Swirling fish schools, bright corals and sparkling brimming life. A portion of the sale of this piece goes to saving coral reefs.",
         ),
         CurationItem(
             id = "c3",
             title = "Abstract Visions",
             curatorHandle = "@mirastone",
+            curatorName = "Mira Stone",
             artworkRes = listOf(
                 R.drawable.art_sample_pink_glitter,
                 R.drawable.art_sample_fluid_purple,
                 R.drawable.art_sample_paint_brushes,
             ),
+            styles = "Abstract, Mixed Media, Digital",
+            description = "A celebration of colour and form without boundaries — art that asks you to feel before you think.",
         ),
         CurationItem(
             id = "c4",
             title = "Street & Soul",
             curatorHandle = "@thecollector",
+            curatorName = "The Collector",
             artworkRes = listOf(
                 R.drawable.art_sample_street_artist,
                 R.drawable.art_sample_neon_corridor,
                 R.drawable.art_sample_brush_red,
             ),
+            styles = "Street Art, Photography, Graffiti",
+            description = "Raw energy captured from the streets — art born in alleys, underpasses, and forgotten walls.",
         ),
     )
 

@@ -12,9 +12,11 @@ object NavRoutes {
     const val PROFILE_COMPLETION = "profile_completion"
     const val HOME = "home"
     const val ART_DETAIL = "art_detail/{postId}"
+    const val CURATION_DETAIL = "curation_detail/{curationId}"
 
     fun signup(inviteCode: String) = "signup?inviteCode=${Uri.encode(inviteCode)}"
     fun artDetail(postId: String) = "art_detail/${Uri.encode(postId)}"
+    fun curationDetail(curationId: String) = "curation_detail/${Uri.encode(curationId)}"
 }
 
 data class OtpArgs(
