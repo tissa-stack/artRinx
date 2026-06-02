@@ -55,6 +55,7 @@ import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.ReportBottomSheet
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
+import com.example.artrinx.feature.home.presentation.components.ShopLinkDialog
 
 @Composable
 fun ArtDetailScreen(
@@ -147,6 +148,15 @@ private fun ArtDetailContent(
     val post = uiState.post ?: return
     var descExpanded by remember { mutableStateOf(false) }
     var showSendSheet by remember { mutableStateOf(false) }
+    var showShopDialog by remember { mutableStateOf(false) }
+
+    if (showShopDialog) {
+        ShopLinkDialog(
+            artistName = post.artistName,
+            shopUrl    = post.shopUrl,
+            onDismiss  = { showShopDialog = false },
+        )
+    }
 
     if (showSendSheet) {
         SendMessageBottomSheet(
@@ -292,7 +302,7 @@ private fun ArtDetailContent(
                     modifier = Modifier
                         .clip(RoundedCornerShape(Spacing.sm))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { }
+                        .clickable { showShopDialog = true }
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                     contentAlignment = Alignment.Center,
                 ) {

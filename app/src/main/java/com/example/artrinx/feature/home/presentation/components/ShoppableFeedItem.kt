@@ -47,12 +47,20 @@ fun ShoppableFeedItem(
     post: ShoppablePost,
     onLike: () -> Unit,
     onBookmark: () -> Unit,
-    onShopArt: () -> Unit = {},
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
     var descriptionExpanded by remember { mutableStateOf(false) }
+    var showShopDialog by remember { mutableStateOf(false) }
+
+    if (showShopDialog) {
+        ShopLinkDialog(
+            artistName = post.artistName,
+            shopUrl    = post.shopUrl,
+            onDismiss  = { showShopDialog = false },
+        )
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
 
@@ -215,7 +223,7 @@ fun ShoppableFeedItem(
                 modifier = Modifier
                     .clip(RoundedCornerShape(Spacing.sm))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onShopArt() }
+                    .clickable { showShopDialog = true }
                     .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
                 contentAlignment = Alignment.Center,
             ) {

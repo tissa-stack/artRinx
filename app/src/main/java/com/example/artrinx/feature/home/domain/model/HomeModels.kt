@@ -64,6 +64,7 @@ data class ShoppablePost(
     val commentCount: Int = 0,
     val isLiked: Boolean = false,
     val isBookmarked: Boolean = false,
+    val shopUrl: String = "",
 )
 
 /** Mixed "For You" feed item — either a regular post or an inline sponsored banner. */
@@ -158,41 +159,49 @@ object MockHomeData {
             "s1", "Wade Huston", "@wadehuston", "Artist", null,
             R.drawable.art_sample_artist_outdoors, "Lando", "Painting",
             "Beautiful landscape inspired by the land before the storm came through the valley", 26,
+            shopUrl = "https://wadehuston.com/shop/lando-original-painting",
         ),
         ShoppablePost(
             "s2", "Wade Huston", "@wadehuston", "Artist", null,
             R.drawable.art_and_artist, "Plumes", "Painting",
             "Swirling fish schools, bright corals and sparkling underwater light", 26,
+            shopUrl = "https://wadehuston.com/shop/plumes-series-ii",
         ),
         ShoppablePost(
             "s3", "lena", "@lena.art", "Artist", null,
             R.drawable.art_sample_cosmic_swirl, "Cosmic Drift", "Acrylic",
             "Abstract cosmic series exploring the vastness of space and colour", 14,
+            shopUrl = "https://lena.art/gallery/cosmic-drift",
         ),
         ShoppablePost(
             "s4", "marco", "@marco_paints", "Collector", null,
             R.drawable.art_sample_fluid_purple, "Fluid No. III", "Oil on Canvas",
             "Third instalment in the fluid motion series — deep purples and oceanic blues", 8,
+            shopUrl = "https://marcopaints.com/collections/fluid-series/fluid-iii",
         ),
         ShoppablePost(
             "s5", "aria", "@aria.creates", "Artist", null,
             R.drawable.art_heaven, "Heaven's Gate", "Oil on Board",
             "Inspired by classical mythology, painted over three months in natural light", 31,
+            shopUrl = "https://ariacreates.com/originals/heavens-gate",
         ),
         ShoppablePost(
             "s6", "saketh", "@saketh", "Gallery", null,
             R.drawable.art_sample_neon_corridor, "Neon Passage", "Digital Print",
             "Limited edition digital artwork capturing urban night life through a neon lens", 19,
+            shopUrl = "https://saketh.gallery/prints/neon-passage-limited-edition",
         ),
         ShoppablePost(
             "s7", "yuki", "@yuki.art", "Artist", null,
             R.drawable.art_sample_painted_hands, "Hands I", "Watercolour",
             "Study of human gesture — the first in a series of twelve hand studies", 5,
+            shopUrl = "https://yuki.art/shop/hands-study-series/hands-i",
         ),
         ShoppablePost(
             "s8", "carlos", "@carlos_v", "Artist", null,
             R.drawable.art_sample_brush_red, "Red Study", "Mixed Media",
             "Exploration of the colour red across materials — oil, pigment ink, and wax", 12,
+            shopUrl = "https://carlosv.studio/works/red-study-mixed-media",
         ),
     )
 
