@@ -12,8 +12,18 @@ object NavRoutes {
     const val PROFILE_COMPLETION = "profile_completion"
     const val HOME = "home"
     const val SEARCH = "search"
-    const val CREATE = "create"
+    const val CREATE  = "create"
     const val PROFILE = "profile"
+
+    // Upload / create flows
+    const val NEW_ART             = "new_art/{imageUri}"
+    const val ART_PREVIEW         = "art_preview"
+    const val ARTIST_SEARCH       = "artist_search"
+    const val ADD_TAGS            = "add_tags"
+    const val NEW_CURATION        = "new_curation"
+    const val ADD_ART_TO_CURATION = "add_art_to_curation"
+
+    fun newArt(imageUri: String) = "new_art/${Uri.encode(imageUri)}"
 
     // source arg carries the originating bottom-tab so detail screens keep the correct tab highlighted.
     const val ART_DETAIL      = "art_detail/{postId}?source={source}"

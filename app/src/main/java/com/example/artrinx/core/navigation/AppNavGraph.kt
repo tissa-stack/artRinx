@@ -27,6 +27,16 @@ import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
 import com.example.artrinx.feature.profile.presentation.view.UserProfileScreen
 import com.example.artrinx.feature.create.presentation.CreateScreen
 import com.example.artrinx.feature.search.presentation.SearchScreen
+import com.example.artrinx.feature.upload.presentation.artist.ArtistSearchScreen
+import com.example.artrinx.feature.upload.presentation.curation.AddArtToCurationScreen
+import com.example.artrinx.feature.upload.presentation.curation.NewCurationScreen
+import com.example.artrinx.feature.upload.presentation.curation.NewCurationViewModel
+import com.example.artrinx.feature.upload.presentation.newart.NewArtPreviewScreen
+import com.example.artrinx.feature.upload.presentation.newart.NewArtScreen
+import com.example.artrinx.feature.upload.presentation.newart.NewArtViewModel
+import com.example.artrinx.feature.upload.presentation.tags.AddTagsScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.remember
 
 @Composable
 fun AppNavGraph(
@@ -155,10 +165,62 @@ fun AppNavGraph(
 
         composable(NavRoutes.CREATE) {
             CreateScreen(
-                onNavigateToHome    = { navController.navigateToTab(NavRoutes.HOME) },
-                onNavigateToSearch  = { navController.navigateToTab(NavRoutes.SEARCH) },
-                onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
+                onNavigateToHome      = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToSearch    = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToProfile   = { navController.navigateToTab(NavRoutes.PROFILE) },
+                onNavigateToNewArt    = { uri -> navController.navigate(NavRoutes.newArt(uri)) },
+                onNavigateToNewCuration = { navController.navigate(NavRoutes.NEW_CURATION) },
             )
+        }
+
+        // ── Upload art flow ───────────────────────────────────────────────────
+
+        composable(
+            route     = NavRoutes.NEW_ART,
+            arguments = listOf(navArgument("imageUri") { type = NavType.StringType }),
+        ) { entry ->
+            val rawUri = entry.arguments?.getString("imageUri") ?: ""
+            val imageUri = if (rawUri.isNotEmpty()) android.net.Uri.parse(Uri.decode(rawUri)) else null
+            NewArtScreen(
+                imageUri             = imageUri,
+                onBack               = { navController.popBackStack() },
+                onNavigateToArtist   = { navController.navigate(NavRoutes.ARTIST_SEARCH) },
+                onNavigateToTags     = { navController.navigate(NavRoutes.ADD_TAGS) },
+                onNavigateToPreview  = { navController.navigate(NavRoutes.ART_PREVIEW) },
+            )
+        }
+
+        composable(NavRoutes.ART_PREVIEW) { entry ->
+            val parentEntry = remember(entry) { navController.getBackStackEntry(NavRoutes.NEW_ART) }
+            val viewModel: NewArtViewModel = hiltViewModel(parentEntry)
+            NewArtPreviewScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+        }
+
+        composable(NavRoutes.ARTIST_SEARCH) { entry ->
+            val parentEntry = remember(entry) { navController.getBackStackEntry(NavRoutes.NEW_ART) }
+            val viewModel: NewArtViewModel = hiltViewModel(parentEntry)
+            ArtistSearchScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+        }
+
+        composable(NavRoutes.ADD_TAGS) { entry ->
+            val parentEntry = remember(entry) { navController.getBackStackEntry(NavRoutes.NEW_ART) }
+            val viewModel: NewArtViewModel = hiltViewModel(parentEntry)
+            AddTagsScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+        }
+
+        // ── New curation flow ─────────────────────────────────────────────────
+
+        composable(NavRoutes.NEW_CURATION) {
+            NewCurationScreen(
+                onBack             = { navController.popBackStack() },
+                onNavigateToAddArt = { navController.navigate(NavRoutes.ADD_ART_TO_CURATION) },
+            )
+        }
+
+        composable(NavRoutes.ADD_ART_TO_CURATION) { entry ->
+            val parentEntry = remember(entry) { navController.getBackStackEntry(NavRoutes.NEW_CURATION) }
+            val viewModel: NewCurationViewModel = hiltViewModel(parentEntry)
+            AddArtToCurationScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
         }
 
         composable(NavRoutes.PROFILE) {

@@ -88,6 +88,9 @@ data class ResponsiveDimens(
     val cardCornerRadius: Dp       = w(0.033f,  10.dp,  20.dp)
     val artDetailImageHeight: Dp   = h(0.420f, 280.dp, 430.dp)   // ~336dp — larger hero in detail view
 
+    // Upload / create screens
+    val uploadImageHeight: Dp          = h(0.380f, 260.dp, 380.dp)
+
     // Search screen
     val searchBarHeight: Dp            = w(0.133f,  44.dp,  56.dp)
     val masonryCardHeightShort: Dp     = h(0.220f, 160.dp, 220.dp)
