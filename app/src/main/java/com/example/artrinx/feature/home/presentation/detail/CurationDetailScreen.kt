@@ -52,6 +52,7 @@ import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.CollectionCard
 import com.example.artrinx.feature.home.presentation.components.CurationCardStack
+import com.example.artrinx.feature.home.presentation.components.ReportBottomSheet
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
 
@@ -63,6 +64,15 @@ fun CurationDetailScreen(
     viewModel: CurationDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showReportSheet by remember { mutableStateOf(false) }
+
+    if (showReportSheet) {
+        ReportBottomSheet(
+            artTitle    = uiState.curation?.title ?: "",
+            profileName = uiState.curation?.curatorName ?: "",
+            onDismiss   = { showReportSheet = false },
+        )
+    }
 
     Scaffold(
         bottomBar = {
@@ -96,7 +106,7 @@ fun CurationDetailScreen(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = {}) {
+                IconButton(onClick = { showReportSheet = true }) {
                     Icon(
                         painter            = painterResource(R.drawable.ic_report),
                         contentDescription = "Report",

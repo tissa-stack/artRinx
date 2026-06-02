@@ -52,6 +52,7 @@ import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.ArtworkCard
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
+import com.example.artrinx.feature.home.presentation.components.ReportBottomSheet
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
 
@@ -63,6 +64,15 @@ fun ArtDetailScreen(
     viewModel: ArtDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showReportSheet by remember { mutableStateOf(false) }
+
+    if (showReportSheet) {
+        ReportBottomSheet(
+            artTitle    = uiState.post?.title ?: "",
+            profileName = uiState.post?.artistName ?: "",
+            onDismiss   = { showReportSheet = false },
+        )
+    }
 
     Scaffold(
         bottomBar = {
@@ -109,14 +119,14 @@ fun ArtDetailScreen(
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(
-                    onClick = {},
+                    onClick = { showReportSheet = true },
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.55f)),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_report),
-                        contentDescription = "Info",
+                        contentDescription = "Report",
                         tint = Color.White,
                     )
                 }

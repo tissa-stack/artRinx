@@ -70,6 +70,9 @@ fun ShoppableFeedItem(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
+
+
+
                 if (post.artistAvatarRes != null) {
                     AsyncImage(
                         model = post.artistAvatarRes,
