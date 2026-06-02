@@ -55,6 +55,7 @@ import com.example.artrinx.feature.home.presentation.components.state.ErrorView
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToSearch: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
@@ -70,6 +71,7 @@ fun HomeScreen(
         onShopLike = viewModel::onShopLikeToggled,
         onShopBookmark = viewModel::onShopBookmarkToggled,
         onNavigateToSearch = onNavigateToSearch,
+        onNavigateToCreate = onNavigateToCreate,
         onNavigateToDetail = onNavigateToDetail,
         onNavigateToCurationDetail = onNavigateToCurationDetail,
         onNavigateToProfile = onNavigateToProfile,
@@ -86,6 +88,7 @@ fun HomeScreenContent(
     onShopLike: (String) -> Unit = {},
     onShopBookmark: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
@@ -100,7 +103,8 @@ fun HomeScreenContent(
                 activeRoute = "home",
                 onNavigate = { route ->
                     when (route) {
-                        "search" -> onNavigateToSearch()
+                        "search"  -> onNavigateToSearch()
+                        "create"  -> onNavigateToCreate()
                         "profile" -> onNavigateToProfile()
                     }
                 },

@@ -28,6 +28,7 @@ fun UserProfileScreen(
     viewModel: UserProfileViewModel = hiltViewModel(),
     onNavigateToHome: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -38,6 +39,7 @@ fun UserProfileScreen(
         onBioExpandToggle = viewModel::onBioExpandToggle,
         onNavigateToHome = onNavigateToHome,
         onNavigateToSearch = onNavigateToSearch,
+        onNavigateToCreate = onNavigateToCreate,
         onNavigateToSettings = onNavigateToSettings,
     )
 }
@@ -50,6 +52,7 @@ private fun UserProfileContent(
     onBioExpandToggle: () -> Unit,
     onNavigateToHome: () -> Unit,
     onNavigateToSearch: () -> Unit,
+    onNavigateToCreate: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ) {
     Scaffold(
@@ -58,8 +61,9 @@ private fun UserProfileContent(
                 activeRoute = NavRoutes.PROFILE,
                 onNavigate = { route ->
                     when (route) {
-                        NavRoutes.HOME -> onNavigateToHome()
+                        NavRoutes.HOME   -> onNavigateToHome()
                         NavRoutes.SEARCH -> onNavigateToSearch()
+                        NavRoutes.CREATE -> onNavigateToCreate()
                     }
                 },
             )

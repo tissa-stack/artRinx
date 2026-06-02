@@ -62,6 +62,7 @@ fun CurationDetailScreen(
     onNavigateToCuration: (String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     activeRoute: String = "home",
     viewModel: CurationDetailViewModel = hiltViewModel(),
@@ -85,6 +86,7 @@ fun CurationDetailScreen(
                     when (route) {
                         "home"    -> onNavigateHome()
                         "search"  -> onNavigateToSearch()
+                        "create"  -> onNavigateToCreate()
                         "profile" -> onNavigateToProfile()
                     }
                 },

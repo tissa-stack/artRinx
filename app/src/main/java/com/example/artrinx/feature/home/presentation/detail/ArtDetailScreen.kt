@@ -63,6 +63,7 @@ fun ArtDetailScreen(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     activeRoute: String = "home",
     viewModel: ArtDetailViewModel = hiltViewModel(),
@@ -86,6 +87,7 @@ fun ArtDetailScreen(
                     when (route) {
                         "home"    -> onNavigateHome()
                         "search"  -> onNavigateToSearch()
+                        "create"  -> onNavigateToCreate()
                         "profile" -> onNavigateToProfile()
                     }
                 },

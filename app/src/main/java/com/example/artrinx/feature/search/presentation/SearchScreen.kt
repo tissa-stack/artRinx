@@ -55,6 +55,7 @@ import com.example.artrinx.feature.search.presentation.components.TrendingTagsSe
 @Composable
 fun SearchScreen(
     onNavigateToHome: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
@@ -81,6 +82,7 @@ fun SearchScreen(
                 onNavigate  = { route ->
                     when (route) {
                         "home"    -> { focusManager.clearFocus(); onNavigateToHome() }
+                        "create"  -> { focusManager.clearFocus(); onNavigateToCreate() }
                         "profile" -> { focusManager.clearFocus(); onNavigateToProfile() }
                     }
                 },

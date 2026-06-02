@@ -25,6 +25,7 @@ import com.example.artrinx.feature.home.presentation.detail.ArtDetailScreen
 import com.example.artrinx.feature.home.presentation.detail.CurationDetailScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
 import com.example.artrinx.feature.profile.presentation.view.UserProfileScreen
+import com.example.artrinx.feature.create.presentation.CreateScreen
 import com.example.artrinx.feature.search.presentation.SearchScreen
 
 @Composable
@@ -129,9 +130,10 @@ fun AppNavGraph(
 
         composable(NavRoutes.HOME) {
             HomeScreen(
-                onNavigateToSearch = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToSearch  = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToCreate  = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
-                onNavigateToDetail = { postId ->
+                onNavigateToDetail  = { postId ->
                     navController.navigate(NavRoutes.artDetail(postId, NavRoutes.HOME))
                 },
                 onNavigateToCurationDetail = { curationId ->
@@ -143,6 +145,7 @@ fun AppNavGraph(
         composable(NavRoutes.SEARCH) {
             SearchScreen(
                 onNavigateToHome    = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToCreate  = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToDetail  = { postId ->
                     navController.navigate(NavRoutes.artDetail(postId, NavRoutes.SEARCH))
@@ -150,10 +153,19 @@ fun AppNavGraph(
             )
         }
 
+        composable(NavRoutes.CREATE) {
+            CreateScreen(
+                onNavigateToHome    = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToSearch  = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
+            )
+        }
+
         composable(NavRoutes.PROFILE) {
             UserProfileScreen(
                 onNavigateToHome   = { navController.navigateToTab(NavRoutes.HOME) },
                 onNavigateToSearch = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToCreate = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToSettings = {},
             )
         }
@@ -173,8 +185,9 @@ fun AppNavGraph(
                 onNavigateToDetail = { postId ->
                     navController.navigate(NavRoutes.artDetail(postId, source))
                 },
-                onNavigateHome    = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateHome      = { navController.navigateToTab(NavRoutes.HOME) },
                 onNavigateToSearch  = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToCreate  = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
                 activeRoute = source,
             )
@@ -193,8 +206,9 @@ fun AppNavGraph(
                 onNavigateToCuration = { curationId ->
                     navController.navigate(NavRoutes.curationDetail(curationId, source))
                 },
-                onNavigateHome    = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateHome      = { navController.navigateToTab(NavRoutes.HOME) },
                 onNavigateToSearch  = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToCreate  = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
                 activeRoute = source,
             )

@@ -12,6 +12,7 @@ object NavRoutes {
     const val PROFILE_COMPLETION = "profile_completion"
     const val HOME = "home"
     const val SEARCH = "search"
+    const val CREATE = "create"
     const val PROFILE = "profile"
 
     // source arg carries the originating bottom-tab so detail screens keep the correct tab highlighted.
