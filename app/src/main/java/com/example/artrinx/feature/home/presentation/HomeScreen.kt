@@ -54,8 +54,10 @@ import com.example.artrinx.feature.home.presentation.components.state.ErrorView
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
+    onNavigateToSearch: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -67,8 +69,10 @@ fun HomeScreen(
         onBookmark = viewModel::onBookmarkToggled,
         onShopLike = viewModel::onShopLikeToggled,
         onShopBookmark = viewModel::onShopBookmarkToggled,
+        onNavigateToSearch = onNavigateToSearch,
         onNavigateToDetail = onNavigateToDetail,
         onNavigateToCurationDetail = onNavigateToCurationDetail,
+        onNavigateToProfile = onNavigateToProfile,
     )
 }
 
@@ -81,8 +85,10 @@ fun HomeScreenContent(
     onBookmark: (String) -> Unit,
     onShopLike: (String) -> Unit = {},
     onShopBookmark: (String) -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -90,7 +96,15 @@ fun HomeScreenContent(
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            BottomNavBar(activeRoute = "home")
+            BottomNavBar(
+                activeRoute = "home",
+                onNavigate = { route ->
+                    when (route) {
+                        "search" -> onNavigateToSearch()
+                        "profile" -> onNavigateToProfile()
+                    }
+                },
+            )
         },
         contentWindowInsets = WindowInsets(0),
     ) { innerPadding ->

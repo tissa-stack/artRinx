@@ -62,6 +62,9 @@ fun ArtDetailScreen(
     onBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
+    activeRoute: String = "home",
     viewModel: ArtDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -78,8 +81,14 @@ fun ArtDetailScreen(
     Scaffold(
         bottomBar = {
             BottomNavBar(
-                activeRoute = "home",
-                onNavigate = { route -> if (route == "home") onNavigateHome() },
+                activeRoute = activeRoute,
+                onNavigate  = { route ->
+                    when (route) {
+                        "home"    -> onNavigateHome()
+                        "search"  -> onNavigateToSearch()
+                        "profile" -> onNavigateToProfile()
+                    }
+                },
             )
         },
         contentWindowInsets = WindowInsets(0),

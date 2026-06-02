@@ -61,6 +61,9 @@ fun CurationDetailScreen(
     onBack: () -> Unit,
     onNavigateToCuration: (String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
+    activeRoute: String = "home",
     viewModel: CurationDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -77,8 +80,14 @@ fun CurationDetailScreen(
     Scaffold(
         bottomBar = {
             BottomNavBar(
-                activeRoute = "home",
-                onNavigate  = { route -> if (route == "home") onNavigateHome() },
+                activeRoute = activeRoute,
+                onNavigate  = { route ->
+                    when (route) {
+                        "home"    -> onNavigateHome()
+                        "search"  -> onNavigateToSearch()
+                        "profile" -> onNavigateToProfile()
+                    }
+                },
             )
         },
         contentWindowInsets = WindowInsets(0),

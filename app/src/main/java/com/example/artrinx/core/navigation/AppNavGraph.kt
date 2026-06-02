@@ -24,6 +24,8 @@ import com.example.artrinx.feature.home.presentation.HomeScreen
 import com.example.artrinx.feature.home.presentation.detail.ArtDetailScreen
 import com.example.artrinx.feature.home.presentation.detail.CurationDetailScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
+import com.example.artrinx.feature.profile.presentation.view.UserProfileScreen
+import com.example.artrinx.feature.search.presentation.SearchScreen
 
 @Composable
 fun AppNavGraph(
@@ -32,16 +34,19 @@ fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
     NavHost(
-        navController = navController,
+        navController    = navController,
         startDestination = startDestination,
-        modifier = modifier
+        modifier         = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        enterTransition = { EnterTransition.None },
-        exitTransition = { ExitTransition.None },
+        enterTransition    = { EnterTransition.None },
+        exitTransition     = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
+        popExitTransition  = { ExitTransition.None },
     ) {
+
+        // ── Auth / onboarding flow ────────────────────────────────────────────
+
         composable(NavRoutes.ONBOARDING) {
             OnboardingScreen(
                 onNavigateToAuth = {
@@ -54,11 +59,9 @@ fun AppNavGraph(
 
         composable(NavRoutes.AUTH) {
             InviteCodeScreen(
-                onNavigateToSignup = { inviteCode ->
-                    navController.navigate(NavRoutes.signup(inviteCode))
-                },
-                onJoinWaitlist = { navController.navigate(NavRoutes.WAITLIST) },
-                onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) },
+                onNavigateToSignup  = { inviteCode -> navController.navigate(NavRoutes.signup(inviteCode)) },
+                onJoinWaitlist      = { navController.navigate(NavRoutes.WAITLIST) },
+                onNavigateToLogin   = { navController.navigate(NavRoutes.LOGIN) },
             )
         }
 
@@ -68,24 +71,24 @@ fun AppNavGraph(
 
         composable(NavRoutes.LOGIN) {
             LoginScreen(
-                onBack = { navController.popBackStack() },
+                onBack        = { navController.popBackStack() },
                 onNavigateToOtp = { args -> navController.navigateToOtp(args) },
             )
         }
 
         composable(
-            route = NavRoutes.SIGNUP,
+            route     = NavRoutes.SIGNUP,
             arguments = listOf(
                 navArgument("inviteCode") {
-                    type = NavType.StringType
-                    nullable = true
+                    type         = NavType.StringType
+                    nullable     = true
                     defaultValue = null
                 },
             ),
         ) {
             SignupScreen(
-                onBack = { navController.popBackStack() },
-                onNavigateToOtp = { args -> navController.navigateToOtp(args) },
+                onBack            = { navController.popBackStack() },
+                onNavigateToOtp   = { args -> navController.navigateToOtp(args) },
                 onNavigateToLogin = {
                     navController.navigate(NavRoutes.LOGIN) {
                         popUpTo(NavRoutes.LOGIN) { inclusive = true }
@@ -95,28 +98,21 @@ fun AppNavGraph(
         }
 
         composable(
-            route = NavRoutes.OTP,
+            route     = NavRoutes.OTP,
             arguments = listOf(
-                navArgument("mode") { type = NavType.StringType },
-                navArgument("contactType") { type = NavType.StringType },
+                navArgument("mode")         { type = NavType.StringType },
+                navArgument("contactType")  { type = NavType.StringType },
                 navArgument("contactValue") { type = NavType.StringType },
-                navArgument("inviteCode") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                },
+                navArgument("inviteCode")   { type = NavType.StringType; defaultValue = "" },
             ),
         ) {
             OtpScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToHome = {
-                    navController.navigate(NavRoutes.HOME) {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
                 },
                 onNavigateToProfileCompletion = {
-                    navController.navigate(NavRoutes.PROFILE_COMPLETION) {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigate(NavRoutes.PROFILE_COMPLETION) { popUpTo(0) { inclusive = true } }
                 },
             )
         }
@@ -124,69 +120,111 @@ fun AppNavGraph(
         composable(NavRoutes.PROFILE_COMPLETION) {
             ProfileCreationScreen(
                 onNavigateToHome = {
-                    navController.navigate(NavRoutes.HOME) {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
                 },
             )
         }
+
+        // ── Main app tabs ─────────────────────────────────────────────────────
 
         composable(NavRoutes.HOME) {
             HomeScreen(
+                onNavigateToSearch = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToDetail = { postId ->
-                    navController.navigate(NavRoutes.artDetail(postId))
+                    navController.navigate(NavRoutes.artDetail(postId, NavRoutes.HOME))
                 },
                 onNavigateToCurationDetail = { curationId ->
-                    navController.navigate(NavRoutes.curationDetail(curationId))
+                    navController.navigate(NavRoutes.curationDetail(curationId, NavRoutes.HOME))
                 },
             )
         }
 
-        composable(
-            route = NavRoutes.CURATION_DETAIL,
-            arguments = listOf(
-                navArgument("curationId") { type = NavType.StringType },
-            ),
-        ) {
-            CurationDetailScreen(
-                onBack = { navController.popBackStack() },
-                onNavigateToCuration = { curationId ->
-                    navController.navigate(NavRoutes.curationDetail(curationId))
-                },
-                onNavigateHome = {
-                    navController.navigate(NavRoutes.HOME) {
-                        popUpTo(NavRoutes.HOME) { inclusive = false }
-                        launchSingleTop = true
-                    }
+        composable(NavRoutes.SEARCH) {
+            SearchScreen(
+                onNavigateToHome    = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
+                onNavigateToDetail  = { postId ->
+                    navController.navigate(NavRoutes.artDetail(postId, NavRoutes.SEARCH))
                 },
             )
         }
 
+        composable(NavRoutes.PROFILE) {
+            UserProfileScreen(
+                onNavigateToHome   = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToSearch = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToSettings = {},
+            )
+        }
+
+        // ── Detail screens ────────────────────────────────────────────────────
+
         composable(
-            route = NavRoutes.ART_DETAIL,
+            route     = NavRoutes.ART_DETAIL,
             arguments = listOf(
                 navArgument("postId") { type = NavType.StringType },
+                navArgument("source") { type = NavType.StringType; defaultValue = NavRoutes.HOME },
             ),
-        ) {
+        ) { backStackEntry ->
+            val source = backStackEntry.arguments?.getString("source") ?: NavRoutes.HOME
             ArtDetailScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToDetail = { postId ->
-                    navController.navigate(NavRoutes.artDetail(postId))
+                    navController.navigate(NavRoutes.artDetail(postId, source))
                 },
-                onNavigateHome = {
-                    navController.navigate(NavRoutes.HOME) {
-                        popUpTo(NavRoutes.HOME) { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
+                onNavigateHome    = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToSearch  = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
+                activeRoute = source,
             )
         }
+
+        composable(
+            route     = NavRoutes.CURATION_DETAIL,
+            arguments = listOf(
+                navArgument("curationId") { type = NavType.StringType },
+                navArgument("source") { type = NavType.StringType; defaultValue = NavRoutes.HOME },
+            ),
+        ) { backStackEntry ->
+            val source = backStackEntry.arguments?.getString("source") ?: NavRoutes.HOME
+            CurationDetailScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToCuration = { curationId ->
+                    navController.navigate(NavRoutes.curationDetail(curationId, source))
+                },
+                onNavigateHome    = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToSearch  = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToProfile = { navController.navigateToTab(NavRoutes.PROFILE) },
+                activeRoute = source,
+            )
+        }
+    }
+}
+
+/**
+ * Navigate to a root bottom-tab destination.
+ *
+ * Clears the entire back stack (with state saved) so every root tab is the
+ * sole entry — pressing the system back button on any root tab closes the app.
+ * `restoreState = true` brings back the tab's previous scroll/ViewModel state
+ * when the user returns to it.
+ */
+private fun NavHostController.navigateToTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.id) {
+            saveState = true
+            inclusive = false   // graph node itself stays; all destinations are cleared
+        }
+        launchSingleTop = true
+        restoreState    = true
     }
 }
 
 private fun NavHostController.navigateToOtp(args: OtpArgs) {
     val encodedValue = Uri.encode(args.contactValue)
     navigate(
-        "otp?mode=${args.mode}&contactType=${args.contactType}&contactValue=${encodedValue}&inviteCode=${Uri.encode(args.inviteCode)}"
+        "otp?mode=${args.mode}&contactType=${args.contactType}" +
+        "&contactValue=$encodedValue&inviteCode=${Uri.encode(args.inviteCode)}"
     )
 }

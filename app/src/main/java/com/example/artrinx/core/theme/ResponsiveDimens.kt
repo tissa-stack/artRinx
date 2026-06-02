@@ -87,6 +87,16 @@ data class ResponsiveDimens(
     val indicatorDotSmall: Dp      = w(0.011f,   4.dp,   8.dp)
     val cardCornerRadius: Dp       = w(0.033f,  10.dp,  20.dp)
     val artDetailImageHeight: Dp   = h(0.420f, 280.dp, 430.dp)   // ~336dp — larger hero in detail view
+
+    // Search screen
+    val searchBarHeight: Dp            = w(0.133f,  44.dp,  56.dp)
+    val masonryCardHeightShort: Dp     = h(0.220f, 160.dp, 220.dp)
+    val masonryCardHeightMedium: Dp    = h(0.300f, 210.dp, 290.dp)
+    val masonryCardHeightTall: Dp      = h(0.380f, 260.dp, 360.dp)
+
+    // Profile screen
+    val profileAvatarSize: Dp          = w(0.178f,  60.dp,  84.dp)   // ~64dp at 360w reference
+    val profileCurationCardHeight: Dp  = w(0.460f, 150.dp, 215.dp)   // image-stack section height
 }
 
 /** Default matches the 360×800dp reference phone so previews look correct. */
