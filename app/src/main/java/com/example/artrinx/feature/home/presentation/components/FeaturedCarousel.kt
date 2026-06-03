@@ -1,7 +1,6 @@
 package com.example.artrinx.feature.home.presentation.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,7 +32,6 @@ import kotlin.math.absoluteValue
 fun FeaturedCarousel(
     items: List<BannerItem>,
     modifier: Modifier = Modifier,
-    onClick: (BannerItem) -> Unit = {},
 ) {
     if (items.isEmpty()) return
     val d = LocalDimens.current
@@ -63,7 +61,6 @@ fun FeaturedCarousel(
                     scaleY = lerp(0.96f, 1f, 1f - absOffset)
                     alpha = lerp(0.78f, 1f, 1f - absOffset)
                 },
-                onClick = { onClick(items[page]) },
             )
         }
 
@@ -79,14 +76,12 @@ fun FeaturedCarousel(
 fun FeaturedCarouselItem(
     item: BannerItem,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
 ) {
     val d = LocalDimens.current
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(d.bannerHeight)
-            .clickable(onClick = onClick),
+            .height(d.bannerHeight),
     ) {
         AsyncImage(
             model = item.imageUrl,

@@ -3,6 +3,7 @@ package com.example.artrinx.feature.home.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.feature.home.data.local.CurationPreviewStore
 import com.example.artrinx.feature.home.domain.model.BannerItem
 import com.example.artrinx.feature.home.domain.model.FeedPost
 import com.example.artrinx.feature.home.domain.model.ForYouItem
@@ -19,6 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: HomeRepository,
+    private val curationPreviewStore: CurationPreviewStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
@@ -51,6 +53,10 @@ class HomeViewModel @Inject constructor(
             }
 
             val feed = (feedRes as ApiResult.Success).data
+
+            // Remember each curation's preview image order so its detail screen can open with the
+            // same first images the user saw on the home deck.
+            feed.curations.forEach { curationPreviewStore.put(it.id, it.artworkUrls) }
 
             _uiState.update {
                 it.copy(

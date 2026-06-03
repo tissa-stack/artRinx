@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.feature.home.data.local.CurationPreviewStore
 import com.example.artrinx.feature.home.domain.model.CurationItem
 import com.example.artrinx.feature.home.domain.repository.HomeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,6 +31,7 @@ data class CurationDetailUiState(
 class CurationDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: HomeRepository,
+    private val curationPreviewStore: CurationPreviewStore,
 ) : ViewModel() {
 
     private val curationId: Int? = savedStateHandle.get<String>("curationId")?.toIntOrNull()
@@ -55,9 +57,20 @@ class CurationDetailViewModel @Inject constructor(
             val moreRes = moreJob.await()
 
             if (detailRes is ApiResult.Success) {
-                val curation = detailRes.data
+                val fetched = detailRes.data
+                // Open with the SAME first images as the home preview deck (matched by URL),
+                // then the curation's remaining artworks in their own order.
+                val curation = fetched.copy(
+                    artworkUrls = reorderByPreview(
+                        detailUrls = fetched.artworkUrls,
+                        previewUrls = curationPreviewStore.orderFor(fetched.id),
+                    ),
+                )
                 val more = (moreRes as? ApiResult.Success)?.data.orEmpty()
                     .filter { it.id != curation.id }
+                // Remember the previews of the "More like this" curations too, so tapping one
+                // opens it with the same first images.
+                more.forEach { curationPreviewStore.put(it.id, it.artworkUrls) }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -72,6 +85,19 @@ class CurationDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, error = true) }
             }
         }
+    }
+
+    /**
+     * Puts the [previewUrls] that exist in [detailUrls] first (in preview order), then the rest of
+     * [detailUrls] in their own order. Falls back to the detail's natural order if no preview.
+     */
+    private fun reorderByPreview(detailUrls: List<String>, previewUrls: List<String>): List<String> {
+        if (previewUrls.isEmpty()) return detailUrls
+        val detailSet = detailUrls.toHashSet()
+        val front = previewUrls.filter { it in detailSet }
+        if (front.isEmpty()) return detailUrls
+        val frontSet = front.toHashSet()
+        return front + detailUrls.filterNot { it in frontSet }
     }
 
     fun onLikeToggled() {

@@ -249,7 +249,6 @@ fun HomeContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(d.bannerHeight),
-                                onClick = { onNavigateToDetail(forYouItem.banner.id) },
                             )
                         }
                     }
@@ -279,7 +278,6 @@ fun HomeContent(
                     )
                     else -> FeaturedCarousel(
                         items = uiState.bannerItems,
-                        onClick = { banner -> onNavigateToDetail(banner.id) },
                     )
                 }
             }
