@@ -45,10 +45,16 @@ fun CollectionCard(
 ) {
     val d = LocalDimens.current
 
-    // Each image is 68% of the card width; successive images offset 20% to the right.
-    // The outer Column clips overflow → all three images are visible side-by-side, straight.
-    val imageWidth  = d.collectionCardWidth * 0.68f
-    val stackOffset = d.collectionCardWidth * 0.20f   // x-shift per level (no rotation)
+    // Deck shows at most the first 3 artworks (the full list lives on the detail screen).
+    val previews = item.artworkUrls.take(3)
+    val count = previews.size.coerceAtLeast(1)
+
+    // The fan always spans the full card width regardless of count, so 1 image fills the card,
+    // 2 split it, 3 overlap — never leaving blank space on the right.
+    // Each image is 68% wide (except a lone image, which is full width); the per-image x-shift is
+    // whatever makes the last image's right edge land exactly on the card edge.
+    val imageWidth = if (count <= 1) d.collectionCardWidth else d.collectionCardWidth * 0.68f
+    val stackOffset = if (count <= 1) 0.dp else (d.collectionCardWidth - imageWidth) / (count - 1)
 
     Column(
         modifier = modifier
@@ -66,7 +72,7 @@ fun CollectionCard(
             contentAlignment = Alignment.TopStart,
         ) {
             // Render back-to-front so higher zIndex is on top visually
-            item.artworkUrls.indices.reversed().forEach { index ->
+            previews.indices.reversed().forEach { index ->
                 val isMain = index == 0
                 Box(
                     modifier = Modifier
@@ -74,12 +80,12 @@ fun CollectionCard(
                         .height(d.collectionCardHeight)
                         // offset() physically shifts each card to the right — no rotation
                         .offset(x = stackOffset * index.toFloat())
-                        .zIndex((item.artworkUrls.size - index).toFloat())
+                        .zIndex((previews.size - index).toFloat())
                         .clip(RoundedCornerShape(d.cardCornerRadius))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     AsyncImage(
-                        model = item.artworkUrls[index],
+                        model = previews[index],
                         contentDescription = if (isMain) item.title else null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),

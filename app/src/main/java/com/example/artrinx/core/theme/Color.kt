@@ -35,6 +35,9 @@ val ShopLinkGradientEnd = Color(0xFF0C1A22)
 // ── Account deletion (destructive action button) ─────────────────────────────
 val DangerRed = Color(0xFFE53935)
 
+// ── Liked state (filled heart) ───────────────────────────────────────────────
+val LikeRed = Color(0xFFE0245E)
+
 // ── Semantic ───────────────────────────────────────────────────────────────
 val ErrorLight = Color(0xFFD32F2F)
 val ErrorDark = Color(0xFFEF5350)

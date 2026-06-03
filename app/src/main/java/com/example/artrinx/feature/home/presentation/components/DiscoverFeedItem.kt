@@ -153,14 +153,10 @@ fun DiscoverFeedItem(
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(Spacing.xxl),
                     )
-                    Icon(
-                        painter = painterResource(R.drawable.ic_like),
-                        contentDescription = "Like",
-                        tint = if (post.isLiked) BrandPrimary
-                        else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(Spacing.xl)
-                            .clickable { onLike() },
+                    LikeButton(
+                        isLiked = post.isLiked,
+                        onClick = onLike,
+                        size = Spacing.xl,
                     )
                 }
                 if (post.likeCount > 0) {

@@ -164,14 +164,10 @@ fun ShoppableFeedItem(
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(Spacing.xxl),
                     )
-                    Icon(
-                        painter = painterResource(R.drawable.ic_like),
-                        contentDescription = "Like",
-                        tint = if (post.isLiked) BrandPrimary
-                        else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(Spacing.xxl)
-                            .clickable { onLike() },
+                    LikeButton(
+                        isLiked = post.isLiked,
+                        onClick = onLike,
+                        size = Spacing.xxl,
                     )
                 }
                 if (post.likeCount > 0) {

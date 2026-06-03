@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -148,8 +151,13 @@ fun AppNavGraph(
 
         // ── Main app tabs ─────────────────────────────────────────────────────
 
-        composable(NavRoutes.HOME) {
+        composable(NavRoutes.HOME) { entry ->
+            val reselectTick by entry.savedStateHandle
+                .getStateFlow(TAB_RESELECT_KEY, 0)
+                .collectAsState()
             HomeScreen(
+                reselectTick = reselectTick,
+                onReselect                = { navController.navigateToTab(NavRoutes.HOME) },
                 onNavigateToSearch        = { navController.navigateToTab(NavRoutes.SEARCH) },
                 onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
@@ -407,22 +415,28 @@ fun AppNavGraph(
     }
 }
 
+/** savedStateHandle key carrying an incrementing "tab re-selected" tick to the active tab screen. */
+const val TAB_RESELECT_KEY = "tab_reselect_tick"
+
 /**
- * Navigate to a root bottom-tab destination.
+ * Bottom-tab tap handler.
  *
- * Clears the entire back stack (with state saved) so every root tab is the
- * sole entry — pressing the system back button on any root tab closes the app.
- * `restoreState = true` brings back the tab's previous scroll/ViewModel state
- * when the user returns to it.
+ * - Tapping a DIFFERENT tab (or tapping from a deep/detail screen) pops everything back to that
+ *   tab's root, so the user immediately returns to the tab screen.
+ * - Tapping the tab you're ALREADY on bumps a re-select tick on the current entry's
+ *   savedStateHandle, which the screen observes to scroll its content back to the top.
  */
 private fun NavHostController.navigateToTab(route: String) {
-    navigate(route) {
-        popUpTo(graph.id) {
-            saveState = true
-            inclusive = false   // graph node itself stays; all destinations are cleared
+    if (currentDestination?.route == route) {
+        val handle = currentBackStackEntry?.savedStateHandle ?: return
+        handle[TAB_RESELECT_KEY] = (handle.get<Int>(TAB_RESELECT_KEY) ?: 0) + 1
+    } else {
+        navigate(route) {
+            // Pop back to the tab root (Home), clearing any detail/sub screens. No saveState/
+            // restoreState — re-tapping a tab returns to its root, not a previously-deep state.
+            popUpTo(graph.findStartDestination().id) { inclusive = false }
+            launchSingleTop = true
         }
-        launchSingleTop = true
-        restoreState    = true
     }
 }
 

@@ -1,6 +1,11 @@
 package com.example.artrinx.core.theme
 
+import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -8,7 +13,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
@@ -51,6 +58,20 @@ private val DarkColorScheme = darkColorScheme(
     outlineVariant = DarkFieldBackground,
 )
 
+/**
+ * Indication that draws nothing — used to remove the tap ripple/highlight from `clickable`
+ * surfaces app-wide. Paired with a null [LocalRippleConfiguration] for Material3 components
+ * (Button, IconButton, Card, etc.), this removes every click indication across the app.
+ */
+private object NoIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode =
+        object : Modifier.Node() {}
+
+    override fun equals(other: Any?): Boolean = other === this
+    override fun hashCode(): Int = -1
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArtRinxTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -67,7 +88,11 @@ fun ArtRinxTheme(
         buildResponsiveTypography(dimens.fontScale)
     }
 
-    CompositionLocalProvider(LocalDimens provides dimens) {
+    CompositionLocalProvider(
+        LocalDimens provides dimens,
+        LocalIndication provides NoIndication,
+        LocalRippleConfiguration provides null,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,

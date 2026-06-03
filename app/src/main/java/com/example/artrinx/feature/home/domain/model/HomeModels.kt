@@ -30,6 +30,8 @@ data class CurationItem(
     val artworkUrls: List<String>,
     val styles: String = "Painting",
     val description: String = "A carefully curated collection of remarkable artworks.",
+    val likeCount: Int = 0,
+    val isLiked: Boolean = false,
 )
 
 @Immutable

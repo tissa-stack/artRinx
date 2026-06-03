@@ -1,6 +1,8 @@
 package com.example.artrinx.feature.home.domain.repository
 
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.feature.home.domain.model.ArtworkItem
+import com.example.artrinx.feature.home.domain.model.CurationItem
 import com.example.artrinx.feature.home.domain.model.HomeFeed
 import com.example.artrinx.feature.home.domain.model.ShoppablePost
 
@@ -10,4 +12,12 @@ interface HomeRepository {
     suspend fun getShopArtworks(page: Int, size: Int): ApiResult<List<ShoppablePost>>
     suspend fun likeArtwork(artworkId: Int): ApiResult<Unit>
     suspend fun unlikeArtwork(artworkId: Int): ApiResult<Unit>
+
+    // ── Detail screens ──────────────────────────────────────────────────────
+    suspend fun getArtworkDetail(id: Int): ApiResult<ShoppablePost>
+    suspend fun getSimilarArtworks(id: Int): ApiResult<List<ArtworkItem>>
+    suspend fun getCurationDetail(id: Int): ApiResult<CurationItem>
+    suspend fun getMoreCurations(): ApiResult<List<CurationItem>>
+    suspend fun likeCuration(curationId: Int): ApiResult<Unit>
+    suspend fun unlikeCuration(curationId: Int): ApiResult<Unit>
 }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.CollectionCard
 import com.example.artrinx.feature.home.presentation.components.CurationCardStack
+import com.example.artrinx.feature.home.presentation.components.LikeButton
 import com.example.artrinx.feature.home.presentation.components.ReportBottomSheet
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
@@ -129,13 +131,30 @@ fun CurationDetailScreen(
             }
 
             // ── Scrollable content — card stack + metadata ─────────────────
-            CurationDetailContent(
-                uiState              = uiState,
-                onLike               = viewModel::onLikeToggled,
-                onBookmark           = viewModel::onBookmarkToggled,
-                onNavigateToCuration = onNavigateToCuration,
-                modifier             = Modifier.weight(1f),
-            )
+            when {
+                uiState.isLoading -> Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(color = BrandPrimary) }
+
+                uiState.curation != null -> CurationDetailContent(
+                    uiState              = uiState,
+                    onLike               = viewModel::onLikeToggled,
+                    onNavigateToCuration = onNavigateToCuration,
+                    modifier             = Modifier.weight(1f),
+                )
+
+                else -> Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Couldn't load this curation.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }
@@ -144,7 +163,6 @@ fun CurationDetailScreen(
 private fun CurationDetailContent(
     uiState: CurationDetailUiState,
     onLike: () -> Unit,
-    onBookmark: () -> Unit,
     onNavigateToCuration: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -203,24 +221,15 @@ private fun CurationDetailContent(
                         verticalAlignment     = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            painter            = painterResource(R.drawable.ic_add_to),
-                            contentDescription = "Save",
-                            tint               = if (uiState.isBookmarked) BrandPrimary
-                            else MaterialTheme.colorScheme.onSurface,
-                            modifier           = Modifier.size(Spacing.xxl).clickable { onBookmark() },
-                        )
-                        Icon(
                             painter            = painterResource(R.drawable.ic_send),
                             contentDescription = "Share",
                             tint               = MaterialTheme.colorScheme.onSurface,
                             modifier           = Modifier.size(Spacing.xxl),
                         )
-                        Icon(
-                            painter            = painterResource(R.drawable.ic_like),
-                            contentDescription = "Like",
-                            tint               = if (uiState.isLiked) BrandPrimary
-                            else MaterialTheme.colorScheme.onSurface,
-                            modifier           = Modifier.size(Spacing.xxl).clickable { onLike() },
+                        LikeButton(
+                            isLiked = uiState.isLiked,
+                            onClick = onLike,
+                            size    = Spacing.xxl,
                         )
                     }
                     if (uiState.likeCount > 0) {

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -54,6 +55,8 @@ import com.example.artrinx.feature.home.presentation.components.state.ErrorView
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
+    reselectTick: Int = 0,
+    onReselect: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
@@ -65,6 +68,8 @@ fun HomeScreen(
 
     HomeScreenContent(
         uiState = uiState,
+        reselectTick = reselectTick,
+        onReselect = onReselect,
         onTabSelected = viewModel::onTabSelected,
         onRetry = viewModel::onRetry,
         onLike = viewModel::onLikeToggled,
@@ -84,6 +89,8 @@ fun HomeScreenContent(
     onTabSelected: (HomeTab) -> Unit,
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
+    reselectTick: Int = 0,
+    onReselect: () -> Unit = {},
     onShopLike: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
@@ -102,6 +109,7 @@ fun HomeScreenContent(
                 activeRoute = "home",
                 onNavigate = { route ->
                     when (route) {
+                        "home"          -> onReselect()
                         "search"        -> onNavigateToSearch()
                         "create"        -> onNavigateToCreate()
                         "notifications" -> onNavigateToNotifications()
@@ -118,6 +126,7 @@ fun HomeScreenContent(
             onTabSelected = onTabSelected,
             onRetry = onRetry,
             onLike = onLike,
+            reselectTick = reselectTick,
             onShopLike = onShopLike,
             onNavigateToDetail = onNavigateToDetail,
             onNavigateToCurationDetail = onNavigateToCurationDetail,
@@ -135,6 +144,7 @@ fun HomeContent(
     onTabSelected: (HomeTab) -> Unit,
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
+    reselectTick: Int = 0,
     onShopLike: (String) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
@@ -150,6 +160,11 @@ fun HomeContent(
         HomeTab.DISCOVER -> discoverListState
         HomeTab.SHOP -> shopListState
         HomeTab.FOR_YOU -> forYouListState
+    }
+
+    // Re-tapping the Home tab while already on Home scrolls the active list back to the top.
+    LaunchedEffect(reselectTick) {
+        if (reselectTick > 0) listState.animateScrollToItem(0)
     }
 
     LazyColumn(

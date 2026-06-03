@@ -6,6 +6,7 @@ import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.home.data.remote.dto.BannerDto
 import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.home.data.remote.dto.LikeArtworkRequest
+import com.example.artrinx.feature.home.data.remote.dto.LikeCurationRequest
 import com.example.artrinx.feature.home.domain.model.ArtworkItem
 import com.example.artrinx.feature.home.domain.model.BannerItem
 import com.example.artrinx.feature.home.domain.model.CurationItem
@@ -55,6 +56,56 @@ class HomeRepositoryImpl @Inject constructor(
 
     override suspend fun unlikeArtwork(artworkId: Int): ApiResult<Unit> = safeCall {
         val response = apiService.unlikeArtwork(artworkId)
+        if (response.isSuccessful) ApiResult.Success(Unit) else errorFor(response)
+    }
+
+    // ── Detail screens ──────────────────────────────────────────────────────
+
+    override suspend fun getArtworkDetail(id: Int): ApiResult<ShoppablePost> = safeCall {
+        val response = apiService.getArtwork(id)
+        val dto = response.body()?.data
+        if (response.isSuccessful && dto != null) {
+            ApiResult.Success(dto.toShoppablePost())
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun getSimilarArtworks(id: Int): ApiResult<List<ArtworkItem>> = safeCall {
+        val response = apiService.getSimilarArtworks(id, PAGE, SIZE)
+        if (response.isSuccessful) {
+            ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toArtworkItem() })
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun getCurationDetail(id: Int): ApiResult<CurationItem> = safeCall {
+        val response = apiService.getCuration(id)
+        val dto = response.body()?.data
+        if (response.isSuccessful && dto != null) {
+            ApiResult.Success(dto.toCurationItem())
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun getMoreCurations(): ApiResult<List<CurationItem>> = safeCall {
+        val response = apiService.getAllCurations(PAGE, SIZE)
+        if (response.isSuccessful) {
+            ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toCurationItem() })
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun likeCuration(curationId: Int): ApiResult<Unit> = safeCall {
+        val response = apiService.likeCuration(LikeCurationRequest(curationId))
+        if (response.isSuccessful) ApiResult.Success(Unit) else errorFor(response)
+    }
+
+    override suspend fun unlikeCuration(curationId: Int): ApiResult<Unit> = safeCall {
+        val response = apiService.unlikeCuration(curationId)
         if (response.isSuccessful) ApiResult.Success(Unit) else errorFor(response)
     }
 
@@ -122,13 +173,28 @@ class HomeRepositoryImpl @Inject constructor(
         shopUrl = shopLink.orEmpty(),
     )
 
-    private fun CurationDto.toCurationItem() = CurationItem(
-        id = id?.toString() ?: "",
-        title = title.orEmpty(),
-        curatorHandle = author?.username?.let { "@$it" } ?: "",
-        curatorName = author?.displayName ?: author?.username ?: "Curator",
-        curatorAvatarUrl = author?.profilePicture,
-        artworkUrls = artworks?.mapNotNull { it.imageUrl ?: it.thumbnailUrl }?.take(3) ?: emptyList(),
-        description = description ?: "A carefully curated collection of remarkable artworks.",
-    )
+    private fun CurationDto.toCurationItem(): CurationItem {
+        // Order artworks deterministically by id so the preview deck (home) and the detail
+        // card-stack show the SAME images in the SAME order — the list and detail endpoints
+        // don't guarantee a consistent ordering of the artworks array.
+        val ordered = artworks?.sortedBy { it.id ?: Int.MAX_VALUE }.orEmpty()
+        val styleList = ordered.mapNotNull { it.medium?.title }.distinct()
+        return CurationItem(
+            id = id?.toString() ?: "",
+            title = title.orEmpty(),
+            curatorHandle = author?.username?.let { "@$it" } ?: "",
+            curatorName = author?.displayName ?: author?.username ?: "Curator",
+            curatorAvatarUrl = author?.profilePicture,
+            artworkUrls = ordered.mapNotNull { it.imageUrl ?: it.thumbnailUrl },
+            styles = styleList.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Painting",
+            description = description ?: "A carefully curated collection of remarkable artworks.",
+            likeCount = likesCount ?: 0,
+            isLiked = isLiked ?: false,
+        )
+    }
+
+    private companion object {
+        const val PAGE = 1
+        const val SIZE = 10
+    }
 }

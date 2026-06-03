@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.ArtworkCard
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
+import com.example.artrinx.feature.home.presentation.components.LikeButton
 import com.example.artrinx.feature.home.presentation.components.ReportBottomSheet
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
@@ -103,12 +105,30 @@ fun ArtDetailScreen(
                 .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             // Scrollable content — LazyColumn starts at y=0 (behind status bar)
-            ArtDetailContent(
-                uiState = uiState,
-                onLike = viewModel::onLikeToggled,
-                onNavigateToDetail = onNavigateToDetail,
-                modifier = Modifier.fillMaxSize(),
-            )
+            when {
+                uiState.isLoading -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(color = BrandPrimary) }
+
+                uiState.post != null -> ArtDetailContent(
+                    uiState = uiState,
+                    onLike = viewModel::onLikeToggled,
+                    onNavigateToDetail = onNavigateToDetail,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                else -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Couldn't load this artwork.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
 
             // Back / info buttons overlaid over the hero image — always visible
             Row(
@@ -240,14 +260,10 @@ private fun ArtDetailContent(
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(Spacing.xxl),
                         )
-                        Icon(
-                            painter = painterResource(R.drawable.ic_like),
-                            contentDescription = "Like",
-                            tint = if (post.isLiked) BrandPrimary
-                            else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .size(Spacing.xxl)
-                                .clickable { onLike() },
+                        LikeButton(
+                            isLiked = post.isLiked,
+                            onClick = onLike,
+                            size = Spacing.xxl,
                         )
                     }
                     if (post.likeCount > 0) {

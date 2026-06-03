@@ -93,3 +93,7 @@ data class DiscoverFeedDto(
 data class LikeArtworkRequest(
     @SerializedName("artwork_id") val artworkId: Int,
 )
+
+data class LikeCurationRequest(
+    @SerializedName("curation_id") val curationId: Int,
+)
