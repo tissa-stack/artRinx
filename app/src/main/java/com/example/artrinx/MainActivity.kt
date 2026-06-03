@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import com.example.artrinx.core.navigation.AppNavGraph
 import com.example.artrinx.core.theme.ArtRinxTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +27,8 @@ class MainActivity : ComponentActivity() {
         }
 
         enableEdgeToEdge()
+        // Ensure IME insets are dispatched to Compose so imePadding() works correctly.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
             ArtRinxTheme {

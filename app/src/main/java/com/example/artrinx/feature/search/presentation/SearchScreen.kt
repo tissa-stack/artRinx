@@ -56,6 +56,7 @@ import com.example.artrinx.feature.search.presentation.components.TrendingTagsSe
 fun SearchScreen(
     onNavigateToHome: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
@@ -81,9 +82,10 @@ fun SearchScreen(
                 activeRoute = "search",
                 onNavigate  = { route ->
                     when (route) {
-                        "home"    -> { focusManager.clearFocus(); onNavigateToHome() }
-                        "create"  -> { focusManager.clearFocus(); onNavigateToCreate() }
-                        "profile" -> { focusManager.clearFocus(); onNavigateToProfile() }
+                        "home"          -> { focusManager.clearFocus(); onNavigateToHome() }
+                        "create"        -> { focusManager.clearFocus(); onNavigateToCreate() }
+                        "notifications" -> { focusManager.clearFocus(); onNavigateToNotifications() }
+                        "profile"       -> { focusManager.clearFocus(); onNavigateToProfile() }
                     }
                 },
             )

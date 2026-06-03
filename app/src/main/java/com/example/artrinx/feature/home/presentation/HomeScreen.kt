@@ -56,6 +56,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
@@ -70,9 +71,10 @@ fun HomeScreen(
         onBookmark = viewModel::onBookmarkToggled,
         onShopLike = viewModel::onShopLikeToggled,
         onShopBookmark = viewModel::onShopBookmarkToggled,
-        onNavigateToSearch = onNavigateToSearch,
-        onNavigateToCreate = onNavigateToCreate,
-        onNavigateToDetail = onNavigateToDetail,
+        onNavigateToSearch        = onNavigateToSearch,
+        onNavigateToCreate        = onNavigateToCreate,
+        onNavigateToNotifications = onNavigateToNotifications,
+        onNavigateToDetail        = onNavigateToDetail,
         onNavigateToCurationDetail = onNavigateToCurationDetail,
         onNavigateToProfile = onNavigateToProfile,
     )
@@ -89,6 +91,7 @@ fun HomeScreenContent(
     onShopBookmark: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
@@ -103,9 +106,10 @@ fun HomeScreenContent(
                 activeRoute = "home",
                 onNavigate = { route ->
                     when (route) {
-                        "search"  -> onNavigateToSearch()
-                        "create"  -> onNavigateToCreate()
-                        "profile" -> onNavigateToProfile()
+                        "search"        -> onNavigateToSearch()
+                        "create"        -> onNavigateToCreate()
+                        "notifications" -> onNavigateToNotifications()
+                        "profile"       -> onNavigateToProfile()
                     }
                 },
             )

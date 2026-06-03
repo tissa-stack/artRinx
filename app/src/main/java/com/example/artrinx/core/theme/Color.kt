@@ -28,6 +28,13 @@ val DarkBorder = Color(0xFF2A2A2A)
 val DarkFieldBackground = Color(0xFF1D1D1D)
 val DarkFieldText = Color(0xFFA7A7A7)
 
+// ── Decorative brand gradient (premium "Shop link" card) ────────────────────
+val ShopLinkGradientStart = Color(0xFF1C6C8C)
+val ShopLinkGradientEnd = Color(0xFF0C1A22)
+
+// ── Account deletion (destructive action button) ─────────────────────────────
+val DangerRed = Color(0xFFE53935)
+
 // ── Semantic ───────────────────────────────────────────────────────────────
 val ErrorLight = Color(0xFFD32F2F)
 val ErrorDark = Color(0xFFEF5350)

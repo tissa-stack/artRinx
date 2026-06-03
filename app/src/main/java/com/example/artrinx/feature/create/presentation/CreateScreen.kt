@@ -50,6 +50,7 @@ private val NewCollectionColor = Color(0xFF9C5CF8)
 fun CreateScreen(
     onNavigateToHome: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewArt: (String) -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
@@ -100,9 +101,10 @@ fun CreateScreen(
                 activeRoute = "create",
                 onNavigate  = { route ->
                     when (route) {
-                        "home"    -> onNavigateToHome()
-                        "search"  -> onNavigateToSearch()
-                        "profile" -> onNavigateToProfile()
+                        "home"          -> onNavigateToHome()
+                        "search"        -> onNavigateToSearch()
+                        "notifications" -> onNavigateToNotifications()
+                        "profile"       -> onNavigateToProfile()
                     }
                 },
             )

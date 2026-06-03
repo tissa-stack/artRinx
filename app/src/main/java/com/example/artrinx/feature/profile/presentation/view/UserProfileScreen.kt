@@ -29,6 +29,7 @@ fun UserProfileScreen(
     onNavigateToHome: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -37,10 +38,11 @@ fun UserProfileScreen(
         uiState = uiState,
         onTabSelected = viewModel::onTabSelected,
         onBioExpandToggle = viewModel::onBioExpandToggle,
-        onNavigateToHome = onNavigateToHome,
-        onNavigateToSearch = onNavigateToSearch,
-        onNavigateToCreate = onNavigateToCreate,
-        onNavigateToSettings = onNavigateToSettings,
+        onNavigateToHome          = onNavigateToHome,
+        onNavigateToSearch        = onNavigateToSearch,
+        onNavigateToCreate        = onNavigateToCreate,
+        onNavigateToNotifications = onNavigateToNotifications,
+        onNavigateToSettings      = onNavigateToSettings,
     )
 }
 
@@ -53,6 +55,7 @@ private fun UserProfileContent(
     onNavigateToHome: () -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToCreate: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ) {
     Scaffold(
@@ -61,9 +64,10 @@ private fun UserProfileContent(
                 activeRoute = NavRoutes.PROFILE,
                 onNavigate = { route ->
                     when (route) {
-                        NavRoutes.HOME   -> onNavigateToHome()
-                        NavRoutes.SEARCH -> onNavigateToSearch()
-                        NavRoutes.CREATE -> onNavigateToCreate()
+                        NavRoutes.HOME          -> onNavigateToHome()
+                        NavRoutes.SEARCH        -> onNavigateToSearch()
+                        NavRoutes.CREATE        -> onNavigateToCreate()
+                        NavRoutes.NOTIFICATIONS -> onNavigateToNotifications()
                     }
                 },
             )

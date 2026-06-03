@@ -10,10 +10,30 @@ object NavRoutes {
     const val SIGNUP = "signup?inviteCode={inviteCode}"
     const val OTP = "otp?mode={mode}&contactType={contactType}&contactValue={contactValue}&inviteCode={inviteCode}"
     const val PROFILE_COMPLETION = "profile_completion"
-    const val HOME = "home"
-    const val SEARCH = "search"
-    const val CREATE  = "create"
-    const val PROFILE = "profile"
+    const val HOME          = "home"
+    const val SEARCH        = "search"
+    const val CREATE        = "create"
+    const val NOTIFICATIONS = "notifications"
+    const val PROFILE       = "profile"
+
+    // Settings flow
+    const val SETTINGS               = "settings"
+    const val EDIT_PROFILE           = "edit_profile"
+    const val PROFILE_TITLE_PLAN     = "profile_title_plan"
+    const val PROFILE_TITLE_PLAN_EDIT = "profile_title_plan_edit?step={step}"
+    const val BLOCKED_ACCOUNTS       = "blocked_accounts"
+    const val INVITE_FRIENDS         = "invite_friends"
+
+    fun profileTitlePlanEdit(step: Int = 0) = "profile_title_plan_edit?step=$step"
+
+    // Messages / chat
+    const val CHAT        = "chat/{userId}?source={source}"
+    const val NEW_MESSAGE = "new_message"
+    const val CHAT_MENU   = "chat_menu/{userId}"
+
+    fun chat(userId: String, source: String = NOTIFICATIONS) =
+        "chat/${Uri.encode(userId)}?source=${Uri.encode(source)}"
+    fun chatMenu(userId: String) = "chat_menu/${Uri.encode(userId)}"
 
     // Upload / create flows
     const val NEW_ART             = "new_art/{imageUri}"

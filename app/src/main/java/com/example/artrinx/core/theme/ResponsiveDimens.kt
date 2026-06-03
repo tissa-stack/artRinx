@@ -100,6 +100,10 @@ data class ResponsiveDimens(
     // Profile screen
     val profileAvatarSize: Dp          = w(0.178f,  60.dp,  84.dp)   // ~64dp at 360w reference
     val profileCurationCardHeight: Dp  = w(0.460f, 150.dp, 215.dp)   // image-stack section height
+
+    // Chat screen
+    val chatBubbleMaxWidth: Dp         = w(0.750f, 230.dp, 320.dp)   // ~270dp at 360w reference
+    val chatAvatarSize: Dp             = w(0.089f,  28.dp,  44.dp)   // circle avatar beside received bubble
 }
 
 /** Default matches the 360×800dp reference phone so previews look correct. */
