@@ -7,4 +7,6 @@ data class OtpVerifyRequest(
     @SerializedName("mode") val mode: String,
     @SerializedName("email") val email: String? = null,
     @SerializedName("phone") val phone: String? = null,
+    @SerializedName("invite_code") val inviteCode: String? = null,
+    @SerializedName("consents") val consents: ConsentsDto? = null,
 )

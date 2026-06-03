@@ -66,7 +66,7 @@ fun CollectionCard(
             contentAlignment = Alignment.TopStart,
         ) {
             // Render back-to-front so higher zIndex is on top visually
-            item.artworkRes.indices.reversed().forEach { index ->
+            item.artworkUrls.indices.reversed().forEach { index ->
                 val isMain = index == 0
                 Box(
                     modifier = Modifier
@@ -74,12 +74,12 @@ fun CollectionCard(
                         .height(d.collectionCardHeight)
                         // offset() physically shifts each card to the right — no rotation
                         .offset(x = stackOffset * index.toFloat())
-                        .zIndex((item.artworkRes.size - index).toFloat())
+                        .zIndex((item.artworkUrls.size - index).toFloat())
                         .clip(RoundedCornerShape(d.cardCornerRadius))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     AsyncImage(
-                        model = item.artworkRes[index],
+                        model = item.artworkUrls[index],
                         contentDescription = if (isMain) item.title else null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
@@ -120,9 +120,9 @@ fun CollectionCard(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
-                if (item.curatorAvatarRes != null) {
+                if (!item.curatorAvatarUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model = item.curatorAvatarRes,
+                        model = item.curatorAvatarUrl,
                         contentDescription = item.curatorHandle,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),

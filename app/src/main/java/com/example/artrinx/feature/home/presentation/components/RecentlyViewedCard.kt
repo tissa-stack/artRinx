@@ -49,7 +49,7 @@ fun RecentlyViewedCard(
             .semantics { role = Role.Button },
     ) {
         AsyncImage(
-            model = item.imageRes,
+            model = item.imageUrl,
             contentDescription = item.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -78,9 +78,9 @@ fun RecentlyViewedCard(
                 .background(MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center,
         ) {
-            if (item.artistAvatarRes != null) {
+            if (!item.artistAvatarUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = item.artistAvatarRes,
+                    model = item.artistAvatarUrl,
                     contentDescription = item.artistName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().clip(CircleShape),

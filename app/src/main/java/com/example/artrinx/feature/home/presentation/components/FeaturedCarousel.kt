@@ -89,7 +89,7 @@ fun FeaturedCarouselItem(
             .clickable(onClick = onClick),
     ) {
         AsyncImage(
-            model = item.imageRes,
+            model = item.imageUrl,
             contentDescription = item.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier

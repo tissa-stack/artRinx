@@ -24,7 +24,7 @@ interface ProfileApiService {
         @Query("username") username: String,
     ): Response<UsernameCheckResponseDto>
 
-    @GET("api/profile/mediums")
+    @GET("api/mediums/")
     suspend fun getMediums(): Response<MediumsResponseDto>
 
     @Multipart

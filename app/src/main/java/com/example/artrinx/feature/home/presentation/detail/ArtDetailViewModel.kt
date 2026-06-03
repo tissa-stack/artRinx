@@ -41,13 +41,6 @@ class ArtDetailViewModel @Inject constructor(
         }
     }
 
-    fun onBookmarkToggled() {
-        _uiState.update { state ->
-            val p = state.post ?: return@update state
-            state.copy(post = p.copy(isBookmarked = !p.isBookmarked))
-        }
-    }
-
     companion object {
         private fun buildState(postId: String): ArtDetailUiState {
             val moreLikeThis = MockHomeData.newArtItems
@@ -64,15 +57,14 @@ class ArtDetailViewModel @Inject constructor(
                     artistName = feed.artistName,
                     artistHandle = feed.artistHandle,
                     artistRole = feed.artistRole,
-                    artistAvatarRes = feed.artistAvatarRes,
-                    imageRes = feed.imageRes,
+                    artistAvatarUrl = feed.artistAvatarUrl,
+                    imageUrl = feed.imageUrl,
                     title = feed.title,
                     medium = "Painting",
                     description = "A remarkable piece by ${feed.artistName}.",
                     likeCount = feed.likeCount,
                     commentCount = feed.commentCount,
                     isLiked = feed.isLiked,
-                    isBookmarked = feed.isBookmarked,
                 )
                 return ArtDetailUiState(post = converted, moreLikeThis = moreLikeThis)
             }
@@ -86,8 +78,8 @@ class ArtDetailViewModel @Inject constructor(
                     artistName = artItem.artistName,
                     artistHandle = "@${artItem.artistName.lowercase().replace(" ", "")}",
                     artistRole = "Artist",
-                    artistAvatarRes = artItem.artistAvatarRes,
-                    imageRes = artItem.imageRes,
+                    artistAvatarUrl = artItem.artistAvatarUrl,
+                    imageUrl = artItem.imageUrl,
                     title = artItem.title,
                     medium = "Painting",
                     description = "A captivating artwork by ${artItem.artistName}.",
@@ -104,7 +96,7 @@ class ArtDetailViewModel @Inject constructor(
                     artistName = artistName,
                     artistHandle = "@${artistName.lowercase().replace(" ", "")}",
                     artistRole = "Artist",
-                    imageRes = bannerItem.imageRes,
+                    imageUrl = bannerItem.imageUrl,
                     title = bannerItem.title,
                     medium = "Digital Art",
                     description = "A featured sponsored artwork on ArtRinx.",

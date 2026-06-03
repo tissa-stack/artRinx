@@ -34,15 +34,6 @@ class InviteCodeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // ── TESTING BYPASS ────────────────────────────────────────────────
-            // Accept "123456" without hitting the API.
-            if (code == "123456") {
-                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-                return@launch
-            }
-            // ─────────────────────────────────────────────────────────────────
-
-            /*
             when (val result = verifyInviteCode(code)) {
                 is ApiResult.Success ->
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
@@ -63,9 +54,6 @@ class InviteCodeViewModel @Inject constructor(
                 is ApiResult.Error.Unknown ->
                     _uiState.update { it.copy(isLoading = false, errorMessage = "An unexpected error occurred.") }
             }
-            */
-
-            _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid invite code. Use 123456 for testing.") }
         }
     }
 }

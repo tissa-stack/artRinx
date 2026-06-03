@@ -1,6 +1,5 @@
 package com.example.artrinx.feature.home.presentation.components
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,9 +56,9 @@ private const val MAX_CHARS = 1000
 fun SendMessageBottomSheet(
     artistName: String,
     artistRole: String,
-    @DrawableRes artistAvatarRes: Int?,
+    artistAvatarUrl: String?,
     artworkTitle: String,
-    @DrawableRes artworkImageRes: Int,
+    artworkImageUrl: String,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -75,9 +74,9 @@ fun SendMessageBottomSheet(
             SheetPhase.FORM -> InvitationForm(
                 artistName     = artistName,
                 artistRole     = artistRole,
-                artistAvatarRes = artistAvatarRes,
+                artistAvatarUrl = artistAvatarUrl,
                 artworkTitle   = artworkTitle,
-                artworkImageRes = artworkImageRes,
+                artworkImageUrl = artworkImageUrl,
                 message        = message,
                 onMessageChange = { if (it.length <= MAX_CHARS) message = it },
                 onSend         = { phase = SheetPhase.SENT },
@@ -96,9 +95,9 @@ fun SendMessageBottomSheet(
 private fun InvitationForm(
     artistName: String,
     artistRole: String,
-    @DrawableRes artistAvatarRes: Int?,
+    artistAvatarUrl: String?,
     artworkTitle: String,
-    @DrawableRes artworkImageRes: Int,
+    artworkImageUrl: String,
     message: String,
     onMessageChange: (String) -> Unit,
     onSend: () -> Unit,
@@ -133,9 +132,9 @@ private fun InvitationForm(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
-                if (artistAvatarRes != null) {
+                if (!artistAvatarUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model              = artistAvatarRes,
+                        model              = artistAvatarUrl,
                         contentDescription = artistName,
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier.fillMaxSize().clip(CircleShape),
@@ -170,7 +169,7 @@ private fun InvitationForm(
         // Artwork row
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
-                model              = artworkImageRes,
+                model              = artworkImageUrl,
                 contentDescription = artworkTitle,
                 contentScale       = ContentScale.Crop,
                 modifier           = Modifier

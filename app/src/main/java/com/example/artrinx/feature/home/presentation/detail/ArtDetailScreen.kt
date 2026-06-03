@@ -106,7 +106,6 @@ fun ArtDetailScreen(
             ArtDetailContent(
                 uiState = uiState,
                 onLike = viewModel::onLikeToggled,
-                onBookmark = viewModel::onBookmarkToggled,
                 onNavigateToDetail = onNavigateToDetail,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -153,7 +152,6 @@ fun ArtDetailScreen(
 private fun ArtDetailContent(
     uiState: ArtDetailUiState,
     onLike: () -> Unit,
-    onBookmark: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -175,9 +173,9 @@ private fun ArtDetailContent(
         SendMessageBottomSheet(
             artistName      = post.artistName,
             artistRole      = post.artistRole,
-            artistAvatarRes = post.artistAvatarRes,
+            artistAvatarUrl = post.artistAvatarUrl,
             artworkTitle    = post.title,
-            artworkImageRes = post.imageRes,
+            artworkImageUrl = post.imageUrl,
             onDismiss       = { showSendSheet = false },
         )
     }
@@ -192,7 +190,7 @@ private fun ArtDetailContent(
                     .height(d.artDetailImageHeight),
             ) {
                 AsyncImage(
-                    model = post.imageRes,
+                    model = post.imageUrl,
                     contentDescription = post.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -236,15 +234,6 @@ private fun ArtDetailContent(
                         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_add_to),
-                            contentDescription = "Save",
-                            tint = if (post.isBookmarked) BrandPrimary
-                            else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .size(Spacing.xxl)
-                                .clickable { onBookmark() },
-                        )
                         Icon(
                             painter = painterResource(R.drawable.ic_send),
                             contentDescription = "Share",
@@ -380,9 +369,9 @@ private fun ArtDetailContent(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (post.artistAvatarRes != null) {
+                    if (!post.artistAvatarUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = post.artistAvatarRes,
+                            model = post.artistAvatarUrl,
                             contentDescription = post.artistName,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clip(CircleShape),

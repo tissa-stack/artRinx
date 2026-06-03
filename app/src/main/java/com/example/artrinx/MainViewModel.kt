@@ -34,7 +34,36 @@ class MainViewModel @Inject constructor(
     val startDestination: StateFlow<String?> = _startDestination.asStateFlow()
 
     init {
-        // TODO: remove before release — bypasses auth/onboarding for UI testing
-        _startDestination.value = NavRoutes.HOME
+        viewModelScope.launch {
+            _startDestination.value = resolveStartDestination()
+        }
+    }
+
+    private suspend fun resolveStartDestination(): String {
+        // 1. Onboarding must be completed before anything else.
+        val onboardingComplete = dataStore.data
+            .map { it[ONBOARDING_COMPLETE_KEY] ?: false }
+            .first()
+        if (!onboardingComplete) return NavRoutes.ONBOARDING
+
+        // 2. No stored refresh token → no session → start at auth.
+        val refresh = authRepository.getRefreshToken()
+        if (refresh.isNullOrBlank()) return NavRoutes.AUTH
+
+        // 3. Have a session. Proactively refresh if the access token has expired;
+        //    on any refresh failure, wipe the session and fall back to auth.
+        if (authRepository.isAccessTokenExpired()) {
+            when (val result = refreshToken(refresh)) {
+                is ApiResult.Success -> saveSession(result.data)
+                else -> {
+                    authRepository.clearSession()
+                    return NavRoutes.AUTH
+                }
+            }
+        }
+
+        // 4. Valid session → route by profile completion.
+        return if (authRepository.isProfileCompleted()) NavRoutes.HOME
+        else NavRoutes.PROFILE_COMPLETION
     }
 }

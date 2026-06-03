@@ -74,7 +74,7 @@ fun TopTabs(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(d.tabPillHeight)
-                .clip(RoundedCornerShape(50))
+                .clip(RoundedCornerShape(Spacing.lg))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(Spacing.xs),            // 4dp inset on all sides
         ) {
@@ -95,7 +95,7 @@ fun TopTabs(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()          // fills container height minus 4dp top+bottom inset
-                        .clip(RoundedCornerShape(50))
+                        .clip(RoundedCornerShape(Spacing.md))
                         .background(bgColor)
                         .clickable { onTabSelected(tab) }
                         .semantics {

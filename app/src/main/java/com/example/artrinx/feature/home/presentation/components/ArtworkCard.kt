@@ -45,7 +45,7 @@ fun ArtworkCard(
             .semantics { role = Role.Button },
     ) {
         AsyncImage(
-            model = item.imageRes,
+            model = item.imageUrl,
             contentDescription = item.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier

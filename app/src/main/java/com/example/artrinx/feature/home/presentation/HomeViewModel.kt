@@ -2,9 +2,13 @@ package com.example.artrinx.feature.home.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.artrinx.feature.home.domain.model.MockHomeData
+import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.feature.home.domain.model.BannerItem
+import com.example.artrinx.feature.home.domain.model.FeedPost
+import com.example.artrinx.feature.home.domain.model.ForYouItem
+import com.example.artrinx.feature.home.domain.repository.HomeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +17,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class HomeViewModel @Inject constructor() : ViewModel() {
+class HomeViewModel @Inject constructor(
+    private val repository: HomeRepository,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -24,21 +30,57 @@ class HomeViewModel @Inject constructor() : ViewModel() {
 
     private fun load() {
         viewModelScope.launch {
-            delay(1500L)
-            _uiState.update { state ->
-                state.copy(
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            // Discover tab comes from one call; shop feed from another. Run concurrently.
+            val feedJob = async { repository.getDiscoverFeed() }
+            val shopJob = async { repository.getShopArtworks(PAGE, SIZE) }
+            val feedRes = feedJob.await()
+            val shopRes = shopJob.await()
+
+            // The discover feed is the primary content — fail the screen only if it errored.
+            if (feedRes is ApiResult.Error) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = if (feedRes is ApiResult.Error.Network) HomeError.NoInternet
+                        else HomeError.Generic(),
+                    )
+                }
+                return@launch
+            }
+
+            val feed = (feedRes as ApiResult.Success).data
+
+            _uiState.update {
+                it.copy(
                     isLoading = false,
                     error = null,
-                    bannerItems = MockHomeData.bannerItems,
-                    newArtItems = MockHomeData.newArtItems,
-                    popularCurations = MockHomeData.popularCurations,
-                    recentlyViewed = MockHomeData.recentlyViewed,
-                    feedItems = MockHomeData.feedItems,
-                    shoppableItems = MockHomeData.shopItems,
-                    forYouItems = MockHomeData.forYouItems,
+                    bannerItems = feed.banners,
+                    newArtItems = feed.newArt,
+                    popularCurations = feed.curations,
+                    feedItems = feed.posts,
+                    shoppableItems = (shopRes as? ApiResult.Success)?.data.orEmpty(),
+                    forYouItems = buildForYou(feed.posts, feed.banners),
+                    // No backend read endpoint for view history (only an admin write path) → left unwired.
+                    recentlyViewed = emptyList(),
                 )
             }
         }
+    }
+
+    /** Interleave a sponsored banner after every two posts for the "For You" tab. */
+    private fun buildForYou(posts: List<FeedPost>, banners: List<BannerItem>): List<ForYouItem> {
+        if (posts.isEmpty()) return emptyList()
+        val out = mutableListOf<ForYouItem>()
+        var bannerIdx = 0
+        posts.forEachIndexed { i, post ->
+            out.add(ForYouItem.Post(post))
+            if ((i + 1) % 2 == 0 && bannerIdx < banners.size) {
+                out.add(ForYouItem.Sponsored(banners[bannerIdx++]))
+            }
+        }
+        return out
     }
 
     fun onTabSelected(tab: HomeTab) {
@@ -46,55 +88,73 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     }
 
     fun onRetry() {
-        _uiState.value = HomeUiState(isLoading = true)
         load()
     }
 
+    // ── Like (Discover + For You feeds) ────────────────────────────────────────
+
     fun onLikeToggled(postId: String) {
+        val post = _uiState.value.feedItems.find { it.id == postId } ?: return
+        val nowLiked = !post.isLiked
+        setFeedLiked(postId, nowLiked)
+        viewModelScope.launch {
+            val id = postId.toIntOrNull() ?: return@launch
+            val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)
+            if (result is ApiResult.Error) setFeedLiked(postId, !nowLiked)   // revert on failure
+        }
+    }
+
+    private fun setFeedLiked(postId: String, liked: Boolean) {
         _uiState.update { state ->
             state.copy(
-                feedItems = state.feedItems.map { post ->
-                    if (post.id == postId) {
-                        post.copy(
-                            isLiked = !post.isLiked,
-                            likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1,
-                        )
-                    } else post
+                feedItems = state.feedItems.map { it.applyLike(postId, liked) },
+                forYouItems = state.forYouItems.map { item ->
+                    if (item is ForYouItem.Post && item.post.id == postId) {
+                        ForYouItem.Post(item.post.applyLike(postId, liked))
+                    } else {
+                        item
+                    }
                 },
             )
         }
     }
 
-    fun onBookmarkToggled(postId: String) {
-        _uiState.update { state ->
-            state.copy(
-                feedItems = state.feedItems.map { post ->
-                    if (post.id == postId) post.copy(isBookmarked = !post.isBookmarked) else post
-                },
-            )
+    private fun FeedPost.applyLike(targetId: String, liked: Boolean): FeedPost =
+        if (id == targetId) {
+            copy(isLiked = liked, likeCount = (likeCount + if (liked) 1 else -1).coerceAtLeast(0))
+        } else {
+            this
         }
-    }
+
+    // ── Like (Shop feed) ───────────────────────────────────────────────────────
 
     fun onShopLikeToggled(postId: String) {
+        val post = _uiState.value.shoppableItems.find { it.id == postId } ?: return
+        val nowLiked = !post.isLiked
+        setShopLiked(postId, nowLiked)
+        viewModelScope.launch {
+            val id = postId.toIntOrNull() ?: return@launch
+            val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)
+            if (result is ApiResult.Error) setShopLiked(postId, !nowLiked)
+        }
+    }
+
+    private fun setShopLiked(postId: String, liked: Boolean) {
         _uiState.update { state ->
             state.copy(
-                shoppableItems = state.shoppableItems.map { post ->
-                    if (post.id == postId) post.copy(
-                        isLiked = !post.isLiked,
-                        likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1,
-                    ) else post
+                shoppableItems = state.shoppableItems.map {
+                    if (it.id == postId) {
+                        it.copy(isLiked = liked, likeCount = (it.likeCount + if (liked) 1 else -1).coerceAtLeast(0))
+                    } else {
+                        it
+                    }
                 },
             )
         }
     }
 
-    fun onShopBookmarkToggled(postId: String) {
-        _uiState.update { state ->
-            state.copy(
-                shoppableItems = state.shoppableItems.map { post ->
-                    if (post.id == postId) post.copy(isBookmarked = !post.isBookmarked) else post
-                },
-            )
-        }
+    private companion object {
+        const val PAGE = 1
+        const val SIZE = 10
     }
 }

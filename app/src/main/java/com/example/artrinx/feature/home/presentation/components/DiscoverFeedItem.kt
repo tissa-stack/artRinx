@@ -40,7 +40,6 @@ import com.example.artrinx.feature.home.domain.model.FeedPost
 fun DiscoverFeedItem(
     post: FeedPost,
     onLike: () -> Unit,
-    onBookmark: () -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
@@ -61,9 +60,9 @@ fun DiscoverFeedItem(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
-                if (post.artistAvatarRes != null) {
+                if (!post.artistAvatarUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model = post.artistAvatarRes,
+                        model = post.artistAvatarUrl,
                         contentDescription = post.artistName,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().clip(CircleShape),
@@ -104,7 +103,7 @@ fun DiscoverFeedItem(
                 .clickable(onClick = onClick),
         ) {
             AsyncImage(
-                model = post.imageRes,
+                model = post.imageUrl,
                 contentDescription = post.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -148,15 +147,6 @@ fun DiscoverFeedItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_add_to),
-                        contentDescription = "Save",
-                        tint = if (post.isBookmarked) BrandPrimary
-                        else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(Spacing.xl)
-                            .clickable { onBookmark() },
-                    )
                     Icon(
                         painter = painterResource(R.drawable.ic_send),
                         contentDescription = "Share",

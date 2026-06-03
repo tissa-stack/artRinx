@@ -72,7 +72,9 @@ private const val ADVANCE_AFTER_MS  = 160L
  */
 @Composable
 fun CurationCardStack(
-    artworks: List<Int>,
+    // Accepts either image-URL strings (home/detail) or drawable-res Ints (upload preview);
+    // Coil's AsyncImage model takes both.
+    artworks: List<Any>,
     modifier: Modifier = Modifier,
     onTopIndexChanged: (Int) -> Unit = {},
 ) {

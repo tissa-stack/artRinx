@@ -68,9 +68,7 @@ fun HomeScreen(
         onTabSelected = viewModel::onTabSelected,
         onRetry = viewModel::onRetry,
         onLike = viewModel::onLikeToggled,
-        onBookmark = viewModel::onBookmarkToggled,
         onShopLike = viewModel::onShopLikeToggled,
-        onShopBookmark = viewModel::onShopBookmarkToggled,
         onNavigateToSearch        = onNavigateToSearch,
         onNavigateToCreate        = onNavigateToCreate,
         onNavigateToNotifications = onNavigateToNotifications,
@@ -86,9 +84,7 @@ fun HomeScreenContent(
     onTabSelected: (HomeTab) -> Unit,
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
-    onBookmark: (String) -> Unit,
     onShopLike: (String) -> Unit = {},
-    onShopBookmark: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
@@ -122,9 +118,7 @@ fun HomeScreenContent(
             onTabSelected = onTabSelected,
             onRetry = onRetry,
             onLike = onLike,
-            onBookmark = onBookmark,
             onShopLike = onShopLike,
-            onShopBookmark = onShopBookmark,
             onNavigateToDetail = onNavigateToDetail,
             onNavigateToCurationDetail = onNavigateToCurationDetail,
             modifier = Modifier.fillMaxSize(),
@@ -141,16 +135,22 @@ fun HomeContent(
     onTabSelected: (HomeTab) -> Unit,
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
-    onBookmark: (String) -> Unit,
     onShopLike: (String) -> Unit = {},
-    onShopBookmark: (String) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
     val d = LocalDimens.current
-    val listState = rememberLazyListState()
+    // Each tab keeps its own scroll position so switching tabs doesn't carry the scroll over.
+    val discoverListState = rememberLazyListState()
+    val shopListState = rememberLazyListState()
+    val forYouListState = rememberLazyListState()
+    val listState = when (uiState.activeTab) {
+        HomeTab.DISCOVER -> discoverListState
+        HomeTab.SHOP -> shopListState
+        HomeTab.FOR_YOU -> forYouListState
+    }
 
     LazyColumn(
         state = listState,
@@ -182,7 +182,6 @@ fun HomeContent(
                     ShoppableFeedItem(
                         post = post,
                         onLike = { onShopLike(post.id) },
-                        onBookmark = { onShopBookmark(post.id) },
                         onClick = { onNavigateToDetail(post.id) },
                     )
                 }
@@ -216,7 +215,6 @@ fun HomeContent(
                         is ForYouItem.Post -> DiscoverFeedItem(
                             post = forYouItem.post,
                             onLike = { onLike(forYouItem.post.id) },
-                            onBookmark = { onBookmark(forYouItem.post.id) },
                             onClick = { onNavigateToDetail(forYouItem.post.id) },
                         )
                         is ForYouItem.Sponsored -> Column(
@@ -273,7 +271,7 @@ fun HomeContent(
 
             // ── New Art For You ────────────────────────────────────────
             item(key = "new-art-header") {
-                SectionHeader(title = "New Art For You", onSeeAll = {})
+                SectionHeader(title = "New Art For You")
             }
             item(key = "new-art-content") {
                 when {
@@ -299,7 +297,7 @@ fun HomeContent(
 
             // ── Popular Curations ──────────────────────────────────────
             item(key = "curations-header") {
-                SectionHeader(title = "Popular Curations", onSeeAll = {})
+                SectionHeader(title = "Popular Curations")
             }
             item(key = "curations-content") {
                 when {
@@ -328,7 +326,7 @@ fun HomeContent(
 
             // ── Recently Viewed ────────────────────────────────────────
             item(key = "recent-header") {
-                SectionHeader(title = "Recently Viewed", onSeeAll = {})
+                SectionHeader(title = "Recently Viewed")
             }
             item(key = "recent-content") {
                 when {
@@ -374,7 +372,6 @@ fun HomeContent(
                     DiscoverFeedItem(
                         post = post,
                         onLike = { onLike(post.id) },
-                        onBookmark = { onBookmark(post.id) },
                         onClick = { onNavigateToDetail(post.id) },
                     )
                 }
@@ -399,7 +396,6 @@ fun HomeScreenPreview() {
             onTabSelected = {},
             onRetry = {},
             onLike = {},
-            onBookmark = {},
         )
     }
 }

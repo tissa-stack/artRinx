@@ -153,15 +153,17 @@ private fun CurationDetailContent(
     var descExpanded by remember { mutableStateOf(true) }
     var showSendSheet by remember { mutableStateOf(false) }
     var currentArtworkIndex by remember { mutableIntStateOf(0) }
-    val currentArtworkRes = curation.artworkRes.getOrElse(currentArtworkIndex) { curation.artworkRes.first() }
+    val currentArtworkUrl = curation.artworkUrls.getOrElse(currentArtworkIndex) {
+        curation.artworkUrls.firstOrNull() ?: ""
+    }
 
     if (showSendSheet) {
         SendMessageBottomSheet(
             artistName      = curation.curatorName,
             artistRole      = "Artist",
-            artistAvatarRes = curation.curatorAvatarRes,
+            artistAvatarUrl = curation.curatorAvatarUrl,
             artworkTitle    = curation.title,
-            artworkImageRes = currentArtworkRes,
+            artworkImageUrl = currentArtworkUrl,
             onDismiss       = { showSendSheet = false },
         )
     }
@@ -171,7 +173,7 @@ private fun CurationDetailContent(
         // ── Card stack — directly below the top bar, clean start ──────────
         item(key = "card-stack") {
             CurationCardStack(
-                artworks           = curation.artworkRes,
+                artworks           = curation.artworkUrls,
                 modifier           = Modifier.fillMaxWidth(),
                 onTopIndexChanged  = { currentArtworkIndex = it },
             )
@@ -306,9 +308,9 @@ private fun CurationDetailContent(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (curation.curatorAvatarRes != null) {
+                    if (!curation.curatorAvatarUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model              = curation.curatorAvatarRes,
+                            model              = curation.curatorAvatarUrl,
                             contentDescription = curation.curatorName,
                             contentScale       = ContentScale.Crop,
                             modifier           = Modifier.fillMaxSize().clip(CircleShape),

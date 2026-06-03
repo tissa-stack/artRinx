@@ -89,7 +89,9 @@ class ProfileRepositoryImpl @Inject constructor(
                 parts["account_notification_sms"] = "false".toRequestBody(textPlain)
                 parts["marketing_sms_consent"] = "false".toRequestBody(textPlain)
                 if (draft.bio.isNotBlank()) parts["bio"] = draft.bio.toRequestBody(textPlain)
-                if (draft.age.isNotBlank()) parts["age"] = draft.age.toRequestBody(textPlain)
+                // Backend requires a numeric age; the UI collects a range ("18-25", "65+",
+                // "Under 18"). Send the range's lower bound as digits only.
+                ageToNumeric(draft.age)?.let { parts["age"] = it.toRequestBody(textPlain) }
                 if (draft.country.isNotBlank()) parts["country"] = draft.country.toRequestBody(textPlain)
                 if (draft.state.isNotBlank()) parts["state"] = draft.state.toRequestBody(textPlain)
                 if (draft.city.isNotBlank()) parts["city"] = draft.city.toRequestBody(textPlain)
@@ -124,6 +126,19 @@ class ProfileRepositoryImpl @Inject constructor(
                 ApiResult.Error.Unknown(e)
             }
         }
+
+    /**
+     * Converts the UI's age-range label into the digits-only value the backend expects.
+     * Sends the range's lower bound: "18-25" -> "18", "26-35" -> "26", "65+" -> "65",
+     * "Under 18" -> "17". Returns null for a blank/unparseable value so the field is omitted.
+     * If the input is already numeric (e.g. a future numeric input field) it passes through.
+     */
+    private fun ageToNumeric(age: String): String? {
+        if (age.isBlank()) return null
+        if (age.contains("under", ignoreCase = true)) return "17"
+        val firstNumber = age.dropWhile { !it.isDigit() }.takeWhile { it.isDigit() }
+        return firstNumber.ifBlank { null }
+    }
 
     private fun profileError(code: Int): ApiResult.Error = when (code) {
         in 400..499 -> ApiResult.Error.Validation("Request failed ($code)")

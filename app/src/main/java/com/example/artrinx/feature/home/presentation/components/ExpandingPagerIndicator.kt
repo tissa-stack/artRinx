@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -19,16 +20,29 @@ import androidx.compose.ui.draw.clip
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
-import kotlin.math.abs
 
+/**
+ * Sliding-window page indicator. Shows at most [maxDots] dots regardless of page count:
+ * the focused dot is BrandPrimary and larger, the rest are ash; the window slides so the
+ * active dot stays centered (except near the list ends). Edge dots that still have pages
+ * beyond them shrink to hint there's more.
+ */
 @Composable
 fun ExpandingPagerIndicator(
     pageCount: Int,
     currentPage: Int,
-    currentPageOffsetFraction: Float,
+    @Suppress("UNUSED_PARAMETER") currentPageOffsetFraction: Float,
     modifier: Modifier = Modifier,
+    maxDots: Int = 5,
 ) {
+    if (pageCount <= 1) return
     val d = LocalDimens.current
+
+    val window = minOf(maxDots, pageCount)
+    val start = (currentPage - window / 2).coerceIn(0, (pageCount - window).coerceAtLeast(0))
+    val end = start + window   // exclusive
+    val ash = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -36,24 +50,27 @@ fun ExpandingPagerIndicator(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        repeat(pageCount) { index ->
-            val distance = abs(index.toFloat() - (currentPage + currentPageOffsetFraction))
-            val targetSize by animateDpAsState(
-                targetValue = when {
-                    distance < 0.5f -> d.indicatorDotActive
-                    distance < 1.5f -> d.indicatorDotMedium
-                    else -> d.indicatorDotSmall
-                },
+        for (index in start until end) {
+            val isActive = index == currentPage
+            val isOverflowEdge =
+                (index == start && start > 0) || (index == end - 1 && end < pageCount)
+
+            val targetSize = when {
+                isActive -> d.indicatorDotActive
+                isOverflowEdge -> d.indicatorDotSmall
+                else -> d.indicatorDotMedium
+            }
+            val animatedSize by animateDpAsState(
+                targetValue = targetSize,
                 animationSpec = spring(stiffness = Spring.StiffnessMedium),
                 label = "dot-size-$index",
             )
-            val alpha = (1f - (distance * 0.45f).coerceIn(0f, 0.6f))
             Box(
                 modifier = Modifier
                     .padding(horizontal = Spacing.xs)
-                    .size(targetSize)
+                    .size(animatedSize)
                     .clip(CircleShape)
-                    .background(BrandPrimary.copy(alpha = alpha)),
+                    .background(if (isActive) BrandPrimary else ash),
             )
         }
     }
