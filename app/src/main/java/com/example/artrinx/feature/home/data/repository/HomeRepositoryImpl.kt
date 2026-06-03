@@ -174,10 +174,11 @@ class HomeRepositoryImpl @Inject constructor(
     )
 
     private fun CurationDto.toCurationItem(): CurationItem {
-        // Order artworks deterministically by id so the preview deck (home) and the detail
-        // card-stack show the SAME images in the SAME order — the list and detail endpoints
-        // don't guarantee a consistent ordering of the artworks array.
-        val ordered = artworks?.sortedBy { it.id ?: Int.MAX_VALUE }.orEmpty()
+        // Use the curation's natural artwork order from the API (do NOT sort). Sorting by id makes
+        // every curation surface its lowest-id artworks first, so curations that share artworks
+        // (common in the data) end up showing the same preview images. Natural order keeps each
+        // curation's deck distinct and reflects its real 1-2-3 ordering.
+        val ordered = artworks.orEmpty()
         val styleList = ordered.mapNotNull { it.medium?.title }.distinct()
         return CurationItem(
             id = id?.toString() ?: "",

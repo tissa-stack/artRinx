@@ -45,4 +45,9 @@ interface AuthApiService {
     suspend fun refreshToken(
         @Body request: RefreshTokenRequest,
     ): Response<OtpVerifyResponse>
+
+    @POST("api/auth/native/logout")
+    suspend fun logout(
+        @Body request: RefreshTokenRequest,
+    ): Response<ResponseBody>
 }

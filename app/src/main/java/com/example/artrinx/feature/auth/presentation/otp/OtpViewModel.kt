@@ -118,7 +118,7 @@ class OtpViewModel @Inject constructor(
             )
             when (val result = resendOtp(request)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(isResending = false) }
+                    _uiState.update { it.copy(isResending = false, codeResent = true) }
                     startCooldown(60)
                 }
                 is ApiResult.Error.RateLimited -> {
@@ -138,6 +138,8 @@ class OtpViewModel @Inject constructor(
             }
         }
     }
+
+    fun onCodeResentShown() = _uiState.update { it.copy(codeResent = false) }
 
     private fun startCooldown(seconds: Int) {
         cooldownJob?.cancel()

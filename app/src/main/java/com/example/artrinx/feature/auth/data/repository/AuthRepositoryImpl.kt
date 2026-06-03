@@ -155,6 +155,19 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun clearSession() = sessionDataSource.clearSession()
 
+    override suspend fun logout() {
+        // Best-effort server revoke; always wipe the local session regardless of the outcome (§1.6).
+        val refreshToken = sessionDataSource.getRefreshToken()
+        if (!refreshToken.isNullOrBlank()) {
+            try {
+                apiService.logout(RefreshTokenRequest(refreshToken))
+            } catch (_: Exception) {
+                // Ignore network/server failure — local wipe below still happens.
+            }
+        }
+        sessionDataSource.clearSession()
+    }
+
     // ── Error Parsing ────────────────────────────────────────────────────────
 
     private fun nativeErrorResult(

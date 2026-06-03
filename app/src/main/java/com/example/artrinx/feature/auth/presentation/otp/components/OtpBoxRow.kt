@@ -68,7 +68,7 @@ fun OtpBoxRow(
                         .weight(1f)          // each box gets an equal share of the width
                         .aspectRatio(1f)     // height = width → always square
                         .clip(RoundedCornerShape(Spacing.md))
-                        .background(Color(0xFF1A1A1A))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .then(
                             if (isFocused) Modifier.border(
                                 2.dp, BrandPrimary, RoundedCornerShape(Spacing.md),
@@ -79,7 +79,7 @@ fun OtpBoxRow(
                     Text(
                         text = char?.toString() ?: "",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -92,7 +92,7 @@ fun OtpBoxRow(
             },
             modifier = Modifier
                 .focusRequester(focusRequester)
-                .fillMaxSize()
+                .matchParentSize()   // overlay the boxes exactly; do NOT expand the row's height
                 .alpha(0.005f),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.NumberPassword,

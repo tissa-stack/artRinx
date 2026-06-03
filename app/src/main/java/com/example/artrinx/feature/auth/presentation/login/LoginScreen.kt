@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,7 +86,7 @@ fun LoginScreen(
         }
     }
 
-    ArtRinxTheme(darkTheme = true) {
+    ArtRinxTheme {
         LoginContent(
             uiState = uiState,
             onBack = onBack,
@@ -110,11 +111,12 @@ private fun LoginContent(
 ) {
     val dimens = LocalDimens.current
     val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0A))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding(),
@@ -131,11 +133,13 @@ private fun LoginContent(
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Back",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Image(
-                painter = painterResource(R.drawable.ic_white_logo),
+                painter = painterResource(
+                    if (isDark) R.drawable.ic_white_logo else R.drawable.ic_black_logo,
+                ),
                 contentDescription = "RiNX logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
@@ -157,13 +161,13 @@ private fun LoginContent(
             Text(
                 text = "Welcome back",
                 style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
                 text = "We missed you! Sign back in to discover art.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(Spacing.xxxl))
@@ -228,15 +232,15 @@ private fun LoginContent(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = continueColor,
                     disabledContainerColor = InactiveButton,
-                    contentColor = Color.White,
-                    disabledContentColor = Color.White.copy(alpha = 0.7f),
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = Spacing.xs * 0),
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(Spacing.xl),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = Spacing.xs / 2,
                     )
                 } else {
@@ -255,7 +259,7 @@ private fun LoginContent(
                     .height(dimens.authButtonHeight),
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.White,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
                 ),
                 border = BorderStroke(
                     Spacing.xs / 4,

@@ -48,6 +48,12 @@ class SessionDataSource @Inject constructor(
         return expiry == 0L || System.currentTimeMillis() >= expiry
     }
 
+    /** True when the access token is already expired or will expire within [thresholdMs] (preflight). */
+    fun isAccessTokenExpiringSoon(thresholdMs: Long): Boolean {
+        val expiry = prefs.getLong(KEY_ACCESS_EXPIRY, 0L)
+        return expiry == 0L || System.currentTimeMillis() >= expiry - thresholdMs
+    }
+
     fun isSessionValid(): Boolean = getAccessToken() != null
 
     fun isProfileCompleted(): Boolean = prefs.getBoolean(KEY_PROFILE_COMPLETED, false)

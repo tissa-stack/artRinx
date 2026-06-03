@@ -25,6 +25,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -36,6 +42,7 @@ import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
+import com.example.artrinx.feature.settings.presentation.components.LogoutDialog
 
 @Composable
 fun SettingsScreen(
@@ -50,9 +57,15 @@ fun SettingsScreen(
     onAboutUs: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     onLogout: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") viewModel: SettingsViewModel = hiltViewModel(),
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val dimens = LocalDimens.current
+    val state by viewModel.state.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.loggedOut) {
+        if (state.loggedOut) onLogout()
+    }
 
     Column(
         modifier = Modifier
@@ -118,7 +131,7 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .border(1.dp, BrandPrimary, RoundedCornerShape(50))
-                    .clickable(onClick = onLogout)
+                    .clickable { showLogoutDialog = true }
                     .padding(horizontal = Spacing.xxxl, vertical = Spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -137,6 +150,16 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    if (showLogoutDialog) {
+        LogoutDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                viewModel.logout()
+            },
+            onDismiss = { showLogoutDialog = false },
+        )
     }
 }
 

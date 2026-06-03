@@ -1,20 +1,21 @@
 package com.example.artrinx.feature.auth.presentation.otp
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,9 +39,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.artrinx.R
@@ -76,7 +78,15 @@ fun OtpScreen(
         if (uiState.navigateToProfileCompletion) onNavigateToProfileCompletion()
     }
 
-    ArtRinxTheme(darkTheme = true) {
+    val context = LocalContext.current
+    LaunchedEffect(uiState.codeResent) {
+        if (uiState.codeResent) {
+            Toast.makeText(context, "Code sent", Toast.LENGTH_SHORT).show()
+            viewModel.onCodeResentShown()
+        }
+    }
+
+    ArtRinxTheme {
         OtpContent(
             uiState = uiState,
             contactValue = viewModel.contactValue,
@@ -98,16 +108,19 @@ private fun OtpContent(
     onResend: () -> Unit,
 ) {
     val dimens = LocalDimens.current
+    val isDark = isSystemInDarkTheme()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF0A0A0A))
+                .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // ── Top bar: back arrow + logo ─────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -120,11 +133,13 @@ private fun OtpContent(
                     Icon(
                         painter = painterResource(R.drawable.ic_arrow_back),
                         contentDescription = "Back",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
                 Image(
-                    painter = painterResource(R.drawable.ic_white_logo),
+                    painter = painterResource(
+                        if (isDark) R.drawable.ic_white_logo else R.drawable.ic_black_logo,
+                    ),
                     contentDescription = "RiNX logo",
                     modifier = Modifier
                         .height(dimens.logoHeight)
@@ -144,24 +159,11 @@ private fun OtpContent(
                 Spacer(modifier = Modifier.height(Spacing.xxl))
 
                 Text(
-                    text = "Enter code",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
+                    text = "Enter Code sent to $contactValue",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(Spacing.sm))
-                Text(
-                    text = "Please enter the 6-digit code sent to",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.55f),
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(Spacing.xs))
-                Text(
-                    text = contactValue,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.75f),
-                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(Spacing.xxxl))
@@ -171,6 +173,23 @@ private fun OtpContent(
                     onOtpChange = onOtpChange,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                Spacer(modifier = Modifier.height(Spacing.lg))
+
+                // ── Expires-in countdown ───────────────────────────────────
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Expires in: ",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = formatCountdown(uiState.resendCooldownSeconds),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(Spacing.lg))
 
@@ -187,86 +206,68 @@ private fun OtpContent(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(Spacing.md))
+
+                // ── Resend Code | Verify ───────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    OutlinedButton(
+                        onClick = onResend,
+                        enabled = uiState.canResend,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(dimens.authButtonHeight),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = BrandPrimary,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        ),
+                        border = BorderStroke(
+                            Spacing.xs / 4,
+                            if (uiState.canResend) BrandPrimary else MaterialTheme.colorScheme.outline,
+                        ),
+                    ) {
+                        if (uiState.isResending) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(Spacing.lg),
+                                color = BrandPrimary,
+                                strokeWidth = Spacing.xs / 2,
+                            )
+                        } else {
+                            Text(text = "Resend Code", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+
+                    Button(
+                        onClick = onVerify,
+                        enabled = uiState.isContinueEnabled,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(dimens.authButtonHeight),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BrandPrimary,
+                            disabledContainerColor = InactiveButton,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = Spacing.xs * 0),
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(Spacing.xl),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = Spacing.xs / 2,
+                            )
+                        } else {
+                            Text(text = "Verify", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
-
-                val continueColor by animateColorAsState(
-                    targetValue = if (uiState.isContinueEnabled) BrandPrimary else InactiveButton,
-                    animationSpec = tween(durationMillis = 200),
-                    label = "otpContinueColor",
-                )
-
-                Button(
-                    onClick = onVerify,
-                    enabled = !uiState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dimens.authButtonHeight),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = continueColor,
-                        disabledContainerColor = InactiveButton,
-                        contentColor = Color.White,
-                        disabledContentColor = Color.White.copy(alpha = 0.7f),
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = Spacing.xs * 0),
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(Spacing.xl),
-                            color = Color.White,
-                            strokeWidth = Spacing.xs / 2,
-                        )
-                    } else {
-                        Text(text = "Continue", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.md))
-
-                val resendLabel = if (uiState.resendCooldownSeconds > 0) {
-                    "Resend Code (${uiState.resendCooldownSeconds}s)"
-                } else {
-                    "Resend Code"
-                }
-
-                OutlinedButton(
-                    onClick = onResend,
-                    enabled = uiState.canResend,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dimens.authButtonHeight),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = BrandPrimary,
-                        disabledContentColor = Color.White.copy(alpha = 0.3f),
-                    ),
-                    border = BorderStroke(
-                        Spacing.xs / 4,
-                        if (uiState.canResend) BrandPrimary else MaterialTheme.colorScheme.outline,
-                    ),
-                ) {
-                    if (uiState.isResending) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(Spacing.lg),
-                            color = BrandPrimary,
-                            strokeWidth = Spacing.xs / 2,
-                        )
-                    } else {
-                        Text(text = resendLabel, style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.md))
-
-                Text(
-                    text = "Change email/phone?",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.55f),
-                    modifier = Modifier
-                        .clickable(onClick = onBack)
-                        .padding(vertical = Spacing.xs),
-                )
-
                 Spacer(modifier = Modifier.height(dimens.screenPaddingBottom))
             }
         }
@@ -277,13 +278,19 @@ private fun OtpContent(
     }
 }
 
+/** Formats remaining seconds as MM:SS. */
+private fun formatCountdown(seconds: Int): String {
+    val safe = seconds.coerceAtLeast(0)
+    return "%02d:%02d".format(safe / 60, safe % 60)
+}
+
 @Composable
 private fun BlockedOverlay() {
     val dimens = LocalDimens.current
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0A))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = dimens.screenPaddingHorizontal),
@@ -293,14 +300,14 @@ private fun BlockedOverlay() {
         Text(
             text = "Access Restricted",
             style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(Spacing.md))
         Text(
             text = "Your account has been disabled. Please contact support for assistance.",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
     }

@@ -7,6 +7,7 @@ data class OtpUiState(
     val isBlocked: Boolean = false,
     val resendCooldownSeconds: Int = 0,
     val isResending: Boolean = false,
+    val codeResent: Boolean = false,
     val navigateToHome: Boolean = false,
     val navigateToProfileCompletion: Boolean = false,
 )

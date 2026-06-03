@@ -10,6 +10,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -24,14 +25,18 @@ object NetworkModule {
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
         HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
 
+    // ── Main client: auth-token preflight interceptor + 401 refresh authenticator ──────────
+
     @Provides
     @Singleton
     fun provideOkHttpClient(
         logging: HttpLoggingInterceptor,
         authTokenInterceptor: AuthTokenInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(authTokenInterceptor)
+            .authenticator(tokenAuthenticator)
             .addInterceptor(logging)
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -46,4 +51,35 @@ object NetworkModule {
         .addConverterFactory(ScalarsConverterFactory.create())
         .addConverterFactory(GsonConverterFactory.create())
         .build()
+
+    // ── Bare client for token refresh (no auth interceptor/authenticator) ──────────────────
+    // Kept separate to break the DI cycle (main client → interceptor/authenticator → coordinator
+    // → refreshApi) and to avoid interceptor recursion while refreshing.
+
+    @Provides
+    @Singleton
+    @Named("refresh")
+    fun provideRefreshOkHttpClient(
+        logging: HttpLoggingInterceptor,
+    ): OkHttpClient =
+        OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .build()
+
+    @Provides
+    @Singleton
+    @Named("refresh")
+    fun provideRefreshRetrofit(@Named("refresh") client: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl(BASE_URL)
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    @Provides
+    @Singleton
+    fun provideTokenRefreshApi(@Named("refresh") retrofit: Retrofit): TokenRefreshApi =
+        retrofit.create(TokenRefreshApi::class.java)
 }

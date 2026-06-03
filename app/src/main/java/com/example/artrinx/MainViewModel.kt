@@ -6,10 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.navigation.NavRoutes
-import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.core.network.TokenRefreshCoordinator
 import com.example.artrinx.feature.auth.domain.repository.AuthRepository
-import com.example.artrinx.feature.auth.domain.usecase.RefreshTokenUseCase
-import com.example.artrinx.feature.auth.domain.usecase.SaveSessionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,8 +23,7 @@ internal val ONBOARDING_COMPLETE_KEY = booleanPreferencesKey("onboarding_complet
 class MainViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val authRepository: AuthRepository,
-    private val refreshToken: RefreshTokenUseCase,
-    private val saveSession: SaveSessionUseCase,
+    private val tokenRefreshCoordinator: TokenRefreshCoordinator,
 ) : ViewModel() {
 
     // null = still resolving, String = resolved start destination
@@ -50,16 +47,11 @@ class MainViewModel @Inject constructor(
         val refresh = authRepository.getRefreshToken()
         if (refresh.isNullOrBlank()) return NavRoutes.AUTH
 
-        // 3. Have a session. Proactively refresh if the access token has expired;
-        //    on any refresh failure, wipe the session and fall back to auth.
+        // 3. Have a session. If the access token has expired, refresh it through the single-flight
+        //    coordinator (the same path used mid-session). The coordinator wipes the session on a
+        //    hard refresh failure; if we can't get a valid token, fall back to auth.
         if (authRepository.isAccessTokenExpired()) {
-            when (val result = refreshToken(refresh)) {
-                is ApiResult.Success -> saveSession(result.data)
-                else -> {
-                    authRepository.clearSession()
-                    return NavRoutes.AUTH
-                }
-            }
+            if (!tokenRefreshCoordinator.refresh()) return NavRoutes.AUTH
         }
 
         // 4. Valid session → route by profile completion.

@@ -323,7 +323,11 @@ fun AppNavGraph(
                 onFaqs                = { /* TODO */ },
                 onAboutUs             = { /* TODO */ },
                 onPrivacyPolicy       = { /* TODO */ },
-                onLogout              = { /* TODO: logout */ },
+                onLogout              = {
+                    navController.navigate(NavRoutes.AUTH) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
 

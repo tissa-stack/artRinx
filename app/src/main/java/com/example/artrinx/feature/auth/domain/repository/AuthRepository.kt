@@ -22,4 +22,5 @@ interface AuthRepository {
     fun isProfileCompleted(): Boolean
     suspend fun saveProfileCompleted(completed: Boolean)
     suspend fun clearSession()
+    suspend fun logout()
 }
