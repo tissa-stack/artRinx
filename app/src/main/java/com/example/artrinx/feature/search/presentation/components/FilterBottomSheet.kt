@@ -42,21 +42,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.artrinx.core.theme.BrandPrimary
-import com.example.artrinx.core.theme.DarkCardSurface
 import com.example.artrinx.core.theme.Spacing
+import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.search.domain.model.SearchFilter
-import com.example.artrinx.feature.search.domain.model.STYLE_OPTIONS
 
 @Composable
 fun FilterBottomSheet(
     filter: SearchFilter,
+    mediums: List<Medium>,
     isStyleExpanded: Boolean,
     onToggleStyle: () -> Unit,
-    onToggleCountry: () -> Unit,
-    onToggleState: () -> Unit,
-    onToggleCity: () -> Unit,
     onToggleShopArt: () -> Unit,
-    onToggleStyleOption: (String) -> Unit,
+    onToggleMedium: (Int) -> Unit,
     onReset: () -> Unit,
     onViewResults: () -> Unit,
     onDismiss: () -> Unit,
@@ -81,69 +78,47 @@ fun FilterBottomSheet(
         ) {
             // Header
             Row(
-                modifier          = Modifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = Spacing.lg),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text       = "Filters",
-                    style      = MaterialTheme.typography.headlineSmall,
+                    text = "Filters",
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color      = MaterialTheme.colorScheme.onBackground,
-                    modifier   = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector        = Icons.Default.Close,
+                        imageVector = Icons.Default.Close,
                         contentDescription = "Close",
-                        tint               = MaterialTheme.colorScheme.onBackground,
+                        tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }
             HorizontalDivider(color = divider)
             Spacer(Modifier.height(Spacing.xl))
 
-            // ── Location ─────────────────────────────────────────────────
-            Text(
-                text       = "Location",
-                style      = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color      = MaterialTheme.colorScheme.onBackground,
-            )
-            Spacer(Modifier.height(Spacing.md))
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                LocationChip("Country", filter.country, onToggleCountry, Modifier.weight(1f))
-                LocationChip("State",   filter.state,   onToggleState,   Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(Spacing.sm))
-            LocationChip("City", filter.city, onToggleCity)
-
-            Spacer(Modifier.height(Spacing.xl))
-            HorizontalDivider(color = divider)
-            Spacer(Modifier.height(Spacing.xl))
-
             // ── Shop Art ─────────────────────────────────────────────────
             Row(
-                modifier          = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text       = "Shop Art",
-                    style      = MaterialTheme.typography.bodyLarge,
+                    text = "Shop Art Only",
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onBackground,
-                    modifier   = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f),
                 )
                 Switch(
-                    checked         = filter.shopArtOnly,
+                    checked = filter.shopArtOnly,
                     onCheckedChange = { onToggleShopArt() },
-                    colors          = SwitchDefaults.colors(
-                        checkedThumbColor   = Color.White,
-                        checkedTrackColor   = BrandPrimary,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = BrandPrimary,
                         uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                         uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                     ),
@@ -154,41 +129,50 @@ fun FilterBottomSheet(
             HorizontalDivider(color = divider)
             Spacer(Modifier.height(Spacing.xl))
 
-            // ── Medium (accordion) ────────────────────────────────────────
+            // ── Medium (accordion, from /api/mediums/) ─────────────────────
             Row(
-                modifier          = Modifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onToggleStyle() },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text       = "Medium",
-                    style      = MaterialTheme.typography.bodyLarge,
+                    text = "Medium",
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onBackground,
-                    modifier   = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f),
                 )
                 Icon(
-                    imageVector        = if (isStyleExpanded) Icons.Default.KeyboardArrowUp
-                                        else Icons.Default.KeyboardArrowDown,
+                    imageVector = if (isStyleExpanded) Icons.Default.KeyboardArrowUp
+                    else Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
-                    tint               = MaterialTheme.colorScheme.onBackground,
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
 
             AnimatedVisibility(
                 visible = isStyleExpanded,
-                enter   = expandVertically(),
-                exit    = shrinkVertically(),
+                enter = expandVertically(),
+                exit = shrinkVertically(),
             ) {
                 Column {
                     Spacer(Modifier.height(Spacing.xs))
-                    STYLE_OPTIONS.forEach { style ->
-                        MediumOptionRow(
-                            label   = style,
-                            checked = style in filter.styles,
-                            onClick = { onToggleStyleOption(style) },
+                    if (mediums.isEmpty()) {
+                        Text(
+                            text = "No mediums available.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = Spacing.sm),
                         )
+                    } else {
+                        mediums.forEach { medium ->
+                            MediumOptionRow(
+                                label = medium.title,
+                                checked = medium.id in filter.mediumIds,
+                                onClick = { onToggleMedium(medium.id) },
+                            )
+                        }
                     }
                 }
             }
@@ -199,29 +183,29 @@ fun FilterBottomSheet(
         // ── Pinned buttons ────────────────────────────────────────────────
         HorizontalDivider(color = divider)
         Row(
-            modifier              = Modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             Box(
-                modifier         = Modifier
+                modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(50))
-                    .background(DarkCardSurface)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onReset() }
                     .padding(vertical = Spacing.md),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text       = "Reset",
-                    style      = MaterialTheme.typography.labelLarge,
-                    color      = Color.White,
+                    text = "Reset",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
             Box(
-                modifier         = Modifier
+                modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(50))
                     .background(BrandPrimary)
@@ -230,45 +214,13 @@ fun FilterBottomSheet(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text       = "View results",
-                    style      = MaterialTheme.typography.labelLarge,
-                    color      = Color.White,
+                    text = "View results",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
         }
-    }
-}
-
-// ── Location chip ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun LocationChip(
-    label: String,
-    checked: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier          = modifier
-            .clip(RoundedCornerShape(Spacing.xs))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(Spacing.xs),
-            )
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable { onClick() }
-            .padding(horizontal = Spacing.sm, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        FilterCheckbox(checked = checked)
-        Spacer(Modifier.width(Spacing.sm))
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
     }
 }
 
@@ -281,16 +233,16 @@ private fun MediumOptionRow(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier          = Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text     = label,
-            style    = MaterialTheme.typography.bodyMedium,
-            color    = MaterialTheme.colorScheme.onBackground,
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f),
         )
         FilterCheckbox(checked = checked)
@@ -303,7 +255,7 @@ private fun MediumOptionRow(
 private fun FilterCheckbox(checked: Boolean) {
     val checkboxColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
     Box(
-        modifier         = Modifier
+        modifier = Modifier
             .size(18.dp)
             .clip(RoundedCornerShape(3.dp))
             .background(if (checked) BrandPrimary else Color.Transparent)
@@ -316,10 +268,10 @@ private fun FilterCheckbox(checked: Boolean) {
     ) {
         if (checked) {
             Icon(
-                imageVector        = Icons.Default.Check,
+                imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint               = Color.White,
-                modifier           = Modifier.size(12.dp),
+                tint = Color.White,
+                modifier = Modifier.size(12.dp),
             )
         }
     }

@@ -180,6 +180,9 @@ fun AppNavGraph(
                 onNavigateToDetail  = { postId ->
                     navController.navigate(NavRoutes.artDetail(postId, NavRoutes.SEARCH))
                 },
+                onNavigateToCurationDetail = { curationId ->
+                    navController.navigate(NavRoutes.curationDetail(curationId, NavRoutes.SEARCH))
+                },
             )
         }
 

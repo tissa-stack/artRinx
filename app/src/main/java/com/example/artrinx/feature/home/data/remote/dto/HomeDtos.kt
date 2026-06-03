@@ -34,6 +34,7 @@ data class ArtworkDto(
     @SerializedName("display_name") val displayName: String? = null,
     @SerializedName("profile_type_name") val profileTypeName: String? = null,
     @SerializedName("profile_picture_url") val profilePictureUrl: String? = null,
+    @SerializedName("aspect_ratio") val aspectRatio: Double? = null,
     @SerializedName("artist") val artist: ArtistDto? = null,
     @SerializedName("medium") val medium: ArtworkMediumDto? = null,
 )
