@@ -1,12 +1,20 @@
 package com.example.artrinx.feature.upload.data.remote
 
+import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.home.data.remote.dto.EnvelopeDto
 import com.example.artrinx.feature.upload.data.remote.dto.CreateArtworkResultDto
 import com.example.artrinx.feature.upload.data.remote.dto.PrepareUploadDto
+import com.example.artrinx.feature.upload.data.remote.dto.UpdateArtworkBody
+import okhttp3.ResponseBody
 import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
+import retrofit2.http.GET
+import retrofit2.http.PUT
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 interface UploadApiService {
 
@@ -37,4 +45,18 @@ interface UploadApiService {
         @Field("rekognition_tags") rekognitionTags: String?,
         @Field("aspect_ratio") aspectRatio: String?,
     ): Response<EnvelopeDto<CreateArtworkResultDto>>
+
+    /** Fetch a single artwork (with all fields) — used to prefill the edit form. */
+    @GET("api/artworks/{id}")
+    suspend fun getArtwork(@Path("id") id: Int): Response<EnvelopeDto<ArtworkDto>>
+
+    /** Edit an artwork's metadata (JSON; image is not changed). */
+    @PUT("api/artworks/{id}")
+    suspend fun updateArtwork(
+        @Path("id") id: Int,
+        @Body body: UpdateArtworkBody,
+    ): Response<EnvelopeDto<CreateArtworkResultDto>>
+
+    @DELETE("api/artworks/{id}")
+    suspend fun deleteArtwork(@Path("id") id: Int): Response<ResponseBody>
 }

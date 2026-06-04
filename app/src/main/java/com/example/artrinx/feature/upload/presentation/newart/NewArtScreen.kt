@@ -80,6 +80,7 @@ fun NewArtScreen(
     onNavigateToTags: () -> Unit,
     onUploadStarted: (isPrivate: Boolean) -> Unit = {},
     onNavigateToPreview: () -> Unit = {},
+    onEditDone: () -> Unit = onBack,
     viewModel: NewArtViewModel = hiltViewModel(),
 ) {
     val state        by viewModel.state.collectAsState()
@@ -131,7 +132,7 @@ fun NewArtScreen(
                         tint = MaterialTheme.colorScheme.onBackground)
                 }
                 Text(
-                    text       = "New Art",
+                    text       = if (state.isEditing) "Edit Art" else "New Art",
                     style      = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color      = MaterialTheme.colorScheme.onBackground,
@@ -141,9 +142,13 @@ fun NewArtScreen(
                 UploadButton(
                     enabled     = state.isValid,
                     isUploading = state.isUploading,
+                    label       = if (state.isEditing) "Save" else "Upload",
                     onClick     = {
-                        // Public → navigate to Home (progress row). Private → stay; overlay shows.
-                        if (viewModel.onUpload() && state.privacy != PrivacyOption.PRIVATE) {
+                        if (state.isEditing) {
+                            // Edit → stay; overlay shows save progress, pops back on done.
+                            viewModel.onSaveEdit()
+                        } else if (viewModel.onUpload() && state.privacy != PrivacyOption.PRIVATE) {
+                            // Public → navigate to Home (progress row). Private → stay; overlay shows.
                             onUploadStarted(false)
                         }
                     },
@@ -160,7 +165,7 @@ fun NewArtScreen(
                 // Photo — full width, no horizontal margins
                 item(key = "photo") {
                     AsyncImage(
-                        model              = state.imageUri,
+                        model              = state.imageUri ?: state.imageUrl,
                         contentDescription = "Selected photo",
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier
@@ -222,10 +227,12 @@ fun NewArtScreen(
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Preview
-                item(key = "preview") {
-                    PreviewButton(enabled = state.isValid, onClick = onNavigateToPreview)
-                    Spacer(Modifier.height(Spacing.lg))
+                // Preview (upload flow only — not when editing existing art)
+                if (!state.isEditing) {
+                    item(key = "preview") {
+                        PreviewButton(enabled = state.isValid, onClick = onNavigateToPreview)
+                        Spacer(Modifier.height(Spacing.lg))
+                    }
                 }
             }
         }
@@ -235,10 +242,25 @@ fun NewArtScreen(
                 status = status,
                 label = "Artwork",
                 error = state.creationError,
-                onDone = { viewModel.onCreationDone(); onUploadStarted(false) },
-                onRetry = { viewModel.onRetryCreation() },
+                createdTitle = if (state.isEditing) "Changes saved" else null,
+                createdSubtitle = if (state.isEditing) "Your art has been updated." else null,
+                onDone = {
+                    viewModel.onCreationDone()
+                    if (state.isEditing) onEditDone() else onUploadStarted(false)
+                },
+                onRetry = { if (state.isEditing) viewModel.onRetryEdit() else viewModel.onRetryCreation() },
                 onDismiss = { viewModel.onCreationDone() },
             )
+        }
+
+        // Loader while the existing artwork is being fetched for editing.
+        if (state.isLoadingEdit) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(color = BrandPrimary) }
         }
       }
     }
@@ -247,7 +269,7 @@ fun NewArtScreen(
 // ── Upload button ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun UploadButton(enabled: Boolean, isUploading: Boolean, onClick: () -> Unit) {
+private fun UploadButton(enabled: Boolean, isUploading: Boolean, label: String = "Upload", onClick: () -> Unit) {
     val bgColor by animateColorAsState(
         targetValue = if (enabled) BrandPrimary else InactiveButton,
         label       = "uploadBtn",
@@ -263,7 +285,7 @@ private fun UploadButton(enabled: Boolean, isUploading: Boolean, onClick: () -> 
         if (isUploading) {
             CircularProgressIndicator(Modifier.size(Spacing.lg), strokeWidth = 2.dp, color = Color.White)
         } else {
-            Text("Upload",
+            Text(label,
                 style      = MaterialTheme.typography.labelLarge,
                 color      = Color.White.copy(alpha = if (enabled) 1f else 0.7f),
                 fontWeight = FontWeight.SemiBold)

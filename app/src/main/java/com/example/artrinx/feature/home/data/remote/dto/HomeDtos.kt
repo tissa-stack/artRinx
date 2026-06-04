@@ -22,8 +22,10 @@ data class PageDto<T>(
 
 data class ArtworkDto(
     @SerializedName("id") val id: Int? = null,
+    @SerializedName("user_id") val userId: Int? = null,
     @SerializedName("title") val title: String? = null,
     @SerializedName("description") val description: String? = null,
+    @SerializedName("tags") val tags: List<String>? = null,
     @SerializedName("image_url") val imageUrl: String? = null,
     @SerializedName("thumbnail_url") val thumbnailUrl: String? = null,
     @SerializedName("webp_url") val webpUrl: String? = null,

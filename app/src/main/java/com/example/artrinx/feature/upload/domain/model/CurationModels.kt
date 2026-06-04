@@ -16,6 +16,14 @@ data class CreatedCuration(
     val id: Int,
 )
 
+/** Existing curation fields used to prefill the edit (New Curation) flow. */
+data class EditableCuration(
+    val title: String,
+    val description: String?,
+    val isPrivate: Boolean,
+    val arts: List<UserArtItem>,
+)
+
 /** What the "Add to curation" sheet is acting on. */
 sealed interface CurationSource {
     /** A single artwork post. */

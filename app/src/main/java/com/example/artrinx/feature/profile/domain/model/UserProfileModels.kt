@@ -19,6 +19,8 @@ data class UserProfileData(
     val bio: String = "",
     val website: String = "",
     @param:DrawableRes val avatarRes: Int? = null,
+    /** Remote avatar (real profile). Preferred over [avatarRes] when present. */
+    val avatarUrl: String? = null,
     val artCount: Int = 0,
     val curationCount: Int = 0,
     val followerCount: Int = 0,

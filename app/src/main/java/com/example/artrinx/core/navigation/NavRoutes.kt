@@ -43,7 +43,12 @@ object NavRoutes {
     const val NEW_CURATION        = "new_curation"
     const val ADD_ART_TO_CURATION = "add_art_to_curation"
 
+    /** Sentinel imageUri for opening New Art in EDIT mode (no new image is picked). */
+    const val NEW_ART_EDIT_SENTINEL = "edit"
+
     fun newArt(imageUri: String) = "new_art/${Uri.encode(imageUri)}"
+    /** Open New Art in edit mode (image comes from the artwork being edited, via EditTargetStore). */
+    fun newArtForEdit() = "new_art/$NEW_ART_EDIT_SENTINEL"
 
     // source arg carries the originating bottom-tab so detail screens keep the correct tab highlighted.
     const val ART_DETAIL      = "art_detail/{postId}?source={source}"

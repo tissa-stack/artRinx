@@ -260,7 +260,9 @@ fun AppNavGraph(
             arguments = listOf(navArgument("imageUri") { type = NavType.StringType }),
         ) { entry ->
             val rawUri = entry.arguments?.getString("imageUri") ?: ""
-            val imageUri = if (rawUri.isNotEmpty()) android.net.Uri.parse(Uri.decode(rawUri)) else null
+            val imageUri = if (rawUri.isNotEmpty() && rawUri != NavRoutes.NEW_ART_EDIT_SENTINEL) {
+                android.net.Uri.parse(Uri.decode(rawUri))
+            } else null
             NewArtScreen(
                 imageUri             = imageUri,
                 onBack               = { navController.popBackStack() },
@@ -268,6 +270,9 @@ fun AppNavGraph(
                 onNavigateToTags     = { navController.navigate(NavRoutes.ADD_TAGS) },
                 onUploadStarted      = { isPrivate -> navController.navigateAfterUpload(isPrivate) },
                 onNavigateToPreview  = { navController.navigate(NavRoutes.ART_PREVIEW) },
+                // Edit done → close the New Art screen AND the underlying detail so the user
+                // lands on the (auto-refreshing) screen behind it with the change reflected.
+                onEditDone           = { navController.popBackStack(NavRoutes.ART_DETAIL, inclusive = true) },
             )
         }
 
@@ -300,6 +305,8 @@ fun AppNavGraph(
                 onBack             = { navController.popBackStack() },
                 onNavigateToAddArt = { navController.navigate(NavRoutes.ADD_ART_TO_CURATION) },
                 onCreateStarted    = { isPrivate -> navController.navigateAfterUpload(isPrivate) },
+                // Edit done → close New Curation AND the underlying curation detail.
+                onEditDone         = { navController.popBackStack(NavRoutes.CURATION_DETAIL, inclusive = true) },
             )
         }
 
@@ -316,6 +323,8 @@ fun AppNavGraph(
                 onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
                 onNavigateToSettings      = { navController.navigate(NavRoutes.SETTINGS) },
+                onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, NavRoutes.PROFILE)) },
+                onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, NavRoutes.PROFILE)) },
             )
         }
 
@@ -402,6 +411,7 @@ fun AppNavGraph(
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToNewCuration   = { navController.navigate(NavRoutes.NEW_CURATION) },
+                onEditArt                 = { navController.navigate(NavRoutes.newArtForEdit()) },
                 activeRoute = source,
             )
         }
@@ -425,6 +435,7 @@ fun AppNavGraph(
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToNewCuration   = { navController.navigate(NavRoutes.NEW_CURATION) },
+                onEditCuration            = { navController.navigate(NavRoutes.NEW_CURATION) },
                 activeRoute = source,
             )
         }

@@ -7,14 +7,17 @@ import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import com.example.artrinx.feature.search.domain.repository.SearchRepository
 import com.example.artrinx.feature.search.domain.model.UserSearchItem
+import com.example.artrinx.feature.upload.domain.EditTargetStore
 import com.example.artrinx.feature.upload.domain.UploadManager
 import com.example.artrinx.feature.upload.domain.model.ArtFormState
 import com.example.artrinx.feature.upload.domain.model.ArtistResult
 import com.example.artrinx.feature.upload.domain.model.CreationStatus
 import com.example.artrinx.feature.upload.domain.model.MediumOption
 import com.example.artrinx.feature.upload.domain.model.PrivacyOption
+import com.example.artrinx.feature.upload.domain.model.UpdateArtworkRequest
 import com.example.artrinx.feature.upload.domain.model.UploadProgress
 import com.example.artrinx.feature.upload.domain.model.UploadRequest
+import com.example.artrinx.feature.upload.domain.repository.UploadRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -30,6 +33,8 @@ class NewArtViewModel @Inject constructor(
     private val uploadManager: UploadManager,
     private val profileRepository: ProfileRepository,
     private val searchRepository: SearchRepository,
+    private val uploadRepository: UploadRepository,
+    editTargetStore: EditTargetStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ArtFormState())
@@ -43,6 +48,43 @@ class NewArtViewModel @Inject constructor(
         loadTrendingTags()
         loadSelfArtist()
         observePrivateUpload()
+        editTargetStore.consumeArtwork()?.let { loadForEdit(it) }
+    }
+
+    /** Prefill the form from an existing artwork when entering edit mode. */
+    private fun loadForEdit(id: Int) {
+        // Synchronous so the loader shows immediately (before the fetch coroutine runs).
+        _state.update { it.copy(isLoadingEdit = true) }
+        viewModelScope.launch {
+            val result = uploadRepository.getArtworkForEdit(id)
+            if (result is ApiResult.Success) {
+                val a = result.data
+                _state.update {
+                    it.copy(
+                        editArtworkId = id,
+                        imageUrl = a.imageUrl,
+                        title = a.title,
+                        description = a.description.orEmpty(),
+                        tags = a.tags,
+                        selectedMediumId = a.mediumId,
+                        selectedMedium = a.mediumTitle,
+                        shopLink = a.shopLink.orEmpty(),
+                        privacy = if (a.isPrivate) PrivacyOption.PRIVATE else PrivacyOption.PUBLIC,
+                        selectedArtist = a.artistId?.let { artistId ->
+                            ArtistResult(
+                                handle = "",
+                                displayName = a.artistName.orEmpty(),
+                                subtitle = a.artistName.orEmpty(),
+                                userId = artistId,
+                            )
+                        },
+                        isLoadingEdit = false,
+                    )
+                }
+            } else {
+                _state.update { it.copy(isLoadingEdit = false) }
+            }
+        }
     }
 
     /** While a PRIVATE upload is in flight, mirror the manager's progress into the overlay state. */
@@ -238,4 +280,40 @@ class NewArtViewModel @Inject constructor(
         )
         return true
     }
+
+    /**
+     * Edit mode: PUT the metadata changes for [ArtFormState.editArtworkId] and drive the overlay
+     * (LOADING → CREATED / FAILED). The image is never changed.
+     */
+    fun onSaveEdit() {
+        if (!validate()) return
+        val s = _state.value
+        val id = s.editArtworkId ?: return
+        val artist = s.selectedArtist
+        _state.update { it.copy(creationStatus = CreationStatus.LOADING, creationError = null) }
+        viewModelScope.launch {
+            val result = uploadRepository.updateArtwork(
+                id = id,
+                request = UpdateArtworkRequest(
+                    title = s.title,
+                    description = s.description.ifBlank { null },
+                    tags = s.tags,
+                    mediumId = s.selectedMediumId,
+                    shopLink = s.shopLink.ifBlank { null },
+                    price = null,
+                    isPrivate = s.privacy == PrivacyOption.PRIVATE,
+                    artistId = artist?.userId,
+                    artistName = artist?.displayName,
+                ),
+            )
+            when (result) {
+                is ApiResult.Success ->
+                    _state.update { it.copy(creationStatus = CreationStatus.CREATED) }
+                is ApiResult.Error ->
+                    _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = "Couldn't save changes — please try again.") }
+            }
+        }
+    }
+
+    fun onRetryEdit() = onSaveEdit()
 }

@@ -68,6 +68,7 @@ fun NewCurationScreen(
     onBack: () -> Unit,
     onNavigateToAddArt: () -> Unit,
     onCreateStarted: (isPrivate: Boolean) -> Unit = {},
+    onEditDone: () -> Unit = onBack,
     viewModel: NewCurationViewModel = hiltViewModel(),
 ) {
     val state        by viewModel.state.collectAsState()
@@ -105,7 +106,7 @@ fun NewCurationScreen(
                         tint = MaterialTheme.colorScheme.onBackground)
                 }
                 Text(
-                    text       = "New Curation",
+                    text       = if (state.isEditing) "Edit Curation" else "New Curation",
                     style      = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color      = MaterialTheme.colorScheme.onBackground,
@@ -199,9 +200,13 @@ fun NewCurationScreen(
                     CreateButton(
                         enabled    = state.isValid,
                         isCreating = state.isCreating,
+                        label      = if (state.isEditing) "Save" else "Create",
                         onClick    = {
-                            // Public → Home (progress row). Private → stay; overlay shows.
-                            if (viewModel.onCreate() && state.privacy != PrivacyOption.PRIVATE) {
+                            if (state.isEditing) {
+                                // Edit → stay; overlay shows save progress, pops back on done.
+                                viewModel.onSaveEdit()
+                            } else if (viewModel.onCreate() && state.privacy != PrivacyOption.PRIVATE) {
+                                // Public → Home (progress row). Private → stay; overlay shows.
                                 onCreateStarted(false)
                             }
                         },
@@ -216,10 +221,25 @@ fun NewCurationScreen(
                 status = status,
                 label = "Curation",
                 error = state.creationError,
-                onDone = { viewModel.onCreationDone(); onCreateStarted(false) },
-                onRetry = { viewModel.onRetryCreation() },
+                createdTitle = if (state.isEditing) "Changes saved" else null,
+                createdSubtitle = if (state.isEditing) "Your curation has been updated." else null,
+                onDone = {
+                    viewModel.onCreationDone()
+                    if (state.isEditing) onEditDone() else onCreateStarted(false)
+                },
+                onRetry = { if (state.isEditing) viewModel.onRetryEdit() else viewModel.onRetryCreation() },
                 onDismiss = { viewModel.onCreationDone() },
             )
+        }
+
+        // Loader while the existing curation is being fetched for editing.
+        if (state.isLoadingEdit) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(color = BrandPrimary) }
         }
       }
     }
@@ -412,7 +432,7 @@ private fun PrivacyRow(privacy: PrivacyOption, onClick: () -> Unit) {
 // ── Create button ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun CreateButton(enabled: Boolean, isCreating: Boolean, onClick: () -> Unit) {
+private fun CreateButton(enabled: Boolean, isCreating: Boolean, label: String = "Create", onClick: () -> Unit) {
     val bgColor by animateColorAsState(
         targetValue = if (enabled) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant,
         label       = "createBtn",
@@ -430,7 +450,7 @@ private fun CreateButton(enabled: Boolean, isCreating: Boolean, onClick: () -> U
         if (isCreating) {
             CircularProgressIndicator(Modifier.size(Spacing.lg), strokeWidth = 2.dp, color = Color.White)
         } else {
-            Text("Create",
+            Text(label,
                 style      = MaterialTheme.typography.labelLarge,
                 color      = if (enabled) Color.White
                              else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),

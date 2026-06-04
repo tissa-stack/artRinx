@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +63,7 @@ import com.example.artrinx.feature.home.presentation.components.ReportBottomShee
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
 import com.example.artrinx.feature.home.presentation.components.ShopLinkDialog
+import com.example.artrinx.feature.upload.presentation.components.DeleteConfirmDialog
 
 @Composable
 fun ArtDetailScreen(
@@ -73,18 +75,34 @@ fun ArtDetailScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
+    onEditArt: () -> Unit = {},
     activeRoute: String = "home",
     viewModel: ArtDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showReportSheet by remember { mutableStateOf(false) }
     var showAddToCuration by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Pop back once the artwork is deleted.
+    LaunchedEffect(Unit) {
+        viewModel.deleted.collect { onBack() }
+    }
 
     if (showReportSheet) {
         ReportBottomSheet(
             artTitle    = uiState.post?.title ?: "",
             profileName = uiState.post?.artistName ?: "",
             onDismiss   = { showReportSheet = false },
+        )
+    }
+
+    if (showDeleteDialog) {
+        DeleteConfirmDialog(
+            itemLabel = "art",
+            isDeleting = uiState.isDeleting,
+            onConfirm = { viewModel.deleteArtwork() },
+            onDismiss = { showDeleteDialog = false },
         )
     }
 
@@ -134,6 +152,9 @@ fun ArtDetailScreen(
                     onLike = viewModel::onLikeToggled,
                     onNavigateToDetail = onNavigateToDetail,
                     onAddToCuration = { showAddToCuration = true },
+                    // Your OWN art → read-only (just the details). Anyone else's art (incl. liked
+                    // arts in the Profile tab) keeps all the actions + Send message.
+                    showActions = !uiState.isOwn,
                     modifier = Modifier.fillMaxSize(),
                 )
 
@@ -170,17 +191,49 @@ fun ArtDetailScreen(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(
-                    onClick = { showReportSheet = true },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.55f)),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_report),
-                        contentDescription = "Report",
-                        tint = Color.White,
-                    )
+                if (uiState.isOwn) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        IconButton(
+                            onClick = {
+                                viewModel.prepareEdit()
+                                onEditArt()
+                            },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.55f)),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_edit),
+                                contentDescription = "Edit",
+                                tint = Color.White,
+                            )
+                        }
+                        IconButton(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.55f)),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_delete),
+                                contentDescription = "Delete",
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                } else {
+                    IconButton(
+                        onClick = { showReportSheet = true },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.55f)),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_report),
+                            contentDescription = "Report",
+                            tint = Color.White,
+                        )
+                    }
                 }
             }
         }
@@ -193,6 +246,7 @@ private fun ArtDetailContent(
     onLike: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onAddToCuration: () -> Unit = {},
+    showActions: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
@@ -269,48 +323,50 @@ private fun ArtDetailContent(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(Spacing.sm))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_add_to),
-                        contentDescription = "Add to curation",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(Spacing.xxl)
-                            .clickable { onAddToCuration() },
-                    )
-                    Icon(
-                        painter = painterResource(R.drawable.ic_send),
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(Spacing.xxl)
-                            .clickable {
-                                context.shareArtwork(
-                                    title = post.title,
-                                    artistName = post.artistName,
-                                    description = post.description,
-                                    link = post.shopUrl.ifBlank { null },
-                                )
-                            },
-                    )
-                    // Heart + count: count centered exactly below the heart.
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        LikeButton(
-                            isLiked = post.isLiked,
-                            onClick = onLike,
-                            size = Spacing.xxl,
+                if (showActions) {
+                    Spacer(Modifier.width(Spacing.sm))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_add_to),
+                            contentDescription = "Add to curation",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .size(Spacing.xxl)
+                                .clickable { onAddToCuration() },
                         )
-                        if (post.likeCount > 0) {
-                            Text(
-                                text = post.likeCount.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = Spacing.xs),
+                        Icon(
+                            painter = painterResource(R.drawable.ic_send),
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .size(Spacing.xxl)
+                                .clickable {
+                                    context.shareArtwork(
+                                        title = post.title,
+                                        artistName = post.artistName,
+                                        description = post.description,
+                                        link = post.shopUrl.ifBlank { null },
+                                    )
+                                },
+                        )
+                        // Heart + count: count centered exactly below the heart.
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            LikeButton(
+                                isLiked = post.isLiked,
+                                onClick = onLike,
+                                size = Spacing.xxl,
                             )
+                            if (post.likeCount > 0) {
+                                Text(
+                                    text = post.likeCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = Spacing.xs),
+                                )
+                            }
                         }
                     }
                 }
@@ -340,34 +396,39 @@ private fun ArtDetailContent(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Style",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = post.medium,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                // Medium / style — only shown when the artwork has one.
+                if (post.medium.isNotBlank()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Style",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = post.medium,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(Spacing.sm))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { showShopDialog = true }
-                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Shop Art",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                if (showActions) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(Spacing.sm))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { showShopDialog = true }
+                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Shop Art",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
         }
@@ -456,38 +517,43 @@ private fun ArtDetailContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.width(Spacing.sm))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(Spacing.sm))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { showSendSheet = true }
-                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Send message",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                // "Send message" shows for other artists' art (incl. liked arts), never your own.
+                if (showActions) {
+                    Spacer(Modifier.width(Spacing.sm))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(Spacing.sm))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { showSendSheet = true }
+                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Send message",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
         }
 
-        // ── More like this ─────────────────────────────────────────────
-        item(key = "more-header") {
-            SectionHeader(title = "More like this")
-        }
-        item(key = "more-content") {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-            ) {
-                items(uiState.moreLikeThis, key = { it.id }) { artItem ->
-                    ArtworkCard(
-                        item = artItem,
-                        onClick = { onNavigateToDetail(artItem.id) },
-                    )
+        // ── More like this (hidden when there are no suggestions, e.g. from Profile) ──
+        if (uiState.moreLikeThis.isNotEmpty()) {
+            item(key = "more-header") {
+                SectionHeader(title = "More like this")
+            }
+            item(key = "more-content") {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    items(uiState.moreLikeThis, key = { it.id }) { artItem ->
+                        ArtworkCard(
+                            item = artItem,
+                            onClick = { onNavigateToDetail(artItem.id) },
+                        )
+                    }
                 }
             }
         }

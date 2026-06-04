@@ -47,6 +47,10 @@ fun CreationStatusOverlay(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     error: String? = null,
+    /** Override the success title (defaults to "$label created"). */
+    createdTitle: String? = null,
+    /** Override the success subtitle. */
+    createdSubtitle: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
@@ -81,7 +85,7 @@ fun CreationStatusOverlay(
                 )
                 Spacer(Modifier.height(Spacing.md))
                 Text(
-                    text = "$label created",
+                    text = createdTitle ?: "$label created",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -89,7 +93,7 @@ fun CreationStatusOverlay(
                 )
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
-                    text = "You can find it in your profile.",
+                    text = createdSubtitle ?: "You can find it in your profile.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

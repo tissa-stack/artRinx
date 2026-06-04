@@ -5,14 +5,20 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.home.domain.model.ArtworkItem
 import com.example.artrinx.feature.home.domain.model.ShoppablePost
 import com.example.artrinx.feature.home.domain.repository.HomeRepository
+import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
+import com.example.artrinx.feature.upload.domain.EditTargetStore
+import com.example.artrinx.feature.upload.domain.repository.UploadRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,18 +29,31 @@ data class ArtDetailUiState(
     val moreLikeThis: List<ArtworkItem> = emptyList(),
     val isLoading: Boolean = true,
     val error: Boolean = false,
+    /** True when the current user owns this artwork → show Edit/Delete instead of Report. */
+    val isOwn: Boolean = false,
+    val isDeleting: Boolean = false,
 )
 
 @HiltViewModel
 class ArtDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: HomeRepository,
+    private val profileRepository: ProfileRepository,
+    private val uploadRepository: UploadRepository,
+    private val editTargetStore: EditTargetStore,
+    private val profileRefreshBus: ProfileRefreshBus,
 ) : ViewModel() {
 
     private val artworkId: Int? = savedStateHandle.get<String>("postId")?.toIntOrNull()
+    private val source: String? = savedStateHandle.get<String>("source")
+    private val isFromProfile: Boolean = source == "profile"
 
     private val _uiState = MutableStateFlow(ArtDetailUiState())
     val uiState: StateFlow<ArtDetailUiState> = _uiState.asStateFlow()
+
+    /** One-shot: emitted after a successful delete so the screen can pop back. */
+    private val _deleted = Channel<Unit>(Channel.BUFFERED)
+    val deleted = _deleted.receiveAsFlow()
 
     init {
         load()
@@ -49,21 +68,43 @@ class ArtDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = false) }
             val detailJob = async { repository.getArtworkDetail(id) }
-            val similarJob = async { repository.getSimilarArtworks(id) }
+            // Opened from Profile → no "More like this" (it should read like a clean preview).
+            val similarJob = if (isFromProfile) null else async { repository.getSimilarArtworks(id) }
+            val meJob = async { profileRepository.getMyProfile() }
             val detailRes = detailJob.await()
-            val similarRes = similarJob.await()
+            val similarRes = similarJob?.await()
+            val currentUserId = (meJob.await() as? ApiResult.Success)?.data?.id
 
             if (detailRes is ApiResult.Success) {
+                val post = detailRes.data
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = false,
-                        post = detailRes.data,
+                        post = post,
                         moreLikeThis = (similarRes as? ApiResult.Success)?.data.orEmpty(),
+                        isOwn = currentUserId != null && post.ownerId == currentUserId,
                     )
                 }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = true) }
+            }
+        }
+    }
+
+    /** Stage this artwork for the edit flow before navigating to the New Art screen. */
+    fun prepareEdit() {
+        artworkId?.let { editTargetStore.setArtwork(it) }
+    }
+
+    fun deleteArtwork() {
+        val id = artworkId ?: return
+        if (_uiState.value.isDeleting) return
+        _uiState.update { it.copy(isDeleting = true) }
+        viewModelScope.launch {
+            when (uploadRepository.deleteArtwork(id)) {
+                is ApiResult.Success -> _deleted.send(Unit)
+                is ApiResult.Error -> _uiState.update { it.copy(isDeleting = false) }
             }
         }
     }
@@ -75,7 +116,12 @@ class ArtDetailViewModel @Inject constructor(
         setLiked(nowLiked)
         viewModelScope.launch {
             val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)
-            if (result is ApiResult.Error) setLiked(!nowLiked)   // revert on failure
+            if (result is ApiResult.Error) {
+                setLiked(!nowLiked)   // revert on failure
+            } else {
+                // Keep the Profile "Liked" tab in sync — an unliked art drops out on return.
+                profileRefreshBus.signal()
+            }
         }
     }
 

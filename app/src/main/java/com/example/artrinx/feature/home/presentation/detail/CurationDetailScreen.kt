@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,6 +62,7 @@ import com.example.artrinx.feature.home.presentation.components.ReportBottomShee
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
 import com.example.artrinx.feature.home.presentation.components.AddToCurationSheet
+import com.example.artrinx.feature.upload.presentation.components.DeleteConfirmDialog
 
 @Composable
 fun CurationDetailScreen(
@@ -72,18 +74,34 @@ fun CurationDetailScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
+    onEditCuration: () -> Unit = {},
     activeRoute: String = "home",
     viewModel: CurationDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showReportSheet by remember { mutableStateOf(false) }
     var showAddToCuration by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Pop back once the curation is deleted.
+    LaunchedEffect(Unit) {
+        viewModel.deleted.collect { onBack() }
+    }
 
     if (showReportSheet) {
         ReportBottomSheet(
             artTitle    = uiState.curation?.title ?: "",
             profileName = uiState.curation?.curatorName ?: "",
             onDismiss   = { showReportSheet = false },
+        )
+    }
+
+    if (showDeleteDialog) {
+        DeleteConfirmDialog(
+            itemLabel = "curation",
+            isDeleting = uiState.isDeleting,
+            onConfirm = { viewModel.deleteCuration() },
+            onDismiss = { showDeleteDialog = false },
         )
     }
 
@@ -139,12 +157,32 @@ fun CurationDetailScreen(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showReportSheet = true }) {
-                    Icon(
-                        painter            = painterResource(R.drawable.ic_report),
-                        contentDescription = "Report",
-                        tint               = MaterialTheme.colorScheme.onBackground,
-                    )
+                if (uiState.isOwn) {
+                    IconButton(onClick = {
+                        viewModel.prepareEdit()
+                        onEditCuration()
+                    }) {
+                        Icon(
+                            painter            = painterResource(R.drawable.ic_edit),
+                            contentDescription = "Edit",
+                            tint               = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            painter            = painterResource(R.drawable.ic_delete),
+                            contentDescription = "Delete",
+                            tint               = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                } else {
+                    IconButton(onClick = { showReportSheet = true }) {
+                        Icon(
+                            painter            = painterResource(R.drawable.ic_report),
+                            contentDescription = "Report",
+                            tint               = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
                 }
             }
 
@@ -387,38 +425,43 @@ private fun CurationDetailContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.width(Spacing.sm))
-                Box(
-                    modifier         = Modifier
-                        .clip(RoundedCornerShape(Spacing.sm))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { showSendSheet = true }
-                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text  = "Send message",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                // No "Send message" on your own curation.
+                if (!uiState.isOwn) {
+                    Spacer(Modifier.width(Spacing.sm))
+                    Box(
+                        modifier         = Modifier
+                            .clip(RoundedCornerShape(Spacing.sm))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { showSendSheet = true }
+                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text  = "Send message",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
         }
 
-        // ── More like this ──────────────────────────────────────────────────
-        item(key = "more-header") {
-            SectionHeader(title = "More like this")
-        }
-        item(key = "more-content") {
-            LazyRow(
-                contentPadding        = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-            ) {
-                items(uiState.moreLikeThis, key = { it.id }) { item ->
-                    CollectionCard(
-                        item    = item,
-                        onClick = { onNavigateToCuration(item.id) },
-                    )
+        // ── More like this (hidden when there are no suggestions, e.g. from Profile) ──
+        if (uiState.moreLikeThis.isNotEmpty()) {
+            item(key = "more-header") {
+                SectionHeader(title = "More like this")
+            }
+            item(key = "more-content") {
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    items(uiState.moreLikeThis, key = { it.id }) { item ->
+                        CollectionCard(
+                            item    = item,
+                            onClick = { onNavigateToCuration(item.id) },
+                        )
+                    }
                 }
             }
         }

@@ -173,6 +173,7 @@ class HomeRepositoryImpl @Inject constructor(
         likeCount = likesCount ?: 0,
         isLiked = isLiked ?: false,
         shopUrl = shopLink.orEmpty(),
+        ownerId = userId,
     )
 
     private fun CurationDto.toCurationItem(): CurationItem {
@@ -193,6 +194,7 @@ class HomeRepositoryImpl @Inject constructor(
             description = description ?: "A carefully curated collection of remarkable artworks.",
             likeCount = likesCount ?: 0,
             isLiked = isLiked ?: false,
+            authorId = author?.id,
         )
     }
 

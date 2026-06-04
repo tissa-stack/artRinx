@@ -6,8 +6,10 @@ import com.example.artrinx.feature.home.data.remote.dto.EnvelopeDto
 import com.example.artrinx.feature.home.data.remote.dto.PageDto
 import com.example.artrinx.feature.upload.data.remote.dto.CreateCurationBody
 import com.example.artrinx.feature.upload.data.remote.dto.UpdateCurationBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PUT
 import retrofit2.http.POST
@@ -24,12 +26,15 @@ interface CurationApiService {
     @GET("api/curations/{id}")
     suspend fun getCuration(@Path("id") id: Int): Response<EnvelopeDto<CurationDto>>
 
-    /** Update a curation's artwork membership (full replace). */
+    /** Update a curation (full replace — title/description/privacy/artwork_ids). */
     @PUT("api/curations/{id}")
     suspend fun updateCuration(
         @Path("id") id: Int,
         @Body body: UpdateCurationBody,
     ): Response<EnvelopeDto<CurationDto>>
+
+    @DELETE("api/curations/{id}")
+    suspend fun deleteCuration(@Path("id") id: Int): Response<ResponseBody>
 
     /** Selection source: the current user's own artworks. */
     @GET("api/artworks/")

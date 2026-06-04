@@ -1,9 +1,13 @@
 package com.example.artrinx.feature.upload.data.repository
 
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.upload.data.remote.UploadApiService
+import com.example.artrinx.feature.upload.data.remote.dto.UpdateArtworkBody
 import com.example.artrinx.feature.upload.domain.model.CreatedArtwork
+import com.example.artrinx.feature.upload.domain.model.EditableArtwork
 import com.example.artrinx.feature.upload.domain.model.PreparedUpload
+import com.example.artrinx.feature.upload.domain.model.UpdateArtworkRequest
 import com.example.artrinx.feature.upload.domain.model.UploadRequest
 import com.example.artrinx.feature.upload.domain.repository.UploadRepository
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +25,7 @@ import javax.inject.Named
 class UploadRepositoryImpl @Inject constructor(
     private val apiService: UploadApiService,
     @param:Named("upload") private val uploadClient: OkHttpClient,
+    private val profileRefreshBus: ProfileRefreshBus,
 ) : UploadRepository {
 
     override suspend fun prepareUpload(): ApiResult<PreparedUpload> = safeCall {
@@ -85,6 +90,63 @@ class UploadRepositoryImpl @Inject constructor(
             ApiResult.Success(CreatedArtwork(id = data.id, imageUrl = data.imageUrl.orEmpty()))
         } else {
             errorFor(response)
+        }
+    }
+
+    override suspend fun getArtworkForEdit(id: Int): ApiResult<EditableArtwork> = safeCall {
+        val response = apiService.getArtwork(id)
+        val data = response.body()?.data
+        if (response.isSuccessful && data != null) {
+            ApiResult.Success(
+                EditableArtwork(
+                    title = data.title.orEmpty(),
+                    description = data.description,
+                    tags = data.tags.orEmpty(),
+                    mediumId = data.medium?.id,
+                    mediumTitle = data.medium?.title,
+                    shopLink = data.shopLink,
+                    price = data.price,
+                    isPrivate = data.privacy ?: false,
+                    artistId = data.artist?.artistId,
+                    artistName = data.artist?.artistName,
+                    imageUrl = data.imageUrl ?: data.thumbnailUrl ?: data.webpUrl,
+                ),
+            )
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun updateArtwork(id: Int, request: UpdateArtworkRequest): ApiResult<Unit> = safeCall {
+        val response = apiService.updateArtwork(
+            id = id,
+            body = UpdateArtworkBody(
+                title = request.title,
+                description = request.description,
+                tags = request.tags.ifEmpty { null },
+                mediumId = request.mediumId,
+                shopLink = request.shopLink,
+                price = request.price,
+                privacy = request.isPrivate,
+                artistId = request.artistId,
+                artistName = request.artistName,
+            ),
+        )
+        if (response.isSuccessful) {
+            profileRefreshBus.signal()
+            ApiResult.Success(Unit)
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun deleteArtwork(id: Int): ApiResult<Unit> = safeCall {
+        val response = apiService.deleteArtwork(id)
+        if (response.isSuccessful) {
+            profileRefreshBus.signal()
+            ApiResult.Success(Unit)
+        } else {
+            errorFor(response.code())
         }
     }
 

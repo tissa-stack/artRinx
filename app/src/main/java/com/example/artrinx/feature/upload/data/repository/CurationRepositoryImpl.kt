@@ -1,12 +1,14 @@
 package com.example.artrinx.feature.upload.data.repository
 
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.upload.data.remote.CurationApiService
 import com.example.artrinx.feature.upload.data.remote.dto.CreateCurationBody
 import com.example.artrinx.feature.upload.data.remote.dto.UpdateCurationBody
 import com.example.artrinx.feature.upload.domain.model.CreateCurationRequest
 import com.example.artrinx.feature.upload.domain.model.CreatedCuration
+import com.example.artrinx.feature.upload.domain.model.EditableCuration
 import com.example.artrinx.feature.upload.domain.model.UserArtItem
 import com.example.artrinx.feature.upload.domain.repository.CurationRepository
 import retrofit2.Response
@@ -15,6 +17,7 @@ import javax.inject.Inject
 
 class CurationRepositoryImpl @Inject constructor(
     private val apiService: CurationApiService,
+    private val profileRefreshBus: ProfileRefreshBus,
 ) : CurationRepository {
 
     override suspend fun getMyArtworks(page: Int, size: Int): ApiResult<List<UserArtItem>> = safeCall {
@@ -72,9 +75,68 @@ class CurationRepositoryImpl @Inject constructor(
         if (!getResp.isSuccessful || curation == null) return@safeCall errorFor(getResp)
         val existing = curation.artworks.orEmpty().mapNotNull { it.id }
         val merged = (existing + artworkIds).distinct()
-        // 2. PUT the merged membership.
-        val putResp = apiService.updateCuration(targetCurationId, UpdateCurationBody(merged))
+        // 2. PUT the merged membership, preserving the curation's title/description/privacy.
+        val putResp = apiService.updateCuration(
+            targetCurationId,
+            UpdateCurationBody(
+                title = curation.title,
+                description = curation.description,
+                privacy = curation.privacy,
+                artworkIds = merged,
+            ),
+        )
         if (putResp.isSuccessful) ApiResult.Success(Unit) else errorFor(putResp)
+    }
+
+    override suspend fun getCurationForEdit(id: Int): ApiResult<EditableCuration> = safeCall {
+        val response = apiService.getCuration(id)
+        val data = response.body()?.data
+        if (response.isSuccessful && data != null) {
+            ApiResult.Success(
+                EditableCuration(
+                    title = data.title.orEmpty(),
+                    description = data.description,
+                    isPrivate = data.privacy ?: false,
+                    arts = data.artworks.orEmpty().mapNotNull { it.toUserArtItem() },
+                ),
+            )
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun updateCuration(
+        id: Int,
+        title: String,
+        description: String?,
+        isPrivate: Boolean,
+        artworkIds: List<Int>,
+    ): ApiResult<Unit> = safeCall {
+        val response = apiService.updateCuration(
+            id,
+            UpdateCurationBody(
+                title = title,
+                description = description,
+                privacy = isPrivate,
+                artworkIds = artworkIds,
+            ),
+        )
+        if (response.isSuccessful) {
+            profileRefreshBus.signal()
+            ApiResult.Success(Unit)
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun deleteCuration(id: Int): ApiResult<Unit> = safeCall {
+        val response = apiService.deleteCuration(id)
+        if (response.isSuccessful) {
+            profileRefreshBus.signal()
+            ApiResult.Success(Unit)
+        } else {
+            errorFor(response)
+        }
     }
 
     // ── Mappers ────────────────────────────────────────────────────────────────

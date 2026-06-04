@@ -42,6 +42,13 @@ interface ProfileApiService {
         @Query("size") size: Int,
     ): Response<EnvelopeDto<PageDto<CurationDto>>>
 
+    /** Artworks the current user has liked (the "Liked" tab). */
+    @GET("api/artworks/liked")
+    suspend fun getLikedArtworks(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<ArtworkDto>>>
+
     @GET("api/profile/username-check")
     suspend fun checkUsername(
         @Query("username") username: String,

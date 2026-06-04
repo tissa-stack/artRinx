@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,6 +23,7 @@ import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.CurationProgressRow
 import com.example.artrinx.feature.home.presentation.components.UploadProgressRow
+import com.example.artrinx.feature.home.presentation.components.state.EmptyView
 import com.example.artrinx.feature.profile.domain.model.ProfileTab
 import com.example.artrinx.feature.profile.presentation.view.components.ProfileArtMasonryGrid
 import com.example.artrinx.feature.profile.presentation.view.components.ProfileCurationsGrid
@@ -34,6 +39,8 @@ fun UserProfileScreen(
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToCurationDetail: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -50,6 +57,8 @@ fun UserProfileScreen(
         onNavigateToCreate        = onNavigateToCreate,
         onNavigateToNotifications = onNavigateToNotifications,
         onNavigateToSettings      = onNavigateToSettings,
+        onNavigateToDetail        = onNavigateToDetail,
+        onNavigateToCurationDetail = onNavigateToCurationDetail,
     )
 }
 
@@ -68,6 +77,8 @@ private fun UserProfileContent(
     onNavigateToCreate: () -> Unit,
     onNavigateToNotifications: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToDetail: (String) -> Unit,
+    onNavigateToCurationDetail: (String) -> Unit,
 ) {
     Scaffold(
         bottomBar = {
@@ -127,11 +138,20 @@ private fun UserProfileContent(
                                     modifier = Modifier.padding(top = Spacing.sm),
                                 )
                             }
-                            ProfileArtMasonryGrid(
-                                items = uiState.artItems,
-                                modifier = Modifier.padding(top = Spacing.md),
-                                onItemClick = {},
-                            )
+                            if (uiState.artItems.isEmpty() && uiState.uploadProgress == null) {
+                                EmptyView(
+                                    icon = Icons.Outlined.Image,
+                                    title = "No art yet",
+                                    subtitle = "Artworks you upload will appear here.",
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                )
+                            } else {
+                                ProfileArtMasonryGrid(
+                                    items = uiState.artItems,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToDetail(it.id) },
+                                )
+                            }
                         }
                         ProfileTab.CURATIONS -> Column {
                             uiState.curationProgress?.let { progress ->
@@ -142,17 +162,37 @@ private fun UserProfileContent(
                                     modifier = Modifier.padding(top = Spacing.sm),
                                 )
                             }
-                            ProfileCurationsGrid(
-                                items = uiState.curations,
-                                modifier = Modifier.padding(top = Spacing.md),
-                                onItemClick = {},
-                            )
+                            if (uiState.curations.isEmpty() && uiState.curationProgress == null) {
+                                EmptyView(
+                                    icon = Icons.Outlined.Collections,
+                                    title = "No curations yet",
+                                    subtitle = "Curations you create will appear here.",
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                )
+                            } else {
+                                ProfileCurationsGrid(
+                                    items = uiState.curations,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToCurationDetail(it.id) },
+                                )
+                            }
                         }
-                        ProfileTab.LIKED -> ProfileArtMasonryGrid(
-                            items = uiState.likedItems,
-                            modifier = Modifier.padding(top = Spacing.md),
-                            onItemClick = {},
-                        )
+                        ProfileTab.LIKED -> {
+                            if (uiState.likedItems.isEmpty()) {
+                                EmptyView(
+                                    icon = Icons.Outlined.FavoriteBorder,
+                                    title = "No liked art yet",
+                                    subtitle = "Art you like will appear here.",
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                )
+                            } else {
+                                ProfileArtMasonryGrid(
+                                    items = uiState.likedItems,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToDetail(it.id) },
+                                )
+                            }
+                        }
                     }
                 }
             }

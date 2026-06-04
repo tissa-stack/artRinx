@@ -53,8 +53,15 @@ data class ArtFormState(
     /** Non-null while a PRIVATE upload is in flight / just finished (drives the overlay). */
     val creationStatus: CreationStatus? = null,
     val creationError: String? = null,
+    /** Set when reusing this form to EDIT an existing artwork (metadata-only). */
+    val editArtworkId: Int? = null,
+    /** Remote image of the artwork being edited (shown but not replaceable). */
+    val imageUrl: String? = null,
+    /** True while the existing artwork is being fetched to prefill the edit form. */
+    val isLoadingEdit: Boolean = false,
 ) {
     val isValid: Boolean get() = title.isNotEmpty()
+    val isEditing: Boolean get() = editArtworkId != null || isLoadingEdit
 }
 
 /** A selectable medium for the upload form (id needed for the create-artwork call). */
@@ -95,6 +102,34 @@ data class CreatedArtwork(
     val imageUrl: String,
 )
 
+/** Existing artwork fields used to prefill the edit form (no image change). */
+data class EditableArtwork(
+    val title: String,
+    val description: String?,
+    val tags: List<String>,
+    val mediumId: Int?,
+    val mediumTitle: String?,
+    val shopLink: String?,
+    val price: Double?,
+    val isPrivate: Boolean,
+    val artistId: Int?,
+    val artistName: String?,
+    val imageUrl: String?,
+)
+
+/** Metadata-only update sent to PUT /api/artworks/{id}. */
+data class UpdateArtworkRequest(
+    val title: String,
+    val description: String?,
+    val tags: List<String>,
+    val mediumId: Int?,
+    val shopLink: String?,
+    val price: Double?,
+    val isPrivate: Boolean,
+    val artistId: Int?,
+    val artistName: String?,
+)
+
 // ── New Curation form ─────────────────────────────────────────────────────────
 
 @Immutable
@@ -122,9 +157,14 @@ data class NewCurationState(
     /** Non-null while a PRIVATE curation is being created / just finished (drives the overlay). */
     val creationStatus: CreationStatus? = null,
     val creationError: String? = null,
+    /** Set when reusing this form to EDIT an existing curation. */
+    val editCurationId: Int? = null,
+    /** True while the existing curation is being fetched to prefill the edit form. */
+    val isLoadingEdit: Boolean = false,
 ) {
     val isValid: Boolean get() = title.isNotEmpty() && selectedArts.isNotEmpty()
     val displayedArts: List<UserArtItem> get() = if (activeArtTab == ArtTab.UPLOADS) uploadedArts else likedArts
+    val isEditing: Boolean get() = editCurationId != null || isLoadingEdit
 }
 
 // ── Mock data ─────────────────────────────────────────────────────────────────

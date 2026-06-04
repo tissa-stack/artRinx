@@ -12,6 +12,7 @@ import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
 import com.example.artrinx.feature.profile.domain.model.ProfileType
+import com.example.artrinx.feature.profile.domain.model.UserProfileData
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import com.example.artrinx.feature.search.domain.model.CardHeight
 import com.google.gson.Gson
@@ -60,6 +61,35 @@ class ProfileRepositoryImpl @Inject constructor(
                         username = dto.username.orEmpty(),
                         displayName = dto.displayName ?: dto.username.orEmpty(),
                         avatarUrl = dto.profilePictureUrl,
+                    ),
+                )
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getProfileData(): ApiResult<UserProfileData> {
+        return try {
+            val response = apiService.getMyProfile()
+            val dto = response.body()?.data
+            if (response.isSuccessful && dto != null) {
+                ApiResult.Success(
+                    UserProfileData(
+                        handle = dto.username?.let { "@$it" } ?: "",
+                        displayName = dto.displayName ?: dto.fullName ?: dto.username.orEmpty(),
+                        role = dto.profileTitle.orEmpty(),
+                        bio = dto.bio.orEmpty(),
+                        website = dto.profileLink.orEmpty(),
+                        avatarUrl = dto.profilePictureUrl,
+                        artCount = dto.artworkCount ?: 0,
+                        curationCount = dto.curationCount ?: 0,
+                        followerCount = dto.followerCount ?: 0,
+                        followingCount = dto.followingCount ?: 0,
                     ),
                 )
             } else {
@@ -126,6 +156,22 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getMyCurations(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileCurationItem() }
+                ApiResult.Success(items)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getLikedArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>> {
+        return try {
+            val response = apiService.getLikedArtworks(page, size)
+            if (response.isSuccessful) {
+                val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
                 ApiResult.Success(items)
             } else {
                 profileError(response.code())

@@ -3,6 +3,7 @@ package com.example.artrinx.feature.upload.domain.repository
 import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.upload.domain.model.CreateCurationRequest
 import com.example.artrinx.feature.upload.domain.model.CreatedCuration
+import com.example.artrinx.feature.upload.domain.model.EditableCuration
 import com.example.artrinx.feature.upload.domain.model.UserArtItem
 
 interface CurationRepository {
@@ -21,4 +22,19 @@ interface CurationRepository {
 
     /** Add [artworkIds] to an existing curation, preserving its current artworks (GET + merge + PUT). */
     suspend fun addArtworksToCuration(targetCurationId: Int, artworkIds: List<Int>): ApiResult<Unit>
+
+    /** Fetch an existing curation's fields (title/description/privacy + arts) to prefill the edit flow. */
+    suspend fun getCurationForEdit(id: Int): ApiResult<EditableCuration>
+
+    /** Edit a curation (PUT — full update of title/description/privacy/artwork_ids). */
+    suspend fun updateCuration(
+        id: Int,
+        title: String,
+        description: String?,
+        isPrivate: Boolean,
+        artworkIds: List<Int>,
+    ): ApiResult<Unit>
+
+    /** Delete a curation. */
+    suspend fun deleteCuration(id: Int): ApiResult<Unit>
 }

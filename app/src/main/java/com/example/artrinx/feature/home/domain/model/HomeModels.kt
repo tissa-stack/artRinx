@@ -32,6 +32,8 @@ data class CurationItem(
     val description: String = "A carefully curated collection of remarkable artworks.",
     val likeCount: Int = 0,
     val isLiked: Boolean = false,
+    /** Curation owner's user id — used to detect "this is my own curation". */
+    val authorId: Int? = null,
 )
 
 @Immutable
@@ -63,6 +65,8 @@ data class ShoppablePost(
     val commentCount: Int = 0,
     val isLiked: Boolean = false,
     val shopUrl: String = "",
+    /** Artwork owner's user id — used to detect "this is my own art". */
+    val ownerId: Int? = null,
 )
 
 /** Everything the single /api/feed/discover call returns, mapped to domain models. */

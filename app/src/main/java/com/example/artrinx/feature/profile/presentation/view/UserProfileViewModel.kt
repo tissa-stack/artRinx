@@ -3,7 +3,7 @@ package com.example.artrinx.feature.profile.presentation.view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
-import com.example.artrinx.feature.profile.domain.model.MockUserProfileData
+import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileTab
@@ -13,6 +13,7 @@ import com.example.artrinx.feature.upload.domain.UploadManager
 import com.example.artrinx.feature.upload.domain.model.CurationProgress
 import com.example.artrinx.feature.upload.domain.model.UploadProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,7 @@ class UserProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val uploadManager: UploadManager,
     private val curationManager: CurationManager,
+    private val profileRefreshBus: ProfileRefreshBus,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserProfileUiState(isLoading = true))
@@ -34,24 +36,38 @@ class UserProfileViewModel @Inject constructor(
         load()
         observeUploads()
         observeCurations()
+        observeRefreshes()
     }
 
     private fun load() {
         viewModelScope.launch {
-            // Profile header and liked remain mock for this phase; Art + Curations tabs are real.
-            val artworksResult = profileRepository.getMyArtworks(PAGE, SIZE)
-            val curationsResult = profileRepository.getMyCurations(PAGE, SIZE)
-            val artItems = (artworksResult as? ApiResult.Success)?.data ?: MockUserProfileData.artItems
-            val curations = (curationsResult as? ApiResult.Success)?.data ?: MockUserProfileData.curations
+            // Fetch header, art, curations and liked concurrently.
+            val profileDeferred = async { profileRepository.getProfileData() }
+            val artworksDeferred = async { profileRepository.getMyArtworks(PAGE, SIZE) }
+            val curationsDeferred = async { profileRepository.getMyCurations(PAGE, SIZE) }
+            val likedDeferred = async { profileRepository.getLikedArtworks(PAGE, SIZE) }
+
+            val profile = (profileDeferred.await() as? ApiResult.Success)?.data
+            val artItems = (artworksDeferred.await() as? ApiResult.Success)?.data.orEmpty()
+            val curations = (curationsDeferred.await() as? ApiResult.Success)?.data.orEmpty()
+            val likedItems = (likedDeferred.await() as? ApiResult.Success)?.data.orEmpty()
+
             _uiState.update { state ->
                 state.copy(
                     isLoading = false,
-                    profile = MockUserProfileData.profile,
+                    profile = profile ?: state.profile,
                     artItems = artItems,
                     curations = curations,
-                    likedItems = MockUserProfileData.likedItems,
+                    likedItems = likedItems,
                 )
             }
+        }
+    }
+
+    /** Reload when an artwork/curation is edited or deleted elsewhere (detail/edit flows). */
+    private fun observeRefreshes() {
+        viewModelScope.launch {
+            profileRefreshBus.events.collect { load() }
         }
     }
 

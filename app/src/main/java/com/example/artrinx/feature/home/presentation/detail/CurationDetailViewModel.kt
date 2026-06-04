@@ -8,11 +8,16 @@ import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.home.data.local.CurationPreviewStore
 import com.example.artrinx.feature.home.domain.model.CurationItem
 import com.example.artrinx.feature.home.domain.repository.HomeRepository
+import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
+import com.example.artrinx.feature.upload.domain.EditTargetStore
+import com.example.artrinx.feature.upload.domain.repository.CurationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,6 +30,9 @@ data class CurationDetailUiState(
     val isLiked: Boolean = false,
     val isLoading: Boolean = true,
     val error: Boolean = false,
+    /** True when the current user owns this curation → show Edit/Delete instead of Report. */
+    val isOwn: Boolean = false,
+    val isDeleting: Boolean = false,
 )
 
 @HiltViewModel
@@ -32,12 +40,21 @@ class CurationDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: HomeRepository,
     private val curationPreviewStore: CurationPreviewStore,
+    private val profileRepository: ProfileRepository,
+    private val curationRepository: CurationRepository,
+    private val editTargetStore: EditTargetStore,
 ) : ViewModel() {
 
     private val curationId: Int? = savedStateHandle.get<String>("curationId")?.toIntOrNull()
+    private val source: String? = savedStateHandle.get<String>("source")
+    private val isFromProfile: Boolean = source == "profile"
 
     private val _uiState = MutableStateFlow(CurationDetailUiState())
     val uiState: StateFlow<CurationDetailUiState> = _uiState.asStateFlow()
+
+    /** One-shot: emitted after a successful delete so the screen can pop back. */
+    private val _deleted = Channel<Unit>(Channel.BUFFERED)
+    val deleted = _deleted.receiveAsFlow()
 
     init {
         load()
@@ -52,9 +69,12 @@ class CurationDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = false) }
             val detailJob = async { repository.getCurationDetail(id) }
-            val moreJob = async { repository.getMoreCurations() }
+            // Opened from Profile → no "More like this" (clean preview).
+            val moreJob = if (isFromProfile) null else async { repository.getMoreCurations() }
+            val meJob = async { profileRepository.getMyProfile() }
             val detailRes = detailJob.await()
-            val moreRes = moreJob.await()
+            val moreRes = moreJob?.await()
+            val currentUserId = (meJob.await() as? ApiResult.Success)?.data?.id
 
             if (detailRes is ApiResult.Success) {
                 val fetched = detailRes.data
@@ -79,10 +99,28 @@ class CurationDetailViewModel @Inject constructor(
                         moreLikeThis = more,
                         likeCount = curation.likeCount,
                         isLiked = curation.isLiked,
+                        isOwn = currentUserId != null && curation.authorId == currentUserId,
                     )
                 }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = true) }
+            }
+        }
+    }
+
+    /** Stage this curation for the edit flow before navigating to the New Curation screen. */
+    fun prepareEdit() {
+        curationId?.let { editTargetStore.setCuration(it) }
+    }
+
+    fun deleteCuration() {
+        val id = curationId ?: return
+        if (_uiState.value.isDeleting) return
+        _uiState.update { it.copy(isDeleting = true) }
+        viewModelScope.launch {
+            when (curationRepository.deleteCuration(id)) {
+                is ApiResult.Success -> _deleted.send(Unit)
+                is ApiResult.Error -> _uiState.update { it.copy(isDeleting = false) }
             }
         }
     }

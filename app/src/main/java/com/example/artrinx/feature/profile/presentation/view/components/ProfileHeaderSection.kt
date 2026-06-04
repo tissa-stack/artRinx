@@ -94,9 +94,10 @@ fun ProfileHeaderSection(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
-                if (profile.avatarRes != null) {
+                val avatarModel = profile.avatarUrl ?: profile.avatarRes
+                if (avatarModel != null) {
                     AsyncImage(
-                        model = profile.avatarRes,
+                        model = avatarModel,
                         contentDescription = profile.displayName,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),

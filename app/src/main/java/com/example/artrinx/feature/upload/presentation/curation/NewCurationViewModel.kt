@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.upload.domain.CurationManager
 import com.example.artrinx.feature.upload.domain.CurationSeedStore
+import com.example.artrinx.feature.upload.domain.EditTargetStore
 import com.example.artrinx.feature.upload.domain.model.ArtTab
 import com.example.artrinx.feature.upload.domain.model.CreateCurationRequest
 import com.example.artrinx.feature.upload.domain.model.CreationStatus
@@ -26,6 +27,7 @@ class NewCurationViewModel @Inject constructor(
     private val curationRepository: CurationRepository,
     private val curationManager: CurationManager,
     seedStore: CurationSeedStore,
+    editTargetStore: EditTargetStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewCurationState())
@@ -41,7 +43,40 @@ class NewCurationViewModel @Inject constructor(
         }
         loadSelectionSources()
         observePrivateCreate()
+        editTargetStore.consumeCuration()?.let { loadForEdit(it) }
     }
+
+    /** Prefill the form from an existing curation when entering edit mode. */
+    private fun loadForEdit(id: Int) {
+        // Synchronous so the loader shows immediately (before the fetch coroutine runs).
+        _state.update { it.copy(isLoadingEdit = true) }
+        viewModelScope.launch {
+            val result = curationRepository.getCurationForEdit(id)
+            if (result is ApiResult.Success) {
+                val c = result.data
+                val selected = c.arts.map { it.copy(isSelected = true) }
+                _state.update { state ->
+                    state.copy(
+                        editCurationId = id,
+                        title = c.title,
+                        description = c.description.orEmpty(),
+                        privacy = if (c.isPrivate) PrivacyOption.PRIVATE else PrivacyOption.PUBLIC,
+                        selectedArts = selected,
+                        uploadedArts = state.applySelectionTo(state.uploadedArts, selected),
+                        likedArts = state.applySelectionTo(state.likedArts, selected),
+                        isLoadingEdit = false,
+                    )
+                }
+            } else {
+                _state.update { it.copy(isLoadingEdit = false) }
+            }
+        }
+    }
+
+    private fun NewCurationState.applySelectionTo(
+        items: List<UserArtItem>,
+        selected: List<UserArtItem>,
+    ): List<UserArtItem> = items.map { item -> item.copy(isSelected = selected.any { it.id == item.id }) }
 
     /** While a PRIVATE curation is being created, mirror the manager's progress into overlay state. */
     private fun observePrivateCreate() {
@@ -161,6 +196,36 @@ class NewCurationViewModel @Inject constructor(
         )
         return true
     }
+
+    /**
+     * Edit mode: PUT the curation changes for [NewCurationState.editCurationId] and drive the
+     * overlay (LOADING → CREATED / FAILED).
+     */
+    fun onSaveEdit() {
+        val s = _state.value
+        if (!s.isValid) return
+        val id = s.editCurationId ?: return
+        val artworkIds = s.selectedArts.mapNotNull { it.artworkId }
+        if (artworkIds.isEmpty()) return
+        _state.update { it.copy(creationStatus = CreationStatus.LOADING, creationError = null) }
+        viewModelScope.launch {
+            val result = curationRepository.updateCuration(
+                id = id,
+                title = s.title,
+                description = s.description.ifBlank { null },
+                isPrivate = s.privacy == PrivacyOption.PRIVATE,
+                artworkIds = artworkIds,
+            )
+            when (result) {
+                is ApiResult.Success ->
+                    _state.update { it.copy(creationStatus = CreationStatus.CREATED) }
+                is ApiResult.Error ->
+                    _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = "Couldn't save changes — please try again.") }
+            }
+        }
+    }
+
+    fun onRetryEdit() = onSaveEdit()
 
     private companion object {
         const val PAGE = 1
