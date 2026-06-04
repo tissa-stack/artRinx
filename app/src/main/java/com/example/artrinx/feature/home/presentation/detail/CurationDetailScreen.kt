@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +51,7 @@ import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
+import com.example.artrinx.core.util.shareCuration
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.CollectionCard
 import com.example.artrinx.feature.home.presentation.components.CurationCardStack
@@ -167,6 +169,7 @@ private fun CurationDetailContent(
     modifier: Modifier = Modifier,
 ) {
     val d        = LocalDimens.current
+    val context  = LocalContext.current
     val curation = uiState.curation ?: return
     var descExpanded by remember { mutableStateOf(true) }
     var showSendSheet by remember { mutableStateOf(false) }
@@ -224,7 +227,16 @@ private fun CurationDetailContent(
                             painter            = painterResource(R.drawable.ic_send),
                             contentDescription = "Share",
                             tint               = MaterialTheme.colorScheme.onSurface,
-                            modifier           = Modifier.size(Spacing.xxl),
+                            modifier           = Modifier
+                                .size(Spacing.xxl)
+                                .clip(CircleShape)
+                                .clickable {
+                                    context.shareCuration(
+                                        title = curation.title,
+                                        curatorName = curation.curatorName,
+                                        description = curation.description,
+                                    )
+                                },
                         )
                         LikeButton(
                             isLiked = uiState.isLiked,

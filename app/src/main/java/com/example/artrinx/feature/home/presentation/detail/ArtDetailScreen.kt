@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +52,7 @@ import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
+import com.example.artrinx.core.util.shareArtwork
 import com.example.artrinx.feature.home.presentation.components.ArtworkCard
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.LikeButton
@@ -176,6 +178,7 @@ private fun ArtDetailContent(
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
+    val context = LocalContext.current
     val post = uiState.post ?: return
     var descExpanded by remember { mutableStateOf(false) }
     var showSendSheet by remember { mutableStateOf(false) }
@@ -258,7 +261,17 @@ private fun ArtDetailContent(
                             painter = painterResource(R.drawable.ic_send),
                             contentDescription = "Share",
                             tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(Spacing.xxl),
+                            modifier = Modifier
+                                .size(Spacing.xxl)
+                                .clip(CircleShape)
+                                .clickable {
+                                    context.shareArtwork(
+                                        title = post.title,
+                                        artistName = post.artistName,
+                                        description = post.description,
+                                        link = post.shopUrl.ifBlank { null },
+                                    )
+                                },
                         )
                         LikeButton(
                             isLiked = post.isLiked,

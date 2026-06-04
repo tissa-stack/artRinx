@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +41,7 @@ import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
+import com.example.artrinx.core.util.shareArtwork
 import com.example.artrinx.feature.home.domain.model.ShoppablePost
 
 @Composable
@@ -50,6 +52,7 @@ fun ShoppableFeedItem(
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
+    val context = LocalContext.current
     var descriptionExpanded by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
 
@@ -162,7 +165,17 @@ fun ShoppableFeedItem(
                         painter = painterResource(R.drawable.ic_send),
                         contentDescription = "Share",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(Spacing.xxl),
+                        modifier = Modifier
+                            .size(Spacing.xxl)
+                            .clip(CircleShape)
+                            .clickable {
+                                context.shareArtwork(
+                                    title = post.title,
+                                    artistName = post.artistName,
+                                    description = post.description,
+                                    link = post.shopUrl.ifBlank { null },
+                                )
+                            },
                     )
                     LikeButton(
                         isLiked = post.isLiked,

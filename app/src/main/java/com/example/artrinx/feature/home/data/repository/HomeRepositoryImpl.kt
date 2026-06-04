@@ -33,6 +33,8 @@ class HomeRepositoryImpl @Inject constructor(
                     newArt = newArt.map { it.toArtworkItem() },
                     curations = data?.popularCurations.orEmpty().map { it.toCurationItem() },
                     posts = newArt.map { it.toFeedPost() },
+                    // Render in the exact order the backend returns recently_viewed.
+                    recentlyViewed = data?.recentlyViewed.orEmpty().map { it.toArtworkItem() },
                 ),
             )
         } else {

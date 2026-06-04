@@ -96,9 +96,12 @@ class HomeViewModel @Inject constructor(
     fun onRetryCuration() = curationManager.retry()
     fun onDismissCuration() = curationManager.dismiss()
 
-    private fun load() {
+    private fun load(isRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update {
+                if (isRefresh) it.copy(isRefreshing = true, error = null)
+                else it.copy(isLoading = true, error = null)
+            }
 
             // Discover tab comes from one call; shop feed from another. Run concurrently.
             val feedJob = async { repository.getDiscoverFeed() }
@@ -109,7 +112,9 @@ class HomeViewModel @Inject constructor(
             // The discover feed is the primary content — fail the screen only if it errored.
             if (feedRes is ApiResult.Error) {
                 _uiState.update {
-                    it.copy(
+                    // On pull-to-refresh keep the existing content; just stop the spinner.
+                    if (isRefresh) it.copy(isRefreshing = false)
+                    else it.copy(
                         isLoading = false,
                         error = if (feedRes is ApiResult.Error.Network) HomeError.NoInternet
                         else HomeError.Generic(),
@@ -127,6 +132,7 @@ class HomeViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = false,
+                    isRefreshing = false,
                     error = null,
                     bannerItems = feed.banners,
                     newArtItems = feed.newArt,
@@ -134,8 +140,9 @@ class HomeViewModel @Inject constructor(
                     feedItems = feed.posts,
                     shoppableItems = (shopRes as? ApiResult.Success)?.data.orEmpty(),
                     forYouItems = buildForYou(feed.posts, feed.banners),
-                    // No backend read endpoint for view history (only an admin write path) → left unwired.
-                    recentlyViewed = emptyList(),
+                    // Recorded server-side when a detail screen calls the similar-artworks endpoint;
+                    // returned here in the same discover-feed payload.
+                    recentlyViewed = feed.recentlyViewed,
                 )
             }
         }
@@ -161,6 +168,11 @@ class HomeViewModel @Inject constructor(
 
     fun onRetry() {
         load()
+    }
+
+    /** Pull-to-refresh: re-run the load with the lightweight spinner. */
+    fun refresh() {
+        load(isRefresh = true)
     }
 
     // ── Like (Discover + For You feeds) ────────────────────────────────────────

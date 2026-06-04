@@ -72,6 +72,7 @@ data class HomeFeed(
     val newArt: List<ArtworkItem>,
     val curations: List<CurationItem>,
     val posts: List<FeedPost>,
+    val recentlyViewed: List<ArtworkItem>,
 )
 
 /** Mixed "For You" feed item — either a regular post or an inline sponsored banner. */

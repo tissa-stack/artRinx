@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,6 +78,7 @@ fun HomeScreen(
         onRetry = viewModel::onRetry,
         onLike = viewModel::onLikeToggled,
         onShopLike = viewModel::onShopLikeToggled,
+        onRefresh = viewModel::refresh,
         onRetryUpload = viewModel::onRetryUpload,
         onDismissUpload = viewModel::onDismissUpload,
         onRetryCuration = viewModel::onRetryCuration,
@@ -98,6 +101,7 @@ fun HomeScreenContent(
     reselectTick: Int = 0,
     onReselect: () -> Unit = {},
     onShopLike: (String) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onRetryUpload: () -> Unit = {},
     onDismissUpload: () -> Unit = {},
     onRetryCuration: () -> Unit = {},
@@ -138,6 +142,7 @@ fun HomeScreenContent(
             onLike = onLike,
             reselectTick = reselectTick,
             onShopLike = onShopLike,
+            onRefresh = onRefresh,
             onRetryUpload = onRetryUpload,
             onDismissUpload = onDismissUpload,
             onRetryCuration = onRetryCuration,
@@ -150,7 +155,7 @@ fun HomeScreenContent(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeContent(
     uiState: HomeUiState,
@@ -160,6 +165,7 @@ fun HomeContent(
     onLike: (String) -> Unit,
     reselectTick: Int = 0,
     onShopLike: (String) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onRetryUpload: () -> Unit = {},
     onDismissUpload: () -> Unit = {},
     onRetryCuration: () -> Unit = {},
@@ -193,9 +199,14 @@ fun HomeContent(
         if (hasProgress) listState.animateScrollToItem(0)
     }
 
+    PullToRefreshBox(
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier,
+    ) {
     LazyColumn(
         state = listState,
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = bottomPadding.calculateBottomPadding()),
     ) {
         stickyHeader(key = "top-tabs") {
@@ -438,6 +449,7 @@ fun HomeContent(
                 }
             }
         }
+    }
     }
 }
 

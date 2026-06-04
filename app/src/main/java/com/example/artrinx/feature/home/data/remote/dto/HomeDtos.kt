@@ -89,6 +89,7 @@ data class DiscoverFeedDto(
     @SerializedName("sponsored") val sponsored: List<BannerDto>? = null,
     @SerializedName("new_art") val newArt: List<ArtworkDto>? = null,
     @SerializedName("popular_curations") val popularCurations: List<CurationDto>? = null,
+    @SerializedName("recently_viewed") val recentlyViewed: List<ArtworkDto>? = null,
 )
 
 // ── Request bodies ────────────────────────────────────────────────────────────
