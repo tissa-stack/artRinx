@@ -168,6 +168,7 @@ fun AppNavGraph(
                 onNavigateToCurationDetail = { curationId ->
                     navController.navigate(NavRoutes.curationDetail(curationId, NavRoutes.HOME))
                 },
+                onNavigateToNewCuration = { navController.navigate(NavRoutes.NEW_CURATION) },
             )
         }
 
@@ -400,6 +401,7 @@ fun AppNavGraph(
                 onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
+                onNavigateToNewCuration   = { navController.navigate(NavRoutes.NEW_CURATION) },
                 activeRoute = source,
             )
         }
@@ -422,6 +424,7 @@ fun AppNavGraph(
                 onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
+                onNavigateToNewCuration   = { navController.navigate(NavRoutes.NEW_CURATION) },
                 activeRoute = source,
             )
         }

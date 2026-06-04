@@ -15,4 +15,10 @@ interface CurationRepository {
 
     /** Create a curation from selected artwork ids. */
     suspend fun createCuration(request: CreateCurationRequest): ApiResult<CreatedCuration>
+
+    /** A curation's artworks as selectable items (for previewing / preselecting). */
+    suspend fun getCurationArtItems(curationId: Int): ApiResult<List<UserArtItem>>
+
+    /** Add [artworkIds] to an existing curation, preserving its current artworks (GET + merge + PUT). */
+    suspend fun addArtworksToCuration(targetCurationId: Int, artworkIds: List<Int>): ApiResult<Unit>
 }

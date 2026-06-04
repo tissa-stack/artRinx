@@ -15,3 +15,12 @@ data class CreateCurationRequest(
 data class CreatedCuration(
     val id: Int,
 )
+
+/** What the "Add to curation" sheet is acting on. */
+sealed interface CurationSource {
+    /** A single artwork post. */
+    data class Artwork(val artworkId: Int, val imageUrl: String?) : CurationSource
+
+    /** A whole curation — all of its artworks are the source. */
+    data class Curation(val curationId: Int) : CurationSource
+}

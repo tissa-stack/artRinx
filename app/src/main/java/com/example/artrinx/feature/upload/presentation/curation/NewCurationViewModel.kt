@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.upload.domain.CurationManager
+import com.example.artrinx.feature.upload.domain.CurationSeedStore
 import com.example.artrinx.feature.upload.domain.model.ArtTab
 import com.example.artrinx.feature.upload.domain.model.CreateCurationRequest
+import com.example.artrinx.feature.upload.domain.model.CreationStatus
+import com.example.artrinx.feature.upload.domain.model.CurationProgress
 import com.example.artrinx.feature.upload.domain.model.NewCurationState
 import com.example.artrinx.feature.upload.domain.model.PrivacyOption
 import com.example.artrinx.feature.upload.domain.model.UserArtItem
@@ -22,14 +25,48 @@ import javax.inject.Inject
 class NewCurationViewModel @Inject constructor(
     private val curationRepository: CurationRepository,
     private val curationManager: CurationManager,
+    seedStore: CurationSeedStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewCurationState())
     val state: StateFlow<NewCurationState> = _state.asStateFlow()
 
+    private var awaitingPrivate = false
+
     init {
+        // Preselect any artworks staged by the "Add to curation → Create Curation" flow.
+        val seed = seedStore.consume()
+        if (seed.isNotEmpty()) {
+            _state.update { it.copy(selectedArts = seed) }
+        }
         loadSelectionSources()
+        observePrivateCreate()
     }
+
+    /** While a PRIVATE curation is being created, mirror the manager's progress into overlay state. */
+    private fun observePrivateCreate() {
+        viewModelScope.launch {
+            curationManager.progress.collect { p ->
+                if (!awaitingPrivate) return@collect
+                when (p) {
+                    is CurationProgress.Failed ->
+                        _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = p.message) }
+                    is CurationProgress.Success ->
+                        _state.update { it.copy(creationStatus = CreationStatus.CREATED, creationError = null) }
+                    null -> {}
+                    else ->
+                        _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
+                }
+            }
+        }
+    }
+
+    fun onCreationDone() {
+        awaitingPrivate = false
+        _state.update { it.copy(creationStatus = null, creationError = null) }
+    }
+
+    fun onRetryCreation() = curationManager.retry()
 
     private fun loadSelectionSources() {
         viewModelScope.launch {
@@ -110,6 +147,9 @@ class NewCurationViewModel @Inject constructor(
         if (!s.isValid) return false
         val artworkIds = s.selectedArts.mapNotNull { it.artworkId }
         if (artworkIds.isEmpty()) return false
+        // Private creations stay on this screen and show the overlay instead of navigating.
+        awaitingPrivate = s.privacy == PrivacyOption.PRIVATE
+        if (awaitingPrivate) _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
         curationManager.enqueue(
             CreateCurationRequest(
                 title = s.title,

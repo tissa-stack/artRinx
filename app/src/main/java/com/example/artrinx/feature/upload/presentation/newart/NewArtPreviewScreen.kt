@@ -51,6 +51,7 @@ import com.example.artrinx.core.theme.InactiveButton
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.upload.domain.model.PrivacyOption
+import com.example.artrinx.feature.upload.presentation.components.CreationStatusOverlay
 import androidx.compose.animation.animateColorAsState
 import com.example.artrinx.core.theme.DarkCardSurface
 
@@ -64,6 +65,7 @@ fun NewArtPreviewScreen(
     val d = LocalDimens.current
     var descExpanded by remember { mutableStateOf(false) }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -96,8 +98,9 @@ fun NewArtPreviewScreen(
                     .clip(RoundedCornerShape(50))
                     .background(bgColor)
                     .clickable {
-                        if (viewModel.onUpload()) {
-                            onUploadStarted(state.privacy == PrivacyOption.PRIVATE)
+                        // Public → Home (progress row). Private → stay; overlay shows.
+                        if (viewModel.onUpload() && state.privacy != PrivacyOption.PRIVATE) {
+                            onUploadStarted(false)
                         }
                     }
                     .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
@@ -299,6 +302,18 @@ fun NewArtPreviewScreen(
                     }
                 }
             }
+        }
+    }
+
+        state.creationStatus?.let { status ->
+            CreationStatusOverlay(
+                status = status,
+                label = "Artwork",
+                error = state.creationError,
+                onDone = { viewModel.onCreationDone(); onUploadStarted(false) },
+                onRetry = { viewModel.onRetryCreation() },
+                onDismiss = { viewModel.onCreationDone() },
+            )
         }
     }
 }

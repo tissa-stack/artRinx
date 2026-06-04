@@ -4,6 +4,7 @@ import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.upload.data.remote.CurationApiService
 import com.example.artrinx.feature.upload.data.remote.dto.CreateCurationBody
+import com.example.artrinx.feature.upload.data.remote.dto.UpdateCurationBody
 import com.example.artrinx.feature.upload.domain.model.CreateCurationRequest
 import com.example.artrinx.feature.upload.domain.model.CreatedCuration
 import com.example.artrinx.feature.upload.domain.model.UserArtItem
@@ -49,6 +50,31 @@ class CurationRepositoryImpl @Inject constructor(
         } else {
             errorFor(response)
         }
+    }
+
+    override suspend fun getCurationArtItems(curationId: Int): ApiResult<List<UserArtItem>> = safeCall {
+        val response = apiService.getCuration(curationId)
+        val data = response.body()?.data
+        if (response.isSuccessful && data != null) {
+            ApiResult.Success(data.artworks.orEmpty().mapNotNull { it.toUserArtItem() })
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun addArtworksToCuration(
+        targetCurationId: Int,
+        artworkIds: List<Int>,
+    ): ApiResult<Unit> = safeCall {
+        // 1. Read the target curation's current artworks so the PUT (full replace) preserves them.
+        val getResp = apiService.getCuration(targetCurationId)
+        val curation = getResp.body()?.data
+        if (!getResp.isSuccessful || curation == null) return@safeCall errorFor(getResp)
+        val existing = curation.artworks.orEmpty().mapNotNull { it.id }
+        val merged = (existing + artworkIds).distinct()
+        // 2. PUT the merged membership.
+        val putResp = apiService.updateCuration(targetCurationId, UpdateCurationBody(merged))
+        if (putResp.isSuccessful) ApiResult.Success(Unit) else errorFor(putResp)
     }
 
     // ── Mappers ────────────────────────────────────────────────────────────────

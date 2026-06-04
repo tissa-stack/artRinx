@@ -52,6 +52,7 @@ import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.core.util.shareCuration
+import com.example.artrinx.feature.upload.domain.model.CurationSource
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.CollectionCard
 import com.example.artrinx.feature.home.presentation.components.CurationCardStack
@@ -59,6 +60,7 @@ import com.example.artrinx.feature.home.presentation.components.LikeButton
 import com.example.artrinx.feature.home.presentation.components.ReportBottomSheet
 import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.presentation.components.SendMessageBottomSheet
+import com.example.artrinx.feature.home.presentation.components.AddToCurationSheet
 
 @Composable
 fun CurationDetailScreen(
@@ -69,17 +71,31 @@ fun CurationDetailScreen(
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToNewCuration: () -> Unit = {},
     activeRoute: String = "home",
     viewModel: CurationDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showReportSheet by remember { mutableStateOf(false) }
+    var showAddToCuration by remember { mutableStateOf(false) }
 
     if (showReportSheet) {
         ReportBottomSheet(
             artTitle    = uiState.curation?.title ?: "",
             profileName = uiState.curation?.curatorName ?: "",
             onDismiss   = { showReportSheet = false },
+        )
+    }
+
+    val curationId = uiState.curation?.id?.toIntOrNull()
+    if (showAddToCuration && curationId != null) {
+        AddToCurationSheet(
+            source = CurationSource.Curation(curationId),
+            onDismiss = { showAddToCuration = false },
+            onCreateNew = {
+                showAddToCuration = false
+                onNavigateToNewCuration()
+            },
         )
     }
 
@@ -143,6 +159,7 @@ fun CurationDetailScreen(
                     uiState              = uiState,
                     onLike               = viewModel::onLikeToggled,
                     onNavigateToCuration = onNavigateToCuration,
+                    onAddToCuration      = { showAddToCuration = true },
                     modifier             = Modifier.weight(1f),
                 )
 
@@ -166,6 +183,7 @@ private fun CurationDetailContent(
     uiState: CurationDetailUiState,
     onLike: () -> Unit,
     onNavigateToCuration: (String) -> Unit,
+    onAddToCuration: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val d        = LocalDimens.current
@@ -218,39 +236,47 @@ private fun CurationDetailContent(
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(Spacing.sm))
-                Column(horizontalAlignment = Alignment.End) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                        verticalAlignment     = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            painter            = painterResource(R.drawable.ic_send),
-                            contentDescription = "Share",
-                            tint               = MaterialTheme.colorScheme.onSurface,
-                            modifier           = Modifier
-                                .size(Spacing.xxl)
-                                .clip(CircleShape)
-                                .clickable {
-                                    context.shareCuration(
-                                        title = curation.title,
-                                        curatorName = curation.curatorName,
-                                        description = curation.description,
-                                    )
-                                },
-                        )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                    verticalAlignment     = Alignment.Top,
+                ) {
+                    Icon(
+                        painter            = painterResource(R.drawable.ic_add_to),
+                        contentDescription = "Add to curation",
+                        tint               = MaterialTheme.colorScheme.onSurface,
+                        modifier           = Modifier
+                            .size(Spacing.xxl)
+                            .clickable { onAddToCuration() },
+                    )
+                    Icon(
+                        painter            = painterResource(R.drawable.ic_send),
+                        contentDescription = "Share",
+                        tint               = MaterialTheme.colorScheme.onSurface,
+                        modifier           = Modifier
+                            .size(Spacing.xxl)
+                            .clickable {
+                                context.shareCuration(
+                                    title = curation.title,
+                                    curatorName = curation.curatorName,
+                                    description = curation.description,
+                                )
+                            },
+                    )
+                    // Heart + count: count centered exactly below the heart.
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         LikeButton(
                             isLiked = uiState.isLiked,
                             onClick = onLike,
                             size    = Spacing.xxl,
                         )
-                    }
-                    if (uiState.likeCount > 0) {
-                        Text(
-                            text     = uiState.likeCount.toString(),
-                            style    = MaterialTheme.typography.labelSmall,
-                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = Spacing.xs),
-                        )
+                        if (uiState.likeCount > 0) {
+                            Text(
+                                text     = uiState.likeCount.toString(),
+                                style    = MaterialTheme.typography.labelSmall,
+                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = Spacing.xs),
+                            )
+                        }
                     }
                 }
             }

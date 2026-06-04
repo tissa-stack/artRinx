@@ -56,6 +56,7 @@ import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.CurationCardStack
 import com.example.artrinx.feature.upload.domain.model.PrivacyOption
+import com.example.artrinx.feature.upload.presentation.components.CreationStatusOverlay
 import com.example.artrinx.feature.upload.presentation.newart.components.PrivacyPickerSheet
 
 private val CardFront  = Color(0xFF6B6B6B)
@@ -82,6 +83,7 @@ fun NewCurationScreen(
     }
 
     Scaffold(contentWindowInsets = WindowInsets(0)) { _ ->
+      Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -198,8 +200,9 @@ fun NewCurationScreen(
                         enabled    = state.isValid,
                         isCreating = state.isCreating,
                         onClick    = {
-                            if (viewModel.onCreate()) {
-                                onCreateStarted(state.privacy == PrivacyOption.PRIVATE)
+                            // Public → Home (progress row). Private → stay; overlay shows.
+                            if (viewModel.onCreate() && state.privacy != PrivacyOption.PRIVATE) {
+                                onCreateStarted(false)
                             }
                         },
                     )
@@ -207,6 +210,18 @@ fun NewCurationScreen(
                 }
             }
         }
+
+        state.creationStatus?.let { status ->
+            CreationStatusOverlay(
+                status = status,
+                label = "Curation",
+                error = state.creationError,
+                onDone = { viewModel.onCreationDone(); onCreateStarted(false) },
+                onRetry = { viewModel.onRetryCreation() },
+                onDismiss = { viewModel.onCreationDone() },
+            )
+        }
+      }
     }
 }
 

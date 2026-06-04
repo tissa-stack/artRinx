@@ -44,6 +44,7 @@ fun DiscoverFeedItem(
     onLike: () -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    onAddToCuration: () -> Unit = {},
 ) {
     val d = LocalDimens.current
     val context = LocalContext.current
@@ -145,33 +146,41 @@ fun DiscoverFeedItem(
             Spacer(Modifier.width(Spacing.sm))
 
             // Action icons: 3 icons in a row, count right-aligned below
-            Column(horizontalAlignment = Alignment.End) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_send),
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(Spacing.xxl)
-                            .clip(CircleShape)
-                            .clickable { context.shareArtwork(post.title, post.artistName) },
-                    )
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_add_to),
+                    contentDescription = "Add to curation",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .size(Spacing.xxl)
+                        .clickable { onAddToCuration() },
+                )
+                Icon(
+                    painter = painterResource(R.drawable.ic_send),
+                    contentDescription = "Share",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .size(Spacing.xxl)
+                        .clickable { context.shareArtwork(post.title, post.artistName) },
+                )
+                // Heart + count: count centered exactly below the heart.
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     LikeButton(
                         isLiked = post.isLiked,
                         onClick = onLike,
                         size = Spacing.xl,
                     )
-                }
-                if (post.likeCount > 0) {
-                    Text(
-                        text = post.likeCount.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = Spacing.xs),
-                    )
+                    if (post.likeCount > 0) {
+                        Text(
+                            text = post.likeCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = Spacing.xs),
+                        )
+                    }
                 }
             }
         }

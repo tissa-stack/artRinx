@@ -53,6 +53,8 @@ import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.core.util.shareArtwork
+import com.example.artrinx.feature.upload.domain.model.CurationSource
+import com.example.artrinx.feature.home.presentation.components.AddToCurationSheet
 import com.example.artrinx.feature.home.presentation.components.ArtworkCard
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.LikeButton
@@ -70,17 +72,31 @@ fun ArtDetailScreen(
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToNewCuration: () -> Unit = {},
     activeRoute: String = "home",
     viewModel: ArtDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showReportSheet by remember { mutableStateOf(false) }
+    var showAddToCuration by remember { mutableStateOf(false) }
 
     if (showReportSheet) {
         ReportBottomSheet(
             artTitle    = uiState.post?.title ?: "",
             profileName = uiState.post?.artistName ?: "",
             onDismiss   = { showReportSheet = false },
+        )
+    }
+
+    val artworkId = uiState.post?.id?.toIntOrNull()
+    if (showAddToCuration && artworkId != null) {
+        AddToCurationSheet(
+            source = CurationSource.Artwork(artworkId, uiState.post?.imageUrl),
+            onDismiss = { showAddToCuration = false },
+            onCreateNew = {
+                showAddToCuration = false
+                onNavigateToNewCuration()
+            },
         )
     }
 
@@ -117,6 +133,7 @@ fun ArtDetailScreen(
                     uiState = uiState,
                     onLike = viewModel::onLikeToggled,
                     onNavigateToDetail = onNavigateToDetail,
+                    onAddToCuration = { showAddToCuration = true },
                     modifier = Modifier.fillMaxSize(),
                 )
 
@@ -175,6 +192,7 @@ private fun ArtDetailContent(
     uiState: ArtDetailUiState,
     onLike: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
+    onAddToCuration: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
@@ -252,40 +270,48 @@ private fun ArtDetailContent(
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(Spacing.sm))
-                Column(horizontalAlignment = Alignment.End) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_send),
-                            contentDescription = "Share",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier
-                                .size(Spacing.xxl)
-                                .clip(CircleShape)
-                                .clickable {
-                                    context.shareArtwork(
-                                        title = post.title,
-                                        artistName = post.artistName,
-                                        description = post.description,
-                                        link = post.shopUrl.ifBlank { null },
-                                    )
-                                },
-                        )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_add_to),
+                        contentDescription = "Add to curation",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .size(Spacing.xxl)
+                            .clickable { onAddToCuration() },
+                    )
+                    Icon(
+                        painter = painterResource(R.drawable.ic_send),
+                        contentDescription = "Share",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .size(Spacing.xxl)
+                            .clickable {
+                                context.shareArtwork(
+                                    title = post.title,
+                                    artistName = post.artistName,
+                                    description = post.description,
+                                    link = post.shopUrl.ifBlank { null },
+                                )
+                            },
+                    )
+                    // Heart + count: count centered exactly below the heart.
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         LikeButton(
                             isLiked = post.isLiked,
                             onClick = onLike,
                             size = Spacing.xxl,
                         )
-                    }
-                    if (post.likeCount > 0) {
-                        Text(
-                            text = post.likeCount.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = Spacing.xs),
-                        )
+                        if (post.likeCount > 0) {
+                            Text(
+                                text = post.likeCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = Spacing.xs),
+                            )
+                        }
                     }
                 }
             }

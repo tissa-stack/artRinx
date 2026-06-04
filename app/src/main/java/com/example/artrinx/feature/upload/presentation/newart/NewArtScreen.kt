@@ -63,6 +63,7 @@ import com.example.artrinx.core.theme.InactiveButton
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.upload.domain.model.PrivacyOption
+import com.example.artrinx.feature.upload.presentation.components.CreationStatusOverlay
 import com.example.artrinx.feature.upload.presentation.newart.components.MediumPickerSheet
 import com.example.artrinx.feature.upload.presentation.newart.components.PrivacyPickerSheet
 
@@ -106,6 +107,7 @@ fun NewArtScreen(
     }
 
     Scaffold(contentWindowInsets = WindowInsets(0)) { _ ->
+      Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -140,8 +142,9 @@ fun NewArtScreen(
                     enabled     = state.isValid,
                     isUploading = state.isUploading,
                     onClick     = {
-                        if (viewModel.onUpload()) {
-                            onUploadStarted(state.privacy == PrivacyOption.PRIVATE)
+                        // Public → navigate to Home (progress row). Private → stay; overlay shows.
+                        if (viewModel.onUpload() && state.privacy != PrivacyOption.PRIVATE) {
+                            onUploadStarted(false)
                         }
                     },
                 )
@@ -226,6 +229,18 @@ fun NewArtScreen(
                 }
             }
         }
+
+        state.creationStatus?.let { status ->
+            CreationStatusOverlay(
+                status = status,
+                label = "Artwork",
+                error = state.creationError,
+                onDone = { viewModel.onCreationDone(); onUploadStarted(false) },
+                onRetry = { viewModel.onRetryCreation() },
+                onDismiss = { viewModel.onCreationDone() },
+            )
+        }
+      }
     }
 }
 

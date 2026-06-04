@@ -10,8 +10,10 @@ import com.example.artrinx.feature.search.domain.model.UserSearchItem
 import com.example.artrinx.feature.upload.domain.UploadManager
 import com.example.artrinx.feature.upload.domain.model.ArtFormState
 import com.example.artrinx.feature.upload.domain.model.ArtistResult
+import com.example.artrinx.feature.upload.domain.model.CreationStatus
 import com.example.artrinx.feature.upload.domain.model.MediumOption
 import com.example.artrinx.feature.upload.domain.model.PrivacyOption
+import com.example.artrinx.feature.upload.domain.model.UploadProgress
 import com.example.artrinx.feature.upload.domain.model.UploadRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -34,12 +36,39 @@ class NewArtViewModel @Inject constructor(
     val state: StateFlow<ArtFormState> = _state.asStateFlow()
 
     private var artistSearchJob: Job? = null
+    private var awaitingPrivate = false
 
     init {
         loadMediums()
         loadTrendingTags()
         loadSelfArtist()
+        observePrivateUpload()
     }
+
+    /** While a PRIVATE upload is in flight, mirror the manager's progress into the overlay state. */
+    private fun observePrivateUpload() {
+        viewModelScope.launch {
+            uploadManager.progress.collect { p ->
+                if (!awaitingPrivate) return@collect
+                when (p) {
+                    is UploadProgress.Failed ->
+                        _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = p.message) }
+                    is UploadProgress.Success ->
+                        _state.update { it.copy(creationStatus = CreationStatus.CREATED, creationError = null) }
+                    null -> {} // keep latched state
+                    else ->
+                        _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
+                }
+            }
+        }
+    }
+
+    fun onCreationDone() {
+        awaitingPrivate = false
+        _state.update { it.copy(creationStatus = null, creationError = null) }
+    }
+
+    fun onRetryCreation() = uploadManager.retry()
 
     private fun loadSelfArtist() {
         viewModelScope.launch {
@@ -188,6 +217,9 @@ class NewArtViewModel @Inject constructor(
         val s = _state.value
         val uri = s.imageUri ?: return false
         val artist = s.selectedArtist
+        // Private uploads stay on this screen and show the overlay instead of navigating.
+        awaitingPrivate = s.privacy == PrivacyOption.PRIVATE
+        if (awaitingPrivate) _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
         uploadManager.enqueue(
             UploadRequest(
                 imageUri = uri,

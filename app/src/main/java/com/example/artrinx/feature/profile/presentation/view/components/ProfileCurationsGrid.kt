@@ -89,7 +89,7 @@ fun ProfileCurationCard(
             .background(DarkCardSurface)
             .clickable(onClick = onClick),
     ) {
-        // ── Stacked artwork image section ─────────────────────────────────
+        // ── Fanned artwork section — spans full width (1 fills, 2 split, 3 overlap) ──
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -97,11 +97,12 @@ fun ProfileCurationCard(
             contentAlignment = Alignment.TopStart,
         ) {
             val cardWidth = maxWidth
-            val imageWidth = cardWidth * 0.70f
-            val stackOffset = cardWidth * 0.18f
-
             // Prefer remote URLs (real curations); fall back to drawable res (mock/preview).
-            val previews: List<Any> = item.artworkUrls.ifEmpty { item.artworkRes }
+            // Show at most the first 3 artworks in the preview deck.
+            val previews: List<Any> = item.artworkUrls.ifEmpty { item.artworkRes }.take(3)
+            val count = previews.size.coerceAtLeast(1)
+            val imageWidth = if (count <= 1) cardWidth else cardWidth * 0.68f
+            val stackOffset = if (count <= 1) 0.dp else (cardWidth - imageWidth) / (count - 1)
 
             // Render back-to-front
             previews.indices.reversed().forEach { index ->

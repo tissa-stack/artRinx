@@ -10,6 +10,9 @@ import com.example.artrinx.R
 enum class PrivacyOption { PUBLIC, PRIVATE }
 enum class ArtTab { UPLOADS, LIKED }
 
+/** Overlay state shown on the create screen while a PRIVATE artwork/curation is being created. */
+enum class CreationStatus { LOADING, CREATED, FAILED }
+
 // ── Artist ────────────────────────────────────────────────────────────────────
 
 @Immutable
@@ -47,6 +50,9 @@ data class ArtFormState(
     val isDescriptionError: Boolean = false,
     val isUploading: Boolean = false,
     val artistSearchQuery: String = "",
+    /** Non-null while a PRIVATE upload is in flight / just finished (drives the overlay). */
+    val creationStatus: CreationStatus? = null,
+    val creationError: String? = null,
 ) {
     val isValid: Boolean get() = title.isNotEmpty()
 }
@@ -113,6 +119,9 @@ data class NewCurationState(
     val activeArtTab: ArtTab = ArtTab.UPLOADS,
     val uploadedArts: List<UserArtItem> = emptyList(),
     val likedArts: List<UserArtItem> = emptyList(),
+    /** Non-null while a PRIVATE curation is being created / just finished (drives the overlay). */
+    val creationStatus: CreationStatus? = null,
+    val creationError: String? = null,
 ) {
     val isValid: Boolean get() = title.isNotEmpty() && selectedArts.isNotEmpty()
     val displayedArts: List<UserArtItem> get() = if (activeArtTab == ArtTab.UPLOADS) uploadedArts else likedArts

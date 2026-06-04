@@ -9,3 +9,8 @@ data class CreateCurationBody(
     @SerializedName("privacy") val privacy: Boolean,
     @SerializedName("artwork_ids") val artworkIds: List<Int>,
 )
+
+/** Request body for PUT /api/curations/{id} — sets the full artwork membership. */
+data class UpdateCurationBody(
+    @SerializedName("artwork_ids") val artworkIds: List<Int>,
+)

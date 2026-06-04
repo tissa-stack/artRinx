@@ -50,6 +50,7 @@ fun ShoppableFeedItem(
     onLike: () -> Unit,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onAddToCuration: () -> Unit = {},
 ) {
     val d = LocalDimens.current
     val context = LocalContext.current
@@ -156,40 +157,48 @@ fun ShoppableFeedItem(
             }
             Spacer(Modifier.width(Spacing.sm))
             // Icons column: 3 icons row + count below (same as DiscoverFeedItem)
-            Column(horizontalAlignment = Alignment.End) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_send),
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(Spacing.xxl)
-                            .clip(CircleShape)
-                            .clickable {
-                                context.shareArtwork(
-                                    title = post.title,
-                                    artistName = post.artistName,
-                                    description = post.description,
-                                    link = post.shopUrl.ifBlank { null },
-                                )
-                            },
-                    )
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_add_to),
+                    contentDescription = "Add to curation",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .size(Spacing.xxl)
+                        .clickable { onAddToCuration() },
+                )
+                Icon(
+                    painter = painterResource(R.drawable.ic_send),
+                    contentDescription = "Share",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .size(Spacing.xxl)
+                        .clickable {
+                            context.shareArtwork(
+                                title = post.title,
+                                artistName = post.artistName,
+                                description = post.description,
+                                link = post.shopUrl.ifBlank { null },
+                            )
+                        },
+                )
+                // Heart + count: count centered exactly below the heart.
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     LikeButton(
                         isLiked = post.isLiked,
                         onClick = onLike,
                         size = Spacing.xxl,
                     )
-                }
-                if (post.likeCount > 0) {
-                    Text(
-                        text = post.likeCount.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = Spacing.xs),
-                    )
+                    if (post.likeCount > 0) {
+                        Text(
+                            text = post.likeCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = Spacing.xs),
+                        )
+                    }
                 }
             }
         }

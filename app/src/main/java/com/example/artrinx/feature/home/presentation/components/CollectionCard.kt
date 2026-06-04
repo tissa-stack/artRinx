@@ -51,8 +51,6 @@ fun CollectionCard(
 
     // The fan always spans the full card width regardless of count, so 1 image fills the card,
     // 2 split it, 3 overlap — never leaving blank space on the right.
-    // Each image is 68% wide (except a lone image, which is full width); the per-image x-shift is
-    // whatever makes the last image's right edge land exactly on the card edge.
     val imageWidth = if (count <= 1) d.collectionCardWidth else d.collectionCardWidth * 0.68f
     val stackOffset = if (count <= 1) 0.dp else (d.collectionCardWidth - imageWidth) / (count - 1)
 
@@ -78,7 +76,6 @@ fun CollectionCard(
                     modifier = Modifier
                         .width(imageWidth)
                         .height(d.collectionCardHeight)
-                        // offset() physically shifts each card to the right — no rotation
                         .offset(x = stackOffset * index.toFloat())
                         .zIndex((previews.size - index).toFloat())
                         .clip(RoundedCornerShape(d.cardCornerRadius))

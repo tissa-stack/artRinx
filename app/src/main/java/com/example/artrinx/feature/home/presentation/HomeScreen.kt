@@ -3,6 +3,7 @@ package com.example.artrinx.feature.home.presentation
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -29,6 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,6 +53,8 @@ import com.example.artrinx.feature.home.presentation.components.ShoppableFeedIte
 import com.example.artrinx.feature.home.presentation.components.CurationProgressRow
 import com.example.artrinx.feature.home.presentation.components.TopTabs
 import com.example.artrinx.feature.home.presentation.components.UploadProgressRow
+import com.example.artrinx.feature.home.presentation.components.AddToCurationSheet
+import com.example.artrinx.feature.upload.domain.model.CurationSource
 import com.example.artrinx.feature.home.presentation.components.shimmer.BannerShimmer
 import com.example.artrinx.feature.home.presentation.components.shimmer.CollectionShimmer
 import com.example.artrinx.feature.home.presentation.components.shimmer.FeedShimmer
@@ -67,6 +73,7 @@ fun HomeScreen(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToNewCuration: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -89,6 +96,7 @@ fun HomeScreen(
         onNavigateToDetail        = onNavigateToDetail,
         onNavigateToCurationDetail = onNavigateToCurationDetail,
         onNavigateToProfile = onNavigateToProfile,
+        onNavigateToNewCuration = onNavigateToNewCuration,
     )
 }
 
@@ -112,6 +120,7 @@ fun HomeScreenContent(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToNewCuration: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -149,6 +158,7 @@ fun HomeScreenContent(
             onDismissCuration = onDismissCuration,
             onNavigateToDetail = onNavigateToDetail,
             onNavigateToCurationDetail = onNavigateToCurationDetail,
+            onNavigateToNewCuration = onNavigateToNewCuration,
             modifier = Modifier.fillMaxSize(),
             bottomPadding = innerPadding,
         )
@@ -172,10 +182,12 @@ fun HomeContent(
     onDismissCuration: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
+    onNavigateToNewCuration: () -> Unit = {},
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
     val d = LocalDimens.current
+    var addToCurationSource by remember { mutableStateOf<CurationSource?>(null) }
     // Each tab keeps its own scroll position so switching tabs doesn't carry the scroll over.
     val discoverListState = rememberLazyListState()
     val shopListState = rememberLazyListState()
@@ -199,10 +211,11 @@ fun HomeContent(
         if (hasProgress) listState.animateScrollToItem(0)
     }
 
+    Box(modifier = modifier) {
     PullToRefreshBox(
         isRefreshing = uiState.isRefreshing,
         onRefresh = onRefresh,
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
     ) {
     LazyColumn(
         state = listState,
@@ -257,6 +270,7 @@ fun HomeContent(
                         post = post,
                         onLike = { onShopLike(post.id) },
                         onClick = { onNavigateToDetail(post.id) },
+                        onAddToCuration = { post.id.toIntOrNull()?.let { addToCurationSource = CurationSource.Artwork(it, post.imageUrl) } },
                     )
                 }
             }
@@ -290,6 +304,11 @@ fun HomeContent(
                             post = forYouItem.post,
                             onLike = { onLike(forYouItem.post.id) },
                             onClick = { onNavigateToDetail(forYouItem.post.id) },
+                            onAddToCuration = {
+                                forYouItem.post.id.toIntOrNull()?.let {
+                                    addToCurationSource = CurationSource.Artwork(it, forYouItem.post.imageUrl)
+                                }
+                            },
                         )
                         is ForYouItem.Sponsored -> Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -445,10 +464,23 @@ fun HomeContent(
                         post = post,
                         onLike = { onLike(post.id) },
                         onClick = { onNavigateToDetail(post.id) },
+                        onAddToCuration = { post.id.toIntOrNull()?.let { addToCurationSource = CurationSource.Artwork(it, post.imageUrl) } },
                     )
                 }
             }
         }
+    }
+    }
+
+    addToCurationSource?.let { src ->
+        AddToCurationSheet(
+            source = src,
+            onDismiss = { addToCurationSource = null },
+            onCreateNew = {
+                addToCurationSource = null
+                onNavigateToNewCuration()
+            },
+        )
     }
     }
 }
