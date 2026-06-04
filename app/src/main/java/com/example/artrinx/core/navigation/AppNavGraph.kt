@@ -265,6 +265,7 @@ fun AppNavGraph(
                 onBack               = { navController.popBackStack() },
                 onNavigateToArtist   = { navController.navigate(NavRoutes.ARTIST_SEARCH) },
                 onNavigateToTags     = { navController.navigate(NavRoutes.ADD_TAGS) },
+                onUploadStarted      = { isPrivate -> navController.navigateAfterUpload(isPrivate) },
                 onNavigateToPreview  = { navController.navigate(NavRoutes.ART_PREVIEW) },
             )
         }
@@ -272,7 +273,11 @@ fun AppNavGraph(
         composable(NavRoutes.ART_PREVIEW) { entry ->
             val parentEntry = remember(entry) { navController.getBackStackEntry(NavRoutes.NEW_ART) }
             val viewModel: NewArtViewModel = hiltViewModel(parentEntry)
-            NewArtPreviewScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+            NewArtPreviewScreen(
+                viewModel       = viewModel,
+                onBack          = { navController.popBackStack() },
+                onUploadStarted = { isPrivate -> navController.navigateAfterUpload(isPrivate) },
+            )
         }
 
         composable(NavRoutes.ARTIST_SEARCH) { entry ->
@@ -293,6 +298,7 @@ fun AppNavGraph(
             NewCurationScreen(
                 onBack             = { navController.popBackStack() },
                 onNavigateToAddArt = { navController.navigate(NavRoutes.ADD_ART_TO_CURATION) },
+                onCreateStarted    = { isPrivate -> navController.navigateAfterUpload(isPrivate) },
             )
         }
 
@@ -444,6 +450,19 @@ private fun NavHostController.navigateToTab(route: String) {
             popUpTo(graph.findStartDestination().id) { inclusive = false }
             launchSingleTop = true
         }
+    }
+}
+
+/**
+ * After kicking off a background upload, leave the upload sub-flow and land on the surface where
+ * the result + progress will appear: Profile (Art tab) for private uploads, Home (Discover) for
+ * public ones. popUpTo(start) clears NEW_ART / ART_PREVIEW / ADD_TAGS without recreating Home.
+ */
+private fun NavHostController.navigateAfterUpload(isPrivate: Boolean) {
+    val target = if (isPrivate) NavRoutes.PROFILE else NavRoutes.HOME
+    navigate(target) {
+        popUpTo(graph.findStartDestination().id) { inclusive = false }
+        launchSingleTop = true
     }
 }
 

@@ -1,6 +1,7 @@
 package com.example.artrinx.feature.profile.presentation.view
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.artrinx.core.navigation.NavRoutes
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
+import com.example.artrinx.feature.home.presentation.components.CurationProgressRow
+import com.example.artrinx.feature.home.presentation.components.UploadProgressRow
 import com.example.artrinx.feature.profile.domain.model.ProfileTab
 import com.example.artrinx.feature.profile.presentation.view.components.ProfileArtMasonryGrid
 import com.example.artrinx.feature.profile.presentation.view.components.ProfileCurationsGrid
@@ -38,6 +41,10 @@ fun UserProfileScreen(
         uiState = uiState,
         onTabSelected = viewModel::onTabSelected,
         onBioExpandToggle = viewModel::onBioExpandToggle,
+        onRetryUpload = viewModel::onRetryUpload,
+        onDismissUpload = viewModel::onDismissUpload,
+        onRetryCuration = viewModel::onRetryCuration,
+        onDismissCuration = viewModel::onDismissCuration,
         onNavigateToHome          = onNavigateToHome,
         onNavigateToSearch        = onNavigateToSearch,
         onNavigateToCreate        = onNavigateToCreate,
@@ -52,6 +59,10 @@ private fun UserProfileContent(
     uiState: UserProfileUiState,
     onTabSelected: (ProfileTab) -> Unit,
     onBioExpandToggle: () -> Unit,
+    onRetryUpload: () -> Unit,
+    onDismissUpload: () -> Unit,
+    onRetryCuration: () -> Unit,
+    onDismissCuration: () -> Unit,
     onNavigateToHome: () -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToCreate: () -> Unit,
@@ -107,16 +118,36 @@ private fun UserProfileContent(
 
                 item(key = "content_${uiState.activeTab.name}") {
                     when (uiState.activeTab) {
-                        ProfileTab.ART -> ProfileArtMasonryGrid(
-                            items = uiState.artItems,
-                            modifier = Modifier.padding(top = Spacing.md),
-                            onItemClick = {},
-                        )
-                        ProfileTab.CURATIONS -> ProfileCurationsGrid(
-                            items = uiState.curations,
-                            modifier = Modifier.padding(top = Spacing.md),
-                            onItemClick = {},
-                        )
+                        ProfileTab.ART -> Column {
+                            uiState.uploadProgress?.let { progress ->
+                                UploadProgressRow(
+                                    progress = progress,
+                                    onRetry = onRetryUpload,
+                                    onDismiss = onDismissUpload,
+                                    modifier = Modifier.padding(top = Spacing.sm),
+                                )
+                            }
+                            ProfileArtMasonryGrid(
+                                items = uiState.artItems,
+                                modifier = Modifier.padding(top = Spacing.md),
+                                onItemClick = {},
+                            )
+                        }
+                        ProfileTab.CURATIONS -> Column {
+                            uiState.curationProgress?.let { progress ->
+                                CurationProgressRow(
+                                    progress = progress,
+                                    onRetry = onRetryCuration,
+                                    onDismiss = onDismissCuration,
+                                    modifier = Modifier.padding(top = Spacing.sm),
+                                )
+                            }
+                            ProfileCurationsGrid(
+                                items = uiState.curations,
+                                modifier = Modifier.padding(top = Spacing.md),
+                                onItemClick = {},
+                            )
+                        }
                         ProfileTab.LIKED -> ProfileArtMasonryGrid(
                             items = uiState.likedItems,
                             modifier = Modifier.padding(top = Spacing.md),

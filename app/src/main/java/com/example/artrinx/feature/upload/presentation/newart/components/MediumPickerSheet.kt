@@ -34,13 +34,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.Spacing
-import com.example.artrinx.feature.search.domain.model.STYLE_OPTIONS
+import com.example.artrinx.feature.upload.domain.model.MediumOption
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediumPickerSheet(
-    selectedMedium: String?,
-    onMediumSelected: (String) -> Unit,
+    mediums: List<MediumOption>,
+    selectedMediumId: Int?,
+    onMediumSelected: (MediumOption) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -80,8 +81,17 @@ fun MediumPickerSheet(
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
             Spacer(Modifier.height(Spacing.xs))
 
-            STYLE_OPTIONS.forEach { medium ->
-                val isSelected = medium == selectedMedium
+            if (mediums.isEmpty()) {
+                Text(
+                    text     = "No mediums available",
+                    style    = MaterialTheme.typography.bodyMedium,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = Spacing.md),
+                )
+            }
+
+            mediums.forEach { medium ->
+                val isSelected = medium.id == selectedMediumId
                 Row(
                     modifier          = Modifier
                         .fillMaxWidth()
@@ -90,7 +100,7 @@ fun MediumPickerSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text       = medium,
+                        text       = medium.title,
                         style      = MaterialTheme.typography.bodyMedium,
                         color      = MaterialTheme.colorScheme.onBackground,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,

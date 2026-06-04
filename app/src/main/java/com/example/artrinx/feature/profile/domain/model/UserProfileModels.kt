@@ -28,11 +28,13 @@ data class UserProfileData(
 @Immutable
 data class ProfileArtItem(
     val id: String,
-    @param:DrawableRes val imageRes: Int,
+    @param:DrawableRes val imageRes: Int? = null,
     val title: String,
     val artistName: String,
     val isPrivate: Boolean = false,
     val cardHeight: CardHeight = CardHeight.MEDIUM,
+    /** Remote image URL (real artworks). Preferred over [imageRes] when present. */
+    val imageUrl: String? = null,
 )
 
 @Immutable
@@ -42,6 +44,8 @@ data class ProfileCurationItem(
     val handle: String,
     val artworkRes: List<Int>,
     val isPrivate: Boolean = false,
+    /** Remote preview URLs (real curations). Preferred over [artworkRes] when non-empty. */
+    val artworkUrls: List<String> = emptyList(),
 )
 
 object MockUserProfileData {

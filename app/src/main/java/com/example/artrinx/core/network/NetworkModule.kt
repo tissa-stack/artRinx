@@ -19,6 +19,7 @@ object NetworkModule {
 
     private const val BASE_URL = "https://apifargate.rinx.com/"
     private const val TIMEOUT_SECONDS = 30L
+    private const val UPLOAD_WRITE_TIMEOUT_SECONDS = 120L
 
     @Provides
     @Singleton
@@ -82,4 +83,22 @@ object NetworkModule {
     @Singleton
     fun provideTokenRefreshApi(@Named("refresh") retrofit: Retrofit): TokenRefreshApi =
         retrofit.create(TokenRefreshApi::class.java)
+
+    // ── Bare client for the signed-URL PUT (no auth interceptor/authenticator) ──────────────
+    // The signed CDN URL IS the credential — attaching our Bearer token would both leak it and
+    // trip the preflight refresh. Larger write timeout for big image uploads. Used directly
+    // (not via Retrofit) so byte progress can be streamed; see UploadRepositoryImpl.
+
+    @Provides
+    @Singleton
+    @Named("upload")
+    fun provideUploadOkHttpClient(
+        logging: HttpLoggingInterceptor,
+    ): OkHttpClient =
+        OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(UPLOAD_WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .build()
 }

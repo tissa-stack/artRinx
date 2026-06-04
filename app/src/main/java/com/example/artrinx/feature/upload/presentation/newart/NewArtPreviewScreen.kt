@@ -58,6 +58,7 @@ import com.example.artrinx.core.theme.DarkCardSurface
 fun NewArtPreviewScreen(
     viewModel: NewArtViewModel,
     onBack: () -> Unit,
+    onUploadStarted: (isPrivate: Boolean) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val d = LocalDimens.current
@@ -94,7 +95,11 @@ fun NewArtPreviewScreen(
                 modifier         = Modifier
                     .clip(RoundedCornerShape(50))
                     .background(bgColor)
-                    .clickable { viewModel.onUpload(); onBack() }
+                    .clickable {
+                        if (viewModel.onUpload()) {
+                            onUploadStarted(state.privacy == PrivacyOption.PRIVATE)
+                        }
+                    }
                     .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
                 contentAlignment = Alignment.Center,
             ) {
@@ -141,7 +146,7 @@ fun NewArtPreviewScreen(
                             overflow   = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text  = state.selectedArtist?.handle ?: "Artist",
+                            text  = state.selectedArtist?.displayName ?: "Artist",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -185,7 +190,7 @@ fun NewArtPreviewScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
-                            text       = state.selectedArtist?.handle ?: "—",
+                            text       = state.selectedArtist?.displayName ?: "—",
                             style      = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             color      = BrandPrimary,
@@ -282,7 +287,7 @@ fun NewArtPreviewScreen(
                     Spacer(Modifier.width(Spacing.sm))
                     Column {
                         Text(
-                            text       = state.selectedArtist?.handle ?: "Artist",
+                            text       = state.selectedArtist?.displayName ?: "Artist",
                             style      = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color      = MaterialTheme.colorScheme.onBackground,

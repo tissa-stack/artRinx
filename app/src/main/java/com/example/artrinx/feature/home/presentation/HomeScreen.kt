@@ -44,7 +44,9 @@ import com.example.artrinx.feature.home.presentation.components.SectionHeader
 import com.example.artrinx.feature.home.domain.model.ForYouItem
 import com.example.artrinx.feature.home.presentation.components.FeaturedCarouselItem
 import com.example.artrinx.feature.home.presentation.components.ShoppableFeedItem
+import com.example.artrinx.feature.home.presentation.components.CurationProgressRow
 import com.example.artrinx.feature.home.presentation.components.TopTabs
+import com.example.artrinx.feature.home.presentation.components.UploadProgressRow
 import com.example.artrinx.feature.home.presentation.components.shimmer.BannerShimmer
 import com.example.artrinx.feature.home.presentation.components.shimmer.CollectionShimmer
 import com.example.artrinx.feature.home.presentation.components.shimmer.FeedShimmer
@@ -74,6 +76,10 @@ fun HomeScreen(
         onRetry = viewModel::onRetry,
         onLike = viewModel::onLikeToggled,
         onShopLike = viewModel::onShopLikeToggled,
+        onRetryUpload = viewModel::onRetryUpload,
+        onDismissUpload = viewModel::onDismissUpload,
+        onRetryCuration = viewModel::onRetryCuration,
+        onDismissCuration = viewModel::onDismissCuration,
         onNavigateToSearch        = onNavigateToSearch,
         onNavigateToCreate        = onNavigateToCreate,
         onNavigateToNotifications = onNavigateToNotifications,
@@ -92,6 +98,10 @@ fun HomeScreenContent(
     reselectTick: Int = 0,
     onReselect: () -> Unit = {},
     onShopLike: (String) -> Unit = {},
+    onRetryUpload: () -> Unit = {},
+    onDismissUpload: () -> Unit = {},
+    onRetryCuration: () -> Unit = {},
+    onDismissCuration: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
@@ -128,6 +138,10 @@ fun HomeScreenContent(
             onLike = onLike,
             reselectTick = reselectTick,
             onShopLike = onShopLike,
+            onRetryUpload = onRetryUpload,
+            onDismissUpload = onDismissUpload,
+            onRetryCuration = onRetryCuration,
+            onDismissCuration = onDismissCuration,
             onNavigateToDetail = onNavigateToDetail,
             onNavigateToCurationDetail = onNavigateToCurationDetail,
             modifier = Modifier.fillMaxSize(),
@@ -146,6 +160,10 @@ fun HomeContent(
     onLike: (String) -> Unit,
     reselectTick: Int = 0,
     onShopLike: (String) -> Unit = {},
+    onRetryUpload: () -> Unit = {},
+    onDismissUpload: () -> Unit = {},
+    onRetryCuration: () -> Unit = {},
+    onDismissCuration: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -167,6 +185,14 @@ fun HomeContent(
         if (reselectTick > 0) listState.animateScrollToItem(0)
     }
 
+    // When a public upload/curation progress row appears (e.g. the user just landed here after
+    // creating one), scroll the feed to the very top so the progress section is actually visible
+    // and not left off-screen above a remembered scroll position.
+    val hasProgress = uiState.uploadProgress != null || uiState.curationProgress != null
+    LaunchedEffect(hasProgress) {
+        if (hasProgress) listState.animateScrollToItem(0)
+    }
+
     LazyColumn(
         state = listState,
         modifier = modifier,
@@ -178,6 +204,28 @@ fun HomeContent(
                 onTabSelected = onTabSelected,
                 isDarkTheme = isDarkTheme,
             )
+        }
+
+        // ── Uploading row (public uploads) — pinned at the very top of the feed ──
+        uiState.uploadProgress?.let { progress ->
+            item(key = "upload-progress") {
+                UploadProgressRow(
+                    progress = progress,
+                    onRetry = onRetryUpload,
+                    onDismiss = onDismissUpload,
+                )
+            }
+        }
+
+        // ── Creating row (public curations) — directly below the upload row ──
+        uiState.curationProgress?.let { progress ->
+            item(key = "curation-progress") {
+                CurationProgressRow(
+                    progress = progress,
+                    onRetry = onRetryCuration,
+                    onDismiss = onDismissCuration,
+                )
+            }
         }
 
         // ── Shop tab: shoppable feed only ─────────────────────────────

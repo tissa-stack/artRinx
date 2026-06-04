@@ -123,6 +123,32 @@ fun AddTagsScreen(
             }
         }
 
+        // ── Trending-tag suggestions (free-form; tap to add) ──────────────
+        val suggestions = state.tagSuggestions.filter { it.lowercase() !in state.tags }
+        if (suggestions.isNotEmpty()) {
+            Text(
+                text     = "Suggested",
+                style    = MaterialTheme.typography.labelSmall,
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            )
+            Column(
+                modifier            = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                suggestions.chunked(3).forEach { rowTags ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        rowTags.forEach { tag ->
+                            SuggestionChip(label = tag, onClick = { viewModel.onSuggestedTagTap(tag) })
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(Spacing.md))
+        }
+
         // ── Tag chips area — wraps into rows of 3 ─────────────────────────
         if (state.tags.isNotEmpty()) {
             Column(
@@ -149,6 +175,26 @@ fun AddTagsScreen(
         } else {
             Spacer(Modifier.weight(1f))
         }
+    }
+}
+
+// ── Suggestion chip (tap to add) ────────────────────────────────────────────
+
+@Composable
+private fun SuggestionChip(label: String, onClick: () -> Unit) {
+    Row(
+        modifier          = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable { onClick() }
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
     }
 }
 

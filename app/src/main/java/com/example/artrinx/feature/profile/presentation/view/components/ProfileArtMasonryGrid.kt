@@ -90,7 +90,7 @@ fun ProfileArtCard(
             .clickable { onClick() },
     ) {
         AsyncImage(
-            model = item.imageRes,
+            model = item.imageUrl ?: item.imageRes,
             contentDescription = item.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),

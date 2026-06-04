@@ -17,7 +17,11 @@ data class ArtistResult(
     val handle: String,
     val displayName: String,
     val subtitle: String,               // "myself" / "Wade Huston · Following" etc.
-    @DrawableRes val avatarRes: Int? = null,
+    @param:DrawableRes val avatarRes: Int? = null,
+    /** Registered RINX user id; null for a non-RINX / free entry. */
+    val userId: Int? = null,
+    /** Remote avatar (real users). Preferred over [avatarRes] when present. */
+    val avatarUrl: String? = null,
 )
 
 // ── Upload Art form ───────────────────────────────────────────────────────────
@@ -27,8 +31,13 @@ data class ArtFormState(
     val title: String = "",
     val description: String = "",
     val selectedArtist: ArtistResult? = null,
+    val selfArtist: ArtistResult? = null,
+    val artistResults: List<ArtistResult> = emptyList(),
     val selectedMedium: String? = null,
+    val selectedMediumId: Int? = null,
     val tags: List<String> = emptyList(),
+    val tagSuggestions: List<String> = emptyList(),
+    val mediums: List<MediumOption> = emptyList(),
     val shopLink: String = "",
     val privacy: PrivacyOption = PrivacyOption.PUBLIC,
     val showMediumPicker: Boolean = false,
@@ -42,13 +51,55 @@ data class ArtFormState(
     val isValid: Boolean get() = title.isNotEmpty()
 }
 
+/** A selectable medium for the upload form (id needed for the create-artwork call). */
+@Immutable
+data class MediumOption(
+    val id: Int,
+    val title: String,
+)
+
+// ── Upload domain models ────────────────────────────────────────────────────
+
+/** Everything the upload flow needs from the form, decoupled from UI state. */
+data class UploadRequest(
+    val imageUri: Uri,
+    val title: String,
+    val description: String?,
+    val tags: List<String>,
+    val mediumId: Int?,
+    val shopLink: String?,
+    val price: Double?,
+    /** privacy=true → PRIVATE (profile only); privacy=false → PUBLIC (home feed). */
+    val isPrivate: Boolean,
+    /** Artist attribution (both null = no artist → defaults to the uploader). */
+    val artistId: Int? = null,
+    val artistName: String? = null,
+)
+
+/** Step-1 result: the signed CDN URL + the file path to finalize with. */
+data class PreparedUpload(
+    val filePath: String,
+    val uploadUrl: String,
+    val rekognitionTags: String? = null,
+)
+
+/** Step-3 result. */
+data class CreatedArtwork(
+    val id: Int,
+    val imageUrl: String,
+)
+
 // ── New Curation form ─────────────────────────────────────────────────────────
 
 @Immutable
 data class UserArtItem(
     val id: String,
-    @DrawableRes val imageRes: Int,
+    @param:DrawableRes val imageRes: Int? = null,
     val isSelected: Boolean = false,
+    /** Remote thumbnail (real artworks). Preferred over [imageRes] when present. */
+    val imageUrl: String? = null,
+    /** Numeric artwork id used to build the curation's artwork_ids. */
+    val artworkId: Int? = null,
 )
 
 data class NewCurationState(
@@ -60,8 +111,8 @@ data class NewCurationState(
     val showPrivacyPicker: Boolean = false,
     val isCreating: Boolean = false,
     val activeArtTab: ArtTab = ArtTab.UPLOADS,
-    val uploadedArts: List<UserArtItem> = MockUploadData.uploadedArts,
-    val likedArts: List<UserArtItem> = MockUploadData.likedArts,
+    val uploadedArts: List<UserArtItem> = emptyList(),
+    val likedArts: List<UserArtItem> = emptyList(),
 ) {
     val isValid: Boolean get() = title.isNotEmpty() && selectedArts.isNotEmpty()
     val displayedArts: List<UserArtItem> get() = if (activeArtTab == ArtTab.UPLOADS) uploadedArts else likedArts

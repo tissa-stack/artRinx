@@ -57,6 +57,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.coil.compose)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.androidx.compose.ui.text.google.fonts)
     // Hilt
     implementation(libs.dagger.hilt.core)

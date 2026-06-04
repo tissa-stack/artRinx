@@ -3,11 +3,17 @@ package com.example.artrinx.feature.profile.data.repository
 import android.content.Context
 import android.net.Uri
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
+import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.profile.data.remote.ProfileApiService
+import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.Medium
+import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
+import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
 import com.example.artrinx.feature.profile.domain.model.ProfileType
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
+import com.example.artrinx.feature.search.domain.model.CardHeight
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +39,29 @@ class ProfileRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 val types = response.body()?.data?.map { ProfileType(it.id, it.name) } ?: emptyList()
                 ApiResult.Success(types)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getMyProfile(): ApiResult<CurrentUser> {
+        return try {
+            val response = apiService.getMyProfile()
+            val dto = response.body()?.data
+            if (response.isSuccessful && dto?.id != null) {
+                ApiResult.Success(
+                    CurrentUser(
+                        id = dto.id,
+                        username = dto.username.orEmpty(),
+                        displayName = dto.displayName ?: dto.username.orEmpty(),
+                        avatarUrl = dto.profilePictureUrl,
+                    ),
+                )
             } else {
                 profileError(response.code())
             }
@@ -74,6 +103,65 @@ class ProfileRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             ApiResult.Error.Unknown(e)
         }
+    }
+
+    override suspend fun getMyArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>> {
+        return try {
+            val response = apiService.getMyArtworks(page, size)
+            if (response.isSuccessful) {
+                val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
+                ApiResult.Success(items)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getMyCurations(page: Int, size: Int): ApiResult<List<ProfileCurationItem>> {
+        return try {
+            val response = apiService.getMyCurations(page, size)
+            if (response.isSuccessful) {
+                val items = response.body()?.data?.items.orEmpty().map { it.toProfileCurationItem() }
+                ApiResult.Success(items)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    private fun CurationDto.toProfileCurationItem(): ProfileCurationItem = ProfileCurationItem(
+        id = id?.toString().orEmpty(),
+        title = title ?: "Untitled",
+        handle = author?.username?.let { "@$it" } ?: "",
+        artworkRes = emptyList(),
+        artworkUrls = artworks.orEmpty().mapNotNull { it.imageUrl ?: it.thumbnailUrl },
+        isPrivate = privacy ?: false,
+    )
+
+    private fun ArtworkDto.toProfileArtItem(): ProfileArtItem = ProfileArtItem(
+        id = id?.toString().orEmpty(),
+        imageRes = null,
+        imageUrl = imageUrl ?: thumbnailUrl ?: webpUrl,
+        title = title ?: "Untitled",
+        artistName = displayName ?: artist?.artistName.orEmpty(),
+        isPrivate = privacy ?: false,
+        cardHeight = aspectRatio.toCardHeight(),
+    )
+
+    /** aspect_ratio is width/height: <1 = portrait (tall), >1 = landscape (short). */
+    private fun Double?.toCardHeight(): CardHeight = when {
+        this == null -> CardHeight.MEDIUM
+        this <= 0.85 -> CardHeight.TALL
+        this >= 1.3 -> CardHeight.SHORT
+        else -> CardHeight.MEDIUM
     }
 
     override suspend fun createProfile(draft: ProfileDraft, pictureUri: Uri?): ApiResult<Unit> =

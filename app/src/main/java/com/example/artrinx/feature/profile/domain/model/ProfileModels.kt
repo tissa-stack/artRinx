@@ -5,6 +5,14 @@ data class ProfileType(
     val name: String,
 )
 
+/** The current logged-in user, used to attribute uploads to "myself". */
+data class CurrentUser(
+    val id: Int,
+    val username: String,
+    val displayName: String,
+    val avatarUrl: String?,
+)
+
 data class Medium(
     val id: Int,
     val title: String,

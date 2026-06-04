@@ -100,20 +100,23 @@ fun ProfileCurationCard(
             val imageWidth = cardWidth * 0.70f
             val stackOffset = cardWidth * 0.18f
 
+            // Prefer remote URLs (real curations); fall back to drawable res (mock/preview).
+            val previews: List<Any> = item.artworkUrls.ifEmpty { item.artworkRes }
+
             // Render back-to-front
-            item.artworkRes.indices.reversed().forEach { index ->
+            previews.indices.reversed().forEach { index ->
                 val isMain = index == 0
                 Box(
                     modifier = Modifier
                         .width(imageWidth)
                         .height(d.profileCurationCardHeight)
                         .offset(x = stackOffset * index.toFloat())
-                        .zIndex((item.artworkRes.size - index).toFloat())
+                        .zIndex((previews.size - index).toFloat())
                         .clip(RoundedCornerShape(d.cardCornerRadius))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     AsyncImage(
-                        model = item.artworkRes[index],
+                        model = previews[index],
                         contentDescription = if (isMain) item.title else null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),

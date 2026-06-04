@@ -132,7 +132,7 @@ fun AddArtToCurationScreen(
                         .clickable { viewModel.onToggleArtSelection(art) },
                 ) {
                     AsyncImage(
-                        model              = art.imageRes,
+                        model              = art.imageUrl ?: art.imageRes,
                         contentDescription = null,
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier.fillMaxSize(),

@@ -7,6 +7,8 @@ import com.example.artrinx.feature.home.domain.model.CurationItem
 import com.example.artrinx.feature.home.domain.model.FeedPost
 import com.example.artrinx.feature.home.domain.model.ForYouItem
 import com.example.artrinx.feature.home.domain.model.ShoppablePost
+import com.example.artrinx.feature.upload.domain.model.CurationProgress
+import com.example.artrinx.feature.upload.domain.model.UploadProgress
 
 enum class HomeTab(val displayName: String) {
     DISCOVER("Discover"),
@@ -29,6 +31,10 @@ data class HomeUiState(
     val feedItems: List<FeedPost> = emptyList(),
     val shoppableItems: List<ShoppablePost> = emptyList(),
     val forYouItems: List<ForYouItem> = emptyList(),
+    /** In-progress/just-finished PUBLIC upload, surfaced as a row at the top of the feed. */
+    val uploadProgress: UploadProgress? = null,
+    /** In-progress/just-finished PUBLIC curation create, surfaced at the top of the feed. */
+    val curationProgress: CurationProgress? = null,
     val isLoading: Boolean = true,
     val error: HomeError? = null,
 )

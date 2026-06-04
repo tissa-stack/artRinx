@@ -77,6 +77,7 @@ fun NewArtScreen(
     onBack: () -> Unit,
     onNavigateToArtist: () -> Unit,
     onNavigateToTags: () -> Unit,
+    onUploadStarted: (isPrivate: Boolean) -> Unit = {},
     onNavigateToPreview: () -> Unit = {},
     viewModel: NewArtViewModel = hiltViewModel(),
 ) {
@@ -90,7 +91,8 @@ fun NewArtScreen(
 
     if (state.showMediumPicker) {
         MediumPickerSheet(
-            selectedMedium   = state.selectedMedium,
+            mediums          = state.mediums,
+            selectedMediumId = state.selectedMediumId,
             onMediumSelected = viewModel::onMediumSelected,
             onDismiss        = viewModel::onDismissMediumPicker,
         )
@@ -137,7 +139,11 @@ fun NewArtScreen(
                 UploadButton(
                     enabled     = state.isValid,
                     isUploading = state.isUploading,
-                    onClick     = { viewModel.onUpload() },
+                    onClick     = {
+                        if (viewModel.onUpload()) {
+                            onUploadStarted(state.privacy == PrivacyOption.PRIVATE)
+                        }
+                    },
                 )
             }
 
@@ -185,7 +191,7 @@ fun NewArtScreen(
 
                 // Artist
                 item(key = "artist") {
-                    NavRow("Artist", state.selectedArtist?.handle, onNavigateToArtist)
+                    NavRow("Artist", state.selectedArtist?.displayName, onNavigateToArtist)
                     Spacer(Modifier.height(Spacing.md))
                 }
 

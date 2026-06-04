@@ -8,6 +8,10 @@ import com.example.artrinx.feature.home.domain.model.BannerItem
 import com.example.artrinx.feature.home.domain.model.FeedPost
 import com.example.artrinx.feature.home.domain.model.ForYouItem
 import com.example.artrinx.feature.home.domain.repository.HomeRepository
+import com.example.artrinx.feature.upload.domain.CurationManager
+import com.example.artrinx.feature.upload.domain.UploadManager
+import com.example.artrinx.feature.upload.domain.model.CurationProgress
+import com.example.artrinx.feature.upload.domain.model.UploadProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +25,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val repository: HomeRepository,
     private val curationPreviewStore: CurationPreviewStore,
+    private val uploadManager: UploadManager,
+    private val curationManager: CurationManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
@@ -28,7 +34,67 @@ class HomeViewModel @Inject constructor(
 
     init {
         load()
+        observeUploads()
+        observeCurations()
     }
+
+    // ── Upload progress (PUBLIC uploads only) ──────────────────────────────────
+
+    private fun observeUploads() {
+        viewModelScope.launch {
+            uploadManager.progress.collect { progress ->
+                // Private uploads belong to the Profile screen, not the public feed.
+                val forHome = progress?.takeUnless { it.isPrivate }
+                _uiState.update { it.copy(uploadProgress = forHome) }
+
+                if (forHome is UploadProgress.Success) {
+                    _uiState.update { state ->
+                        val newPost = forHome.toFeedPost()
+                        state.copy(
+                            feedItems = listOf(newPost) + state.feedItems.filterNot { it.id == newPost.id },
+                            uploadProgress = null,
+                        )
+                    }
+                    uploadManager.dismiss()
+                }
+            }
+        }
+    }
+
+    private fun UploadProgress.Success.toFeedPost(): FeedPost = FeedPost(
+        id = artwork.id.toString(),
+        artistName = artistName,
+        artistHandle = artistHandle,
+        // CDN url if the backend already returned it, else the local thumbnail for instant render.
+        imageUrl = artwork.imageUrl.ifEmpty { localThumb.toString() },
+        title = title,
+        likeCount = 0,
+        isLiked = false,
+    )
+
+    fun onRetryUpload() = uploadManager.retry()
+    fun onDismissUpload() = uploadManager.dismiss()
+
+    // ── Curation progress (PUBLIC curations only) ──────────────────────────────
+
+    private fun observeCurations() {
+        viewModelScope.launch {
+            curationManager.progress.collect { progress ->
+                val forHome = progress?.takeUnless { it.isPrivate }
+                _uiState.update { it.copy(curationProgress = forHome) }
+
+                // Per product: a public curation surfaces in "Popular Curations" only on the next
+                // feed refresh — we don't optimistically prepend. Just clear the row on success.
+                if (forHome is CurationProgress.Success) {
+                    _uiState.update { it.copy(curationProgress = null) }
+                    curationManager.dismiss()
+                }
+            }
+        }
+    }
+
+    fun onRetryCuration() = curationManager.retry()
+    fun onDismissCuration() = curationManager.dismiss()
 
     private fun load() {
         viewModelScope.launch {

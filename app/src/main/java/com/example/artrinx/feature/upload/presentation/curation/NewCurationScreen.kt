@@ -66,6 +66,7 @@ private val CardBack   = Color(0xFF3A3A3A)
 fun NewCurationScreen(
     onBack: () -> Unit,
     onNavigateToAddArt: () -> Unit,
+    onCreateStarted: (isPrivate: Boolean) -> Unit = {},
     viewModel: NewCurationViewModel = hiltViewModel(),
 ) {
     val state        by viewModel.state.collectAsState()
@@ -138,7 +139,7 @@ fun NewCurationScreen(
                             EmptyStackedCards()
                         } else {
                             CurationCardStack(
-                                artworks = state.selectedArts.map { it.imageRes },
+                                artworks = state.selectedArts.mapNotNull { it.imageUrl ?: it.imageRes },
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -196,7 +197,11 @@ fun NewCurationScreen(
                     CreateButton(
                         enabled    = state.isValid,
                         isCreating = state.isCreating,
-                        onClick    = viewModel::onCreate,
+                        onClick    = {
+                            if (viewModel.onCreate()) {
+                                onCreateStarted(state.privacy == PrivacyOption.PRIVATE)
+                            }
+                        },
                     )
                     Spacer(Modifier.height(Spacing.lg))
                 }

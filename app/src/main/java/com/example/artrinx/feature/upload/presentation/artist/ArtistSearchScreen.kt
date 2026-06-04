@@ -48,14 +48,12 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.upload.domain.model.ArtistResult
-import com.example.artrinx.feature.upload.domain.model.MockUploadData
 import com.example.artrinx.feature.upload.presentation.newart.NewArtViewModel
 
 @Composable
@@ -63,13 +61,16 @@ fun ArtistSearchScreen(
     viewModel: NewArtViewModel,
     onBack: () -> Unit,
 ) {
-    val state        by viewModel.state.collectAsState()
+    val state          by viewModel.state.collectAsState()
     val focusRequester = remember { FocusRequester() }
 
-    // Decide which list to show
-    val query   = state.artistSearchQuery
-    val results = if (query.isEmpty()) MockUploadData.artists   // default suggestions
-                  else viewModel.filteredArtists()
+    val query = state.artistSearchQuery
+    // Empty query → show "Myself" at the top; typing → show live search results.
+    val results: List<ArtistResult> = if (query.isBlank()) {
+        listOfNotNull(state.selfArtist)
+    } else {
+        state.artistResults
+    }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
@@ -97,7 +98,6 @@ fun ArtistSearchScreen(
                 )
             }
 
-            // Pill search bar
             Row(
                 modifier          = Modifier
                     .weight(1f)
@@ -152,11 +152,10 @@ fun ArtistSearchScreen(
             }
         }
 
-        // ── Results list or empty state ───────────────────────────────────
+        // ── Results list ──────────────────────────────────────────────────
         if (results.isNotEmpty()) {
-            // Has results — list + button at bottom
             LazyColumn(modifier = Modifier.weight(1f)) {
-                items(results, key = { it.handle }) { artist ->
+                items(results, key = { it.userId ?: it.handle }) { artist ->
                     ArtistRow(
                         artist  = artist,
                         onClick = {
@@ -166,30 +165,27 @@ fun ArtistSearchScreen(
                     )
                 }
             }
-
-            // "Add artist without RINX profile" — only when query is typed
-            if (query.isNotEmpty()) {
-                AddWithoutProfileButton(
-                    modifier = Modifier.padding(
-                        horizontal = Spacing.xl, vertical = Spacing.md,
-                    ),
-                    onClick  = onBack,
-                )
-                Spacer(Modifier.height(Spacing.md))
-            }
-
         } else if (query.isNotEmpty()) {
-            // No results for query — empty state with button in centre
             EmptyState(
-                query   = query,
-                onClick = onBack,
+                query    = query,
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = Spacing.xl),
             )
         } else {
-            // No query, no results (shouldn't happen since MockUploadData is non-empty)
             Spacer(Modifier.weight(1f))
+        }
+
+        // ── Upload without a RINX-profile artist (no attribution) ─────────
+        if (query.isNotEmpty()) {
+            AddWithoutProfileButton(
+                modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
+                onClick  = {
+                    viewModel.onClearArtist()
+                    onBack()
+                },
+            )
+            Spacer(Modifier.height(Spacing.md))
         }
     }
 }
@@ -206,7 +202,6 @@ private fun ArtistRow(artist: ArtistResult, onClick: () -> Unit) {
             .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Avatar
         Box(
             modifier         = Modifier
                 .size(d.avatarSizeLg)
@@ -214,9 +209,9 @@ private fun ArtistRow(artist: ArtistResult, onClick: () -> Unit) {
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
-            if (artist.avatarRes != null) {
+            if (artist.avatarUrl != null || artist.avatarRes != null) {
                 AsyncImage(
-                    model              = artist.avatarRes,
+                    model              = artist.avatarUrl ?: artist.avatarRes,
                     contentDescription = artist.displayName,
                     contentScale       = ContentScale.Crop,
                     modifier           = Modifier.fillMaxSize().clip(CircleShape),
@@ -233,10 +228,9 @@ private fun ArtistRow(artist: ArtistResult, onClick: () -> Unit) {
 
         Spacer(Modifier.width(Spacing.md))
 
-        // Name + subtitle
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text       = artist.handle,
+                text       = artist.displayName,
                 style      = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color      = MaterialTheme.colorScheme.onBackground,
@@ -278,20 +272,16 @@ private fun AddWithoutProfileButton(modifier: Modifier = Modifier, onClick: () -
 // ── Empty state (no RINX match) ───────────────────────────────────────────────
 
 @Composable
-private fun EmptyState(
-    query: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun EmptyState(query: String, modifier: Modifier = Modifier) {
+    val d = LocalDimens.current
     Column(
         modifier            = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // Large circular person placeholder
         Box(
             modifier         = Modifier
-                .size(80.dp)
+                .size(d.avatarSizeLg * 1.6f)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
@@ -300,21 +290,15 @@ private fun EmptyState(
                 imageVector        = Icons.Default.Person,
                 contentDescription = null,
                 tint               = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                modifier           = Modifier.size(48.dp),
+                modifier           = Modifier.size(d.avatarSizeLg),
             )
         }
-
         Spacer(Modifier.height(Spacing.xl))
-
         Text(
             text      = "There are no profile results on RINX for\n\"$query\"",
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-
-        Spacer(Modifier.height(Spacing.xl))
-
-        AddWithoutProfileButton(onClick = onClick)
     }
 }
