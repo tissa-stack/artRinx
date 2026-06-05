@@ -3,11 +3,13 @@ package com.example.artrinx.feature.profile.domain.repository
 import android.net.Uri
 import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
+import com.example.artrinx.feature.profile.domain.model.EditableProfile
 import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
 import com.example.artrinx.feature.profile.domain.model.ProfileType
+import com.example.artrinx.feature.profile.domain.model.ProfileUpdate
 import com.example.artrinx.feature.profile.domain.model.UserProfileData
 
 interface ProfileRepository {
@@ -15,6 +17,10 @@ interface ProfileRepository {
     suspend fun getMyProfile(): ApiResult<CurrentUser>
     /** Full profile (header + counts) for the Profile screen. */
     suspend fun getProfileData(): ApiResult<UserProfileData>
+    /** The current user's profile in editable form, for the Edit Profile screen. */
+    suspend fun getEditableProfile(): ApiResult<EditableProfile>
+    /** Persist changed profile fields (and optionally a new picture). */
+    suspend fun updateProfile(changes: ProfileUpdate, newPictureUri: Uri?): ApiResult<Unit>
     suspend fun checkUsername(username: String): ApiResult<Boolean>
     suspend fun getMediums(): ApiResult<List<Medium>>
     suspend fun getMyArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>>

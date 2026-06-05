@@ -33,3 +33,37 @@ data class ProfileDraft(
     val city: String = "",
     val mediumIds: Set<Int> = emptySet(),
 )
+
+/** The current user's profile in editable form, used to prefill the Edit Profile screen. */
+data class EditableProfile(
+    val username: String,
+    val fullName: String,
+    val displayName: String,
+    val bio: String,
+    val age: String, // range label (e.g. "18-25"), already mapped from the numeric wire value
+    val country: String,
+    val state: String,
+    val city: String,
+    val profilePictureUrl: String?,
+    val fullNameEditCount: Int = 0,
+)
+
+/**
+ * A partial profile update: a non-null field means the user changed it and it should be sent;
+ * null means unchanged and is omitted from the multipart request (protects the backend's
+ * restricted-field edit limits — username/full name/display name).
+ */
+data class ProfileUpdate(
+    val username: String? = null,
+    val fullName: String? = null,
+    val displayName: String? = null,
+    val bio: String? = null,
+    val age: String? = null, // range label; repo converts to numeric via ageToNumeric
+    val country: String? = null,
+    val state: String? = null,
+    val city: String? = null,
+) {
+    val hasAnyField: Boolean
+        get() = listOf(username, fullName, displayName, bio, age, country, state, city)
+            .any { it != null }
+}

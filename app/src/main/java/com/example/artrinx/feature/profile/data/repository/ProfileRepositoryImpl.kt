@@ -3,15 +3,18 @@ package com.example.artrinx.feature.profile.data.repository
 import android.content.Context
 import android.net.Uri
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.profile.data.remote.ProfileApiService
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
+import com.example.artrinx.feature.profile.domain.model.EditableProfile
 import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
 import com.example.artrinx.feature.profile.domain.model.ProfileType
+import com.example.artrinx.feature.profile.domain.model.ProfileUpdate
 import com.example.artrinx.feature.profile.domain.model.UserProfileData
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import com.example.artrinx.feature.search.domain.model.CardHeight
@@ -29,6 +32,7 @@ import javax.inject.Inject
 class ProfileRepositoryImpl @Inject constructor(
     private val apiService: ProfileApiService,
     @ApplicationContext private val context: Context,
+    private val profileRefreshBus: ProfileRefreshBus,
 ) : ProfileRepository {
 
     private val gson = Gson()
@@ -101,6 +105,80 @@ class ProfileRepositoryImpl @Inject constructor(
             ApiResult.Error.Unknown(e)
         }
     }
+
+    override suspend fun getEditableProfile(): ApiResult<EditableProfile> {
+        return try {
+            val response = apiService.getMyProfile()
+            val dto = response.body()?.data
+            if (response.isSuccessful && dto != null) {
+                ApiResult.Success(
+                    EditableProfile(
+                        username = dto.username.orEmpty(),
+                        fullName = dto.fullName.orEmpty(),
+                        displayName = dto.displayName ?: dto.fullName ?: dto.username.orEmpty(),
+                        bio = dto.bio.orEmpty(),
+                        age = numericAgeToRange(dto.age),
+                        country = dto.country.orEmpty(),
+                        state = dto.state.orEmpty(),
+                        city = dto.city.orEmpty(),
+                        profilePictureUrl = dto.profilePictureUrl,
+                        fullNameEditCount = dto.fullNameEditCount ?: 0,
+                    ),
+                )
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun updateProfile(changes: ProfileUpdate, newPictureUri: Uri?): ApiResult<Unit> =
+        withContext(Dispatchers.IO) {
+            // Nothing changed and no new picture — treat as a successful no-op (no network call).
+            if (!changes.hasAnyField && newPictureUri == null) return@withContext ApiResult.Success(Unit)
+            try {
+                val parts = mutableMapOf<String, RequestBody>()
+                changes.username?.let { parts["username"] = it.toRequestBody(textPlain) }
+                changes.fullName?.let { parts["full_name"] = it.toRequestBody(textPlain) }
+                changes.displayName?.let { parts["display_name"] = it.toRequestBody(textPlain) }
+                changes.bio?.let { parts["bio"] = it.toRequestBody(textPlain) }
+                // UI collects an age range ("18-25"); backend expects digits — send the lower bound.
+                changes.age?.let { range -> ageToNumeric(range)?.let { parts["age"] = it.toRequestBody(textPlain) } }
+                changes.country?.let { parts["country"] = it.toRequestBody(textPlain) }
+                changes.state?.let { parts["state"] = it.toRequestBody(textPlain) }
+                changes.city?.let { parts["city"] = it.toRequestBody(textPlain) }
+
+                val picturePart = newPictureUri?.let { uri ->
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val bytes = stream.readBytes()
+                        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                        val body = bytes.toRequestBody(mimeType.toMediaType())
+                        MultipartBody.Part.createFormData("profile_picture", "profile_picture.jpg", body)
+                    }
+                }
+
+                val response = apiService.updateProfile(parts, picturePart)
+                if (response.isSuccessful) {
+                    profileRefreshBus.signal()
+                    ApiResult.Success(Unit)
+                } else {
+                    val rawError = response.errorBody()?.string()
+                    when (response.code()) {
+                        422 -> ApiResult.Error.Validation(parseValidationError(rawError))
+                        in 400..499 -> ApiResult.Error.Validation("Couldn't save changes. Please check your details.")
+                        in 500..599 -> ApiResult.Error.Server(response.code())
+                        else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
+                    }
+                }
+            } catch (e: IOException) {
+                ApiResult.Error.Network(e)
+            } catch (e: Exception) {
+                ApiResult.Error.Unknown(e)
+            }
+        }
 
     override suspend fun checkUsername(username: String): ApiResult<Boolean> {
         return try {
@@ -272,6 +350,22 @@ class ProfileRepositoryImpl @Inject constructor(
         if (age.contains("under", ignoreCase = true)) return "17"
         val firstNumber = age.dropWhile { !it.isDigit() }.takeWhile { it.isDigit() }
         return firstNumber.ifBlank { null }
+    }
+
+    /**
+     * Inverse of [ageToNumeric]: maps the backend's numeric age into the UI's range label.
+     * Buckets MUST match the Edit Profile screen's AGE_RANGES exactly so the dropdown prefills
+     * correctly. Returns "" for a null/absent age (field shows empty).
+     */
+    private fun numericAgeToRange(age: Int?): String = when {
+        age == null -> ""
+        age < 18 -> "Under 18"
+        age <= 25 -> "18-25"
+        age <= 35 -> "26-35"
+        age <= 45 -> "36-45"
+        age <= 55 -> "46-55"
+        age <= 65 -> "56-65"
+        else -> "65+"
     }
 
     private fun profileError(code: Int): ApiResult.Error = when (code) {

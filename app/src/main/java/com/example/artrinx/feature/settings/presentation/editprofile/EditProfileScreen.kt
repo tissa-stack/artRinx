@@ -1,5 +1,7 @@
 package com.example.artrinx.feature.settings.presentation.editprofile
 
+import android.net.Uri
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,11 +34,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -48,7 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.InactiveButton
@@ -56,9 +62,9 @@ import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.ShopLinkGradientEnd
 import com.example.artrinx.core.theme.ShopLinkGradientStart
 import com.example.artrinx.core.theme.Spacing
+import com.example.artrinx.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.example.artrinx.feature.profile.presentation.steps.InfoTooltip
 
-private val GENDERS = listOf("Male", "Female", "Non-binary", "Prefer not to say")
 private val AGE_RANGES = listOf("Under 18", "18-25", "26-35", "36-45", "46-55", "56-65", "65+")
 
 @Composable
@@ -73,6 +79,14 @@ fun EditProfileScreen(
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> viewModel.onPictureSelected(uri) }
+
+    // Navigate back once a save succeeds (or was a no-op).
+    LaunchedEffect(state.saveStatus) {
+        if (state.saveStatus == SaveStatus.SAVED) {
+            viewModel.onSaveHandled()
+            onSaved()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -103,8 +117,53 @@ fun EditProfileScreen(
             )
         }
 
-        // ── Scroll body ──────────────────────────────────────────────────────────
-        Column(
+        when {
+            // ── Loading the profile ────────────────────────────────────────────
+            state.isLoading -> Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(color = BrandPrimary) }
+
+            // ── Failed to load ─────────────────────────────────────────────────
+            state.loadError != null -> Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = dimens.screenPaddingHorizontal),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = state.loadError!!,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(Spacing.md))
+                TextButton(onClick = viewModel::onRetryLoad) {
+                    Text("Retry", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            // ── Loaded → editable form ─────────────────────────────────────────
+            else -> EditProfileContent(
+                state = state,
+                viewModel = viewModel,
+                galleryLauncher = galleryLauncher,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ColumnScope.EditProfileContent(
+    state: EditProfileUiState,
+    viewModel: EditProfileViewModel,
+    galleryLauncher: ManagedActivityResultLauncher<PickVisualMediaRequest, Uri?>,
+) {
+    val dimens = LocalDimens.current
+    // ── Scroll body ──────────────────────────────────────────────────────────
+    Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -130,12 +189,38 @@ fun EditProfileScreen(
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (state.pictureUri != null) {
-                        AsyncImage(
-                            model = state.pictureUri,
+                    val avatarModel = state.pictureUri ?: state.pictureUrl
+                    if (avatarModel != null) {
+                        SubcomposeAsyncImage(
+                            model = avatarModel,
                             contentDescription = "Profile picture",
                             modifier = Modifier.size(avatarSize).clip(CircleShape),
                             contentScale = ContentScale.Crop,
+                            loading = {
+                                // Band tinted with onSurfaceVariant so it stays visible against the
+                                // avatar's surfaceVariant circle (surface ≈ surfaceVariant here).
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            rememberShimmerBrush(
+                                                colors = listOf(
+                                                    MaterialTheme.colorScheme.surfaceVariant,
+                                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f),
+                                                    MaterialTheme.colorScheme.surfaceVariant,
+                                                ),
+                                            ),
+                                        ),
+                                )
+                            },
+                            error = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_edit_photo),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(avatarSize * 0.38f),
+                                )
+                            },
                         )
                     } else {
                         Icon(
@@ -181,6 +266,16 @@ fun EditProfileScreen(
                 text = "Username can only be changed every 90 days.",
                 onClose = viewModel::onUsernameTooltipToggle,
             )
+            if (state.usernameError != null) {
+                Text(
+                    text = state.usernameError!!,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = Spacing.md, top = Spacing.xs),
+                )
+            }
             Spacer(Modifier.height(Spacing.md))
 
             // Full name (+ tooltip)
@@ -224,15 +319,6 @@ fun EditProfileScreen(
             )
             Spacer(Modifier.height(Spacing.md))
 
-            // Gender
-            LabeledDropdownField(
-                label = "Gender",
-                value = state.gender,
-                options = GENDERS,
-                onValueChange = viewModel::onGenderChange,
-            )
-            Spacer(Modifier.height(Spacing.md))
-
             // Age
             LabeledDropdownField(
                 label = "Age",
@@ -251,27 +337,45 @@ fun EditProfileScreen(
             Spacer(Modifier.height(Spacing.xxxl))
         }
 
-        // ── Save button ──────────────────────────────────────────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = dimens.screenPaddingHorizontal, vertical = Spacing.lg),
-        ) {
-            Button(
-                onClick = onSaved,
-                enabled = state.canSave,
+    // ── Save button ──────────────────────────────────────────────────────────
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = dimens.screenPaddingHorizontal, vertical = Spacing.lg),
+    ) {
+        if (state.saveError != null) {
+            Text(
+                text = state.saveError!!,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(dimens.authButtonHeight),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = BrandPrimary,
-                    disabledContainerColor = InactiveButton,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                ),
-            ) {
+                    .padding(bottom = Spacing.sm),
+            )
+        }
+        Button(
+            onClick = viewModel::onSave,
+            enabled = state.canSave,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(dimens.authButtonHeight),
+            shape = RoundedCornerShape(50),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = BrandPrimary,
+                disabledContainerColor = InactiveButton,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+            ),
+        ) {
+            if (state.isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(Spacing.xl),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+            } else {
                 Text("Save Changes", style = MaterialTheme.typography.labelLarge)
             }
         }
