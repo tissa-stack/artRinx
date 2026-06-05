@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,6 +64,7 @@ import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import com.example.artrinx.feature.home.presentation.components.BottomNavBar
 import com.example.artrinx.feature.home.presentation.components.ReportBottomSheet
+import com.example.artrinx.feature.home.presentation.components.state.EmptyView
 import com.example.artrinx.feature.profile.domain.model.ProfileTab
 import com.example.artrinx.feature.profile.domain.model.PublicProfile
 import com.example.artrinx.feature.profile.presentation.other.components.ConfirmActionDialog
@@ -183,16 +186,34 @@ fun OtherProfileScreen(
 
                     item(key = "content_${uiState.activeTab.name}") {
                         when (uiState.activeTab) {
-                            ProfileTab.CURATIONS -> ProfileCurationsGrid(
-                                items = uiState.curations,
-                                modifier = Modifier.padding(top = Spacing.md),
-                                onItemClick = { onNavigateToCurationDetail(it.id) },
-                            )
-                            else -> ProfileArtMasonryGrid(
-                                items = uiState.artItems,
-                                modifier = Modifier.padding(top = Spacing.md),
-                                onItemClick = { onNavigateToDetail(it.id) },
-                            )
+                            ProfileTab.CURATIONS -> if (uiState.curations.isEmpty()) {
+                                EmptyView(
+                                    icon = Icons.Outlined.Collections,
+                                    title = "No curations yet",
+                                    subtitle = "This artist hasn't created any curations.",
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                )
+                            } else {
+                                ProfileCurationsGrid(
+                                    items = uiState.curations,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToCurationDetail(it.id) },
+                                )
+                            }
+                            else -> if (uiState.artItems.isEmpty()) {
+                                EmptyView(
+                                    icon = Icons.Outlined.Image,
+                                    title = "No art yet",
+                                    subtitle = "This artist hasn't posted any art.",
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                )
+                            } else {
+                                ProfileArtMasonryGrid(
+                                    items = uiState.artItems,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToDetail(it.id) },
+                                )
+                            }
                         }
                     }
                 }

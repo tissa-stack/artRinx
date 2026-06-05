@@ -27,6 +27,7 @@ import com.example.artrinx.feature.home.presentation.HomeScreen
 import com.example.artrinx.feature.home.presentation.detail.ArtDetailScreen
 import com.example.artrinx.feature.home.presentation.detail.CurationDetailScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
+import com.example.artrinx.feature.profile.presentation.follow.FollowListScreen
 import com.example.artrinx.feature.profile.presentation.other.OtherProfileScreen
 import com.example.artrinx.feature.profile.presentation.view.UserProfileScreen
 import com.example.artrinx.feature.create.presentation.CreateScreen
@@ -328,6 +329,8 @@ fun AppNavGraph(
                 onNavigateToSettings      = { navController.navigate(NavRoutes.SETTINGS) },
                 onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, NavRoutes.PROFILE)) },
                 onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, NavRoutes.PROFILE)) },
+                onOpenFollowers           = { navController.navigate(NavRoutes.followList("followers")) },
+                onOpenFollowing           = { navController.navigate(NavRoutes.followList("following")) },
             )
         }
 
@@ -350,6 +353,16 @@ fun AppNavGraph(
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                 activeRoute               = source,
+            )
+        }
+
+        composable(
+            route     = NavRoutes.FOLLOW_LIST,
+            arguments = listOf(navArgument("tab") { type = NavType.StringType; defaultValue = "followers" }),
+        ) {
+            FollowListScreen(
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { id -> navController.navigate(NavRoutes.userProfile(id.toString(), NavRoutes.PROFILE)) },
             )
         }
 

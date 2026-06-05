@@ -9,12 +9,14 @@ import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.profile.data.remote.ProfileApiService
 import com.example.artrinx.feature.profile.data.remote.dto.BlockRequest
 import com.example.artrinx.feature.profile.data.remote.dto.FollowRequest
+import com.example.artrinx.feature.profile.data.remote.dto.FollowUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.ReportArtworkRequest
 import com.example.artrinx.feature.profile.data.remote.dto.ReportCurationRequest
 import com.example.artrinx.feature.profile.data.remote.dto.ReportMessageRequest
 import com.example.artrinx.feature.profile.domain.model.BlockedUser
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.EditableProfile
+import com.example.artrinx.feature.profile.domain.model.FollowUser
 import com.example.artrinx.feature.profile.domain.model.InviteInfo
 import com.example.artrinx.feature.profile.domain.model.InvitedUser
 import com.example.artrinx.feature.profile.domain.model.Medium
@@ -441,6 +443,48 @@ class ProfileRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             ApiResult.Error.Unknown(e)
         }
+    }
+
+    override suspend fun getFollowers(page: Int, size: Int): ApiResult<List<FollowUser>> {
+        return try {
+            val response = apiService.getFollowers(page, size)
+            if (response.isSuccessful) {
+                ApiResult.Success(response.body()?.data?.items.orEmpty().mapNotNull { it.toFollowUser() })
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getFollowing(page: Int, size: Int): ApiResult<List<FollowUser>> {
+        return try {
+            val response = apiService.getFollowing(page, size)
+            if (response.isSuccessful) {
+                ApiResult.Success(response.body()?.data?.items.orEmpty().mapNotNull { it.toFollowUser() })
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    private fun FollowUserDto.toFollowUser(): FollowUser? {
+        val uid = id ?: return null
+        val uname = username.orEmpty()
+        return FollowUser(
+            userId = uid,
+            name = displayName ?: uname,
+            handle = if (uname.isNotBlank()) "@$uname" else "",
+            avatarUrl = profilePictureUrl,
+            isFollowing = isFollowing ?: false,
+        )
     }
 
     override suspend fun blockArtwork(artworkId: Int, message: String): ApiResult<Unit> {

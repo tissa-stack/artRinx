@@ -67,6 +67,11 @@ object NavRoutes {
 
     fun userProfile(userId: String, source: String = HOME) =
         "user_profile/${Uri.encode(userId)}?source=${Uri.encode(source)}"
+
+    // Current user's followers / following list. tab = "followers" | "following".
+    const val FOLLOW_LIST = "follow_list?tab={tab}"
+
+    fun followList(tab: String) = "follow_list?tab=${Uri.encode(tab)}"
 }
 
 data class OtpArgs(

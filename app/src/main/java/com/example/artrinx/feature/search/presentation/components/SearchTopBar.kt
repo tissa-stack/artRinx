@@ -40,6 +40,7 @@ fun SearchTopBar(
     onClear: () -> Unit,
     onFocused: () -> Unit,
     modifier: Modifier = Modifier,
+    placeholder: String = "Search art",
 ) {
     val d = LocalDimens.current
 
@@ -81,7 +82,7 @@ fun SearchTopBar(
                     Box {
                         if (query.isEmpty()) {
                             Text(
-                                text  = "Search art",
+                                text  = placeholder,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

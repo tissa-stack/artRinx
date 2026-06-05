@@ -44,6 +44,8 @@ fun ProfileHeaderSection(
     onExpandBio: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onFollowersClick: () -> Unit = {},
+    onFollowingClick: () -> Unit = {},
 ) {
     val d = LocalDimens.current
 
@@ -120,8 +122,8 @@ fun ProfileHeaderSection(
             ) {
                 ProfileStatColumn(value = profile.artCount, label = "Art")
                 ProfileStatColumn(value = profile.curationCount, label = "Curations")
-                ProfileStatColumn(value = profile.followerCount, label = "Followers")
-                ProfileStatColumn(value = profile.followingCount, label = "Following")
+                ProfileStatColumn(value = profile.followerCount, label = "Followers", onClick = onFollowersClick)
+                ProfileStatColumn(value = profile.followingCount, label = "Following", onClick = onFollowingClick)
             }
         }
 
@@ -192,13 +194,16 @@ fun ProfileHeaderSection(
 }
 
 @Composable
-private fun ProfileStatColumn(value: Int, label: String) {
+private fun ProfileStatColumn(value: Int, label: String, onClick: (() -> Unit)? = null) {
     val displayValue = when {
         value >= 1_000_000 -> "${value / 1_000_000}M"
         value >= 1_000 -> "${value / 1_000}K"
         else -> value.toString()
     }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
         Text(
             text = displayValue,
             style = MaterialTheme.typography.bodyLarge,

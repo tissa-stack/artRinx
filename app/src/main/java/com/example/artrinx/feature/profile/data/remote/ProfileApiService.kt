@@ -8,6 +8,7 @@ import com.example.artrinx.feature.profile.data.remote.dto.BlockRequest
 import com.example.artrinx.feature.profile.data.remote.dto.BlockedUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.CreateProfileResponseDto
 import com.example.artrinx.feature.profile.data.remote.dto.FollowRequest
+import com.example.artrinx.feature.profile.data.remote.dto.FollowUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.InvitedUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.MediumsResponseDto
 import com.example.artrinx.feature.profile.data.remote.dto.MyProfileDto
@@ -101,6 +102,20 @@ interface ProfileApiService {
     /** Unfollow a user. */
     @DELETE("api/users/{userId}/unfollow")
     suspend fun unfollow(@Path("userId") userId: Int): Response<ResponseBody>
+
+    /** The current user's followers. */
+    @GET("api/followers")
+    suspend fun getFollowers(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<FollowUserDto>>>
+
+    /** The users the current user follows. */
+    @GET("api/followed-users")
+    suspend fun getFollowing(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<FollowUserDto>>>
 
     /** Current user's own artworks (both public and private). */
     @GET("api/artworks/")

@@ -5,6 +5,7 @@ import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.profile.domain.model.BlockedUser
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.EditableProfile
+import com.example.artrinx.feature.profile.domain.model.FollowUser
 import com.example.artrinx.feature.profile.domain.model.InviteInfo
 import com.example.artrinx.feature.profile.domain.model.InvitedUser
 import com.example.artrinx.feature.profile.domain.model.Medium
@@ -47,6 +48,10 @@ interface ProfileRepository {
     suspend fun getPublicCurations(userId: Int, page: Int, size: Int): ApiResult<List<ProfileCurationItem>>
     suspend fun followUser(userId: Int): ApiResult<Unit>
     suspend fun unfollowUser(userId: Int): ApiResult<Unit>
+    /** The current user's followers. */
+    suspend fun getFollowers(page: Int, size: Int): ApiResult<List<FollowUser>>
+    /** The users the current user follows. */
+    suspend fun getFollowing(page: Int, size: Int): ApiResult<List<FollowUser>>
     /** Block (and report) an artwork. */
     suspend fun blockArtwork(artworkId: Int, message: String): ApiResult<Unit>
     /** Block a user. */

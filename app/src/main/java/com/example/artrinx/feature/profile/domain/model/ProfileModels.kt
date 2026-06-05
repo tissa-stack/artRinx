@@ -73,6 +73,15 @@ data class PublicProfile(
     val chatroomId: String?,
 )
 
+/** A follower or followed user, for the Followers/Following list. */
+data class FollowUser(
+    val userId: Int,
+    val name: String,
+    val handle: String, // "@username"
+    val avatarUrl: String?,
+    val isFollowing: Boolean,
+)
+
 /** A user the current user has blocked (§3.8). */
 data class BlockedUser(
     val userId: Int,

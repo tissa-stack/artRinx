@@ -41,6 +41,8 @@ fun UserProfileScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
+    onOpenFollowers: () -> Unit = {},
+    onOpenFollowing: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -59,6 +61,8 @@ fun UserProfileScreen(
         onNavigateToSettings      = onNavigateToSettings,
         onNavigateToDetail        = onNavigateToDetail,
         onNavigateToCurationDetail = onNavigateToCurationDetail,
+        onOpenFollowers = onOpenFollowers,
+        onOpenFollowing = onOpenFollowing,
     )
 }
 
@@ -79,6 +83,8 @@ private fun UserProfileContent(
     onNavigateToSettings: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCurationDetail: (String) -> Unit,
+    onOpenFollowers: () -> Unit = {},
+    onOpenFollowing: () -> Unit = {},
 ) {
     Scaffold(
         bottomBar = {
@@ -117,6 +123,8 @@ private fun UserProfileContent(
                         isBioExpanded = uiState.isBioExpanded,
                         onExpandBio = onBioExpandToggle,
                         onSettingsClick = onNavigateToSettings,
+                        onFollowersClick = onOpenFollowers,
+                        onFollowingClick = onOpenFollowing,
                     )
                 }
 
