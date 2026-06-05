@@ -33,6 +33,11 @@ data class CurationDetailUiState(
     /** True when the current user owns this curation → show Edit/Delete instead of Report. */
     val isOwn: Boolean = false,
     val isDeleting: Boolean = false,
+    // ── Report / block (moderation) ──
+    val isReporting: Boolean = false,
+    val reportSent: Boolean = false,
+    val isBlocking: Boolean = false,
+    val actionError: String? = null,
 )
 
 @HiltViewModel
@@ -55,6 +60,10 @@ class CurationDetailViewModel @Inject constructor(
     /** One-shot: emitted after a successful delete so the screen can pop back. */
     private val _deleted = Channel<Unit>(Channel.BUFFERED)
     val deleted = _deleted.receiveAsFlow()
+
+    /** One-shot: emitted after a successful block so the screen can close the sheet and pop back. */
+    private val _blocked = Channel<Unit>(Channel.BUFFERED)
+    val blocked = _blocked.receiveAsFlow()
 
     init {
         load()
@@ -156,4 +165,40 @@ class CurationDetailViewModel @Inject constructor(
             )
         }
     }
+
+    // ── Report / block ────────────────────────────────────────────────────────
+
+    fun submitReport(message: String) {
+        val id = curationId ?: return
+        if (_uiState.value.isReporting) return
+        _uiState.update { it.copy(isReporting = true, actionError = null) }
+        viewModelScope.launch {
+            when (profileRepository.reportCuration(id, message)) {
+                is ApiResult.Success -> _uiState.update { it.copy(isReporting = false, reportSent = true) }
+                is ApiResult.Error -> _uiState.update {
+                    it.copy(isReporting = false, actionError = "Couldn't send the report. Please try again.")
+                }
+            }
+        }
+    }
+
+    fun blockUser() {
+        val ownerId = _uiState.value.curation?.authorId ?: return
+        if (_uiState.value.isBlocking) return
+        _uiState.update { it.copy(isBlocking = true, actionError = null) }
+        viewModelScope.launch {
+            when (profileRepository.blockUser(ownerId)) {
+                is ApiResult.Success -> _blocked.send(Unit)
+                is ApiResult.Error -> _uiState.update {
+                    it.copy(isBlocking = false, actionError = "Couldn't block this user. Please try again.")
+                }
+            }
+        }
+    }
+
+    fun onReportSheetClosed() = _uiState.update {
+        it.copy(isReporting = false, reportSent = false, isBlocking = false, actionError = null)
+    }
+
+    fun onActionErrorShown() = _uiState.update { it.copy(actionError = null) }
 }

@@ -53,6 +53,14 @@ data class InviteInfo(
     val remainingInvites: Int?,
 )
 
+/** A user the current user has blocked (§3.8). */
+data class BlockedUser(
+    val userId: Int,
+    val name: String,
+    val role: String,
+    val avatarUrl: String?,
+)
+
 /** A user who joined via the current user's invite code (§2.3). */
 data class InvitedUser(
     val id: String,

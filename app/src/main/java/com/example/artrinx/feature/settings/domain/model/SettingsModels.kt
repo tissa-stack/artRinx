@@ -46,6 +46,10 @@ data class BlockedAccount(
     val name: String,
     val role: String,
     @param:DrawableRes val avatarRes: Int? = null,
+    /** Backend user id, used for the unblock call. */
+    val userId: Int = 0,
+    /** Remote avatar (real blocked users). Preferred over [avatarRes] when present. */
+    val avatarUrl: String? = null,
 )
 
 // ── Invite friends ────────────────────────────────────────────────────────────

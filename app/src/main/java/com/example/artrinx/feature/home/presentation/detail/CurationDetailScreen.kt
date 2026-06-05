@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -82,17 +83,43 @@ fun CurationDetailScreen(
     var showReportSheet by remember { mutableStateOf(false) }
     var showAddToCuration by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     // Pop back once the curation is deleted.
     LaunchedEffect(Unit) {
         viewModel.deleted.collect { onBack() }
     }
 
+    // Close the sheet and pop back once the curation's author is blocked.
+    LaunchedEffect(Unit) {
+        viewModel.blocked.collect {
+            showReportSheet = false
+            onBack()
+        }
+    }
+
+    LaunchedEffect(uiState.actionError) {
+        uiState.actionError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onActionErrorShown()
+        }
+    }
+
     if (showReportSheet) {
         ReportBottomSheet(
-            artTitle    = uiState.curation?.title ?: "",
+            artTitle = uiState.curation?.title ?: "",
             profileName = uiState.curation?.curatorName ?: "",
-            onDismiss   = { showReportSheet = false },
+            subjectLabel = "curation",
+            isReporting = uiState.isReporting,
+            reportSent = uiState.reportSent,
+            isBlocking = uiState.isBlocking,
+            onSubmitReport = viewModel::submitReport,
+            onBlockArt = null, // no curation-block API; only the curator can be blocked
+            onBlockUser = viewModel::blockUser,
+            onDismiss = {
+                showReportSheet = false
+                viewModel.onReportSheetClosed()
+            },
         )
     }
 

@@ -35,8 +35,9 @@ fun UnblockDialog(
     profileName: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    isUnblocking: Boolean = false,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = { if (!isUnblocking) onDismiss() }) {
         Surface(
             shape = RoundedCornerShape(Spacing.xl),
             color = MaterialTheme.colorScheme.surface,
@@ -49,7 +50,11 @@ fun UnblockDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd)) {
+                    IconButton(
+                        onClick = onDismiss,
+                        enabled = !isUnblocking,
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    ) {
                         Icon(
                             Icons.Default.Close, "Close",
                             tint = MaterialTheme.colorScheme.onBackground,
@@ -75,9 +80,10 @@ fun UnblockDialog(
                 Spacer(Modifier.height(Spacing.xl))
 
                 PillButton(
-                    text = "Unblock",
+                    text = if (isUnblocking) "Unblocking…" else "Unblock",
                     containerColor = BrandPrimary,
                     textColor = MaterialTheme.colorScheme.onPrimary,
+                    enabled = !isUnblocking,
                     onClick = { onConfirm() },
                 )
                 Spacer(Modifier.height(Spacing.md))
@@ -85,6 +91,7 @@ fun UnblockDialog(
                     text = "Cancel",
                     containerColor = InactiveButton,
                     textColor = MaterialTheme.colorScheme.onSecondary,
+                    enabled = !isUnblocking,
                     onClick = onDismiss,
                 )
                 Spacer(Modifier.height(Spacing.sm))
@@ -98,6 +105,7 @@ private fun PillButton(
     text: String,
     containerColor: androidx.compose.ui.graphics.Color,
     textColor: androidx.compose.ui.graphics.Color,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Box(
@@ -105,7 +113,7 @@ private fun PillButton(
             .fillMaxWidth()
             .clip(RoundedCornerShape(50))
             .background(containerColor)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = Spacing.md),
         contentAlignment = Alignment.Center,
     ) {

@@ -1,7 +1,9 @@
 package com.example.artrinx.feature.settings.presentation.blocked
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,20 +22,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
@@ -46,6 +57,14 @@ fun BlockedAccountsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val dimens = LocalDimens.current
+    val context = LocalContext.current
+
+    LaunchedEffect(state.unblockError) {
+        state.unblockError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onUnblockErrorShown()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -75,20 +94,58 @@ fun BlockedAccountsScreen(
             )
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .navigationBarsPadding(),
-            contentPadding = PaddingValues(top = Spacing.sm, bottom = Spacing.xxl),
-        ) {
-            items(state.accounts, key = { it.id }) { account ->
-                BlockedRow(
-                    account = account,
-                    avatarSize = dimens.avatarSizeLg,
-                    onUnblock = { viewModel.onUnblockRequest(account) },
+        when {
+            state.isLoading -> Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(color = BrandPrimary) }
+
+            state.error != null -> Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = dimens.screenPaddingHorizontal),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = state.error!!,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                Spacer(Modifier.height(Spacing.md))
+                TextButton(onClick = viewModel::onRetry) {
+                    Text("Retry", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            state.accounts.isEmpty() -> Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "No blocked accounts",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            else -> LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+                contentPadding = PaddingValues(top = Spacing.sm, bottom = Spacing.xxl),
+            ) {
+                items(state.accounts, key = { it.id }) { account ->
+                    BlockedRow(
+                        account = account,
+                        avatarSize = dimens.avatarSizeLg,
+                        onUnblock = { viewModel.onUnblockRequest(account) },
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                }
             }
         }
     }
@@ -98,6 +155,7 @@ fun BlockedAccountsScreen(
             profileName = account.name,
             onConfirm = viewModel::onConfirmUnblock,
             onDismiss = viewModel::onDismissUnblock,
+            isUnblocking = state.isUnblocking,
         )
     }
 }
@@ -105,7 +163,7 @@ fun BlockedAccountsScreen(
 @Composable
 private fun BlockedRow(
     account: BlockedAccount,
-    avatarSize: androidx.compose.ui.unit.Dp,
+    avatarSize: Dp,
     onUnblock: () -> Unit,
 ) {
     val dimens = LocalDimens.current
@@ -123,11 +181,11 @@ private fun BlockedRow(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
-            if (account.avatarRes != null) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(account.avatarRes),
+            if (account.avatarUrl != null) {
+                AsyncImage(
+                    model = account.avatarUrl,
                     contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier.size(avatarSize).clip(CircleShape),
                 )
             } else {
@@ -149,11 +207,13 @@ private fun BlockedRow(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            Text(
-                text = account.role,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (account.role.isNotBlank()) {
+                Text(
+                    text = account.role,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         // Unblock pill
@@ -169,7 +229,7 @@ private fun BlockedRow(
                 text = "Unblock",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                color = MaterialTheme.colorScheme.onPrimary,
             )
         }
     }

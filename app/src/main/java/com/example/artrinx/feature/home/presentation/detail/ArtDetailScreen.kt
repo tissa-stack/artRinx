@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -84,16 +85,42 @@ fun ArtDetailScreen(
     var showAddToCuration by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+
     // Pop back once the artwork is deleted.
     LaunchedEffect(Unit) {
         viewModel.deleted.collect { onBack() }
     }
 
+    // Close the sheet and pop back once the art/user is blocked.
+    LaunchedEffect(Unit) {
+        viewModel.blocked.collect {
+            showReportSheet = false
+            onBack()
+        }
+    }
+
+    LaunchedEffect(uiState.actionError) {
+        uiState.actionError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onActionErrorShown()
+        }
+    }
+
     if (showReportSheet) {
         ReportBottomSheet(
-            artTitle    = uiState.post?.title ?: "",
+            artTitle = uiState.post?.title ?: "",
             profileName = uiState.post?.artistName ?: "",
-            onDismiss   = { showReportSheet = false },
+            isReporting = uiState.isReporting,
+            reportSent = uiState.reportSent,
+            isBlocking = uiState.isBlocking,
+            onSubmitReport = viewModel::submitReport,
+            onBlockArt = viewModel::blockArt,
+            onBlockUser = viewModel::blockUser,
+            onDismiss = {
+                showReportSheet = false
+                viewModel.onReportSheetClosed()
+            },
         )
     }
 

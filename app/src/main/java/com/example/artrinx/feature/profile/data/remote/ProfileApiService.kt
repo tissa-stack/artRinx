@@ -4,15 +4,22 @@ import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.home.data.remote.dto.EnvelopeDto
 import com.example.artrinx.feature.home.data.remote.dto.PageDto
+import com.example.artrinx.feature.profile.data.remote.dto.BlockRequest
+import com.example.artrinx.feature.profile.data.remote.dto.BlockedUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.CreateProfileResponseDto
 import com.example.artrinx.feature.profile.data.remote.dto.InvitedUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.MediumsResponseDto
 import com.example.artrinx.feature.profile.data.remote.dto.MyProfileDto
 import com.example.artrinx.feature.profile.data.remote.dto.ProfileTypesResponseDto
+import com.example.artrinx.feature.profile.data.remote.dto.ReportArtworkRequest
+import com.example.artrinx.feature.profile.data.remote.dto.ReportCurationRequest
 import com.example.artrinx.feature.profile.data.remote.dto.UsernameCheckResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
@@ -37,6 +44,29 @@ interface ProfileApiService {
         @Query("page") page: Int,
         @Query("size") size: Int,
     ): Response<EnvelopeDto<PageDto<InvitedUserDto>>>
+
+    /** The current user's blocked users (§3.8). */
+    @GET("api/blocked/users")
+    suspend fun getBlockedUsers(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<BlockedUserDto>>>
+
+    /** Unblock a user (§3.8). */
+    @DELETE("api/unblock")
+    suspend fun unblockUser(@Query("user_id") userId: Int): Response<ResponseBody>
+
+    /** Block a user or an artwork (§3.8). */
+    @POST("api/block")
+    suspend fun block(@Body body: BlockRequest): Response<ResponseBody>
+
+    /** Report an artwork (§3.9). */
+    @POST("api/report-artwork")
+    suspend fun reportArtwork(@Body body: ReportArtworkRequest): Response<ResponseBody>
+
+    /** Report a curation. */
+    @POST("api/report-curation")
+    suspend fun reportCuration(@Body body: ReportCurationRequest): Response<ResponseBody>
 
     /** Current user's own artworks (both public and private). */
     @GET("api/artworks/")

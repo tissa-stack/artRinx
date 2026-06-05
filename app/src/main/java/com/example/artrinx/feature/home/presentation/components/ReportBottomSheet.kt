@@ -30,9 +30,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,8 +42,6 @@ import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.DarkCardSurface
 import com.example.artrinx.core.theme.Spacing
-
-private enum class ReportSheetPhase { FORM, SENT }
 
 private val REPORT_REASONS = listOf(
     "Violence or inciting violence",
@@ -64,9 +60,15 @@ fun ReportBottomSheet(
     artTitle: String,
     profileName: String,
     onDismiss: () -> Unit,
+    subjectLabel: String = "art",
+    isReporting: Boolean = false,
+    reportSent: Boolean = false,
+    isBlocking: Boolean = false,
+    onSubmitReport: (message: String) -> Unit = {},
+    onBlockArt: (() -> Unit)? = null,
+    onBlockUser: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var phase by remember { mutableStateOf(ReportSheetPhase.FORM) }
     val selectedReasons = remember { mutableStateListOf<String>() }
 
     ModalBottomSheet(
@@ -74,19 +76,26 @@ fun ReportBottomSheet(
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        when (phase) {
-            ReportSheetPhase.FORM -> ReportForm(
+        // Phase is driven by the report result, not local state.
+        if (!reportSent) {
+            ReportForm(
                 selectedReasons = selectedReasons,
-                onToggleReason  = { reason ->
+                subjectLabel = subjectLabel,
+                isReporting = isReporting,
+                onToggleReason = { reason ->
                     if (reason in selectedReasons) selectedReasons.remove(reason)
                     else selectedReasons.add(reason)
                 },
-                onSubmit = { phase = ReportSheetPhase.SENT },
+                onSubmit = { onSubmitReport(selectedReasons.joinToString(", ")) },
             )
-            ReportSheetPhase.SENT -> ReportSent(
-                artTitle    = artTitle,
+        } else {
+            ReportSent(
+                artTitle = artTitle,
                 profileName = profileName,
-                onDismiss   = onDismiss,
+                isBlocking = isBlocking,
+                onBlockArt = onBlockArt,
+                onBlockUser = onBlockUser,
+                onDismiss = onDismiss,
             )
         }
     }
@@ -97,10 +106,12 @@ fun ReportBottomSheet(
 @Composable
 private fun ReportForm(
     selectedReasons: List<String>,
+    subjectLabel: String,
+    isReporting: Boolean,
     onToggleReason: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
-    val canReport = selectedReasons.isNotEmpty()
+    val canReport = selectedReasons.isNotEmpty() && !isReporting
     val buttonColor by animateColorAsState(
         targetValue = if (canReport) BrandPrimary else DarkCardSurface,
         label       = "reportButton",
@@ -114,7 +125,7 @@ private fun ReportForm(
             .navigationBarsPadding(),
     ) {
         Text(
-            text      = "Report this art",
+            text      = "Report this $subjectLabel",
             style     = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
             color     = MaterialTheme.colorScheme.onBackground,
@@ -126,7 +137,7 @@ private fun ReportForm(
         Spacer(Modifier.height(Spacing.md))
 
         Text(
-            text      = "Why are you reporting this artwork?",
+            text      = "Why are you reporting this $subjectLabel?",
             style     = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color     = MaterialTheme.colorScheme.onBackground,
@@ -174,7 +185,7 @@ private fun ReportForm(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text       = "Report",
+                text       = if (isReporting) "Reporting…" else "Report",
                 style      = MaterialTheme.typography.labelLarge,
                 color      = Color.White.copy(alpha = if (canReport) 1f else 0.5f),
                 fontWeight = FontWeight.SemiBold,
@@ -201,19 +212,11 @@ private fun ReportForm(
 private fun ReportSent(
     artTitle: String,
     profileName: String,
+    isBlocking: Boolean,
+    onBlockArt: (() -> Unit)?,
+    onBlockUser: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var artBlocked     by remember { mutableStateOf(false) }
-    var profileBlocked by remember { mutableStateOf(false) }
-
-    val artButtonColor by animateColorAsState(
-        targetValue = if (artBlocked) DarkCardSurface else BrandPrimary,
-        label       = "artBlock",
-    )
-    val profileButtonColor by animateColorAsState(
-        targetValue = if (profileBlocked) DarkCardSurface else BrandPrimary,
-        label       = "profileBlock",
-    )
 
     Column(
         modifier            = Modifier
@@ -269,38 +272,40 @@ private fun ReportSent(
 
         Spacer(Modifier.height(Spacing.xl))
 
-        Box(
-            modifier         = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(50))
-                .background(artButtonColor)
-                .clickable { artBlocked = !artBlocked }
-                .padding(vertical = Spacing.md),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text       = if (artBlocked) "Blocked \"$artTitle\"" else "Block \"$artTitle\"",
-                style      = MaterialTheme.typography.labelLarge,
-                color      = Color.White.copy(alpha = if (artBlocked) 0.6f else 1f),
-                fontWeight = FontWeight.SemiBold,
-            )
+        if (onBlockArt != null) {
+            Box(
+                modifier         = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(BrandPrimary)
+                    .clickable(enabled = !isBlocking, onClick = onBlockArt)
+                    .padding(vertical = Spacing.md),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text       = if (isBlocking) "Blocking…" else "Block \"$artTitle\"",
+                    style      = MaterialTheme.typography.labelLarge,
+                    color      = Color.White.copy(alpha = if (isBlocking) 0.6f else 1f),
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+
+            Spacer(Modifier.height(Spacing.md))
         }
 
-        Spacer(Modifier.height(Spacing.md))
-
         Box(
             modifier         = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(50))
-                .background(profileButtonColor)
-                .clickable { profileBlocked = !profileBlocked }
+                .background(BrandPrimary)
+                .clickable(enabled = !isBlocking, onClick = onBlockUser)
                 .padding(vertical = Spacing.md),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text       = if (profileBlocked) "Blocked \"$profileName\"" else "Block \"$profileName\"",
+                text       = if (isBlocking) "Blocking…" else "Block \"$profileName\"",
                 style      = MaterialTheme.typography.labelLarge,
-                color      = Color.White.copy(alpha = if (profileBlocked) 0.6f else 1f),
+                color      = Color.White.copy(alpha = if (isBlocking) 0.6f else 1f),
                 fontWeight = FontWeight.SemiBold,
             )
         }

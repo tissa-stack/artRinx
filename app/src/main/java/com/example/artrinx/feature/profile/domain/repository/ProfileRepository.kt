@@ -2,6 +2,7 @@ package com.example.artrinx.feature.profile.domain.repository
 
 import android.net.Uri
 import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.feature.profile.domain.model.BlockedUser
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.EditableProfile
 import com.example.artrinx.feature.profile.domain.model.InviteInfo
@@ -28,6 +29,18 @@ interface ProfileRepository {
     suspend fun getInviteInfo(): ApiResult<InviteInfo>
     /** Users who joined via [code] — the "people I invited" list. */
     suspend fun getInvitedUsers(code: String, page: Int, size: Int): ApiResult<List<InvitedUser>>
+    /** The current user's blocked users. */
+    suspend fun getBlockedUsers(page: Int, size: Int): ApiResult<List<BlockedUser>>
+    /** Unblock the user with [userId]. */
+    suspend fun unblockUser(userId: Int): ApiResult<Unit>
+    /** Report an artwork with a free-text [message]. */
+    suspend fun reportArtwork(artworkId: Int, message: String): ApiResult<Unit>
+    /** Report a curation with a free-text [message]. */
+    suspend fun reportCuration(curationId: Int, message: String): ApiResult<Unit>
+    /** Block (and report) an artwork. */
+    suspend fun blockArtwork(artworkId: Int, message: String): ApiResult<Unit>
+    /** Block a user. */
+    suspend fun blockUser(userId: Int): ApiResult<Unit>
     /** Persist changed profile fields (and optionally a new picture). */
     suspend fun updateProfile(changes: ProfileUpdate, newPictureUri: Uri?): ApiResult<Unit>
     suspend fun checkUsername(username: String): ApiResult<Boolean>

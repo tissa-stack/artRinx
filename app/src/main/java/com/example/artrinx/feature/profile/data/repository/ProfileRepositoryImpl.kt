@@ -7,6 +7,10 @@ import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.profile.data.remote.ProfileApiService
+import com.example.artrinx.feature.profile.data.remote.dto.BlockRequest
+import com.example.artrinx.feature.profile.data.remote.dto.ReportArtworkRequest
+import com.example.artrinx.feature.profile.data.remote.dto.ReportCurationRequest
+import com.example.artrinx.feature.profile.domain.model.BlockedUser
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.EditableProfile
 import com.example.artrinx.feature.profile.domain.model.InviteInfo
@@ -273,6 +277,90 @@ class ProfileRepositoryImpl @Inject constructor(
             SimpleDateFormat("dd/MM/yy", Locale.US).format(parsed)
         } catch (_: Exception) {
             ""
+        }
+    }
+
+    override suspend fun getBlockedUsers(page: Int, size: Int): ApiResult<List<BlockedUser>> {
+        return try {
+            val response = apiService.getBlockedUsers(page, size)
+            if (response.isSuccessful) {
+                val items = response.body()?.data?.items.orEmpty().mapNotNull { dto ->
+                    val userId = dto.userId ?: dto.id ?: return@mapNotNull null
+                    val username = dto.username.orEmpty()
+                    BlockedUser(
+                        userId = userId,
+                        name = dto.displayName ?: dto.fullName ?: username,
+                        role = dto.profileTypeName.orEmpty(),
+                        avatarUrl = dto.profilePictureUrl,
+                    )
+                }
+                ApiResult.Success(items)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun unblockUser(userId: Int): ApiResult<Unit> {
+        return try {
+            val response = apiService.unblockUser(userId)
+            if (response.isSuccessful) {
+                ApiResult.Success(Unit)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun reportArtwork(artworkId: Int, message: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.reportArtwork(ReportArtworkRequest(artworkId = artworkId, message = message))
+            if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun reportCuration(curationId: Int, message: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.reportCuration(ReportCurationRequest(curationId = curationId, message = message))
+            if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun blockArtwork(artworkId: Int, message: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.block(BlockRequest(artId = artworkId, message = message))
+            if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun blockUser(userId: Int): ApiResult<Unit> {
+        return try {
+            val response = apiService.block(BlockRequest(userId = userId))
+            if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
         }
     }
 
