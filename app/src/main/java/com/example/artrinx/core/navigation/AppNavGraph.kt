@@ -27,6 +27,7 @@ import com.example.artrinx.feature.home.presentation.HomeScreen
 import com.example.artrinx.feature.home.presentation.detail.ArtDetailScreen
 import com.example.artrinx.feature.home.presentation.detail.CurationDetailScreen
 import com.example.artrinx.feature.onboarding.presentation.OnboardingScreen
+import com.example.artrinx.feature.profile.presentation.other.OtherProfileScreen
 import com.example.artrinx.feature.profile.presentation.view.UserProfileScreen
 import com.example.artrinx.feature.create.presentation.CreateScreen
 import com.example.artrinx.feature.notifications.presentation.NotificationsScreen
@@ -169,6 +170,7 @@ fun AppNavGraph(
                     navController.navigate(NavRoutes.curationDetail(curationId, NavRoutes.HOME))
                 },
                 onNavigateToNewCuration = { navController.navigate(NavRoutes.NEW_CURATION) },
+                onOpenProfile = { id -> navController.navigate(NavRoutes.userProfile(id.toString(), NavRoutes.HOME)) },
             )
         }
 
@@ -183,6 +185,9 @@ fun AppNavGraph(
                 },
                 onNavigateToCurationDetail = { curationId ->
                     navController.navigate(NavRoutes.curationDetail(curationId, NavRoutes.SEARCH))
+                },
+                onOpenProfile = { userId ->
+                    navController.navigate(NavRoutes.userProfile(userId, NavRoutes.SEARCH))
                 },
             )
         }
@@ -232,11 +237,9 @@ fun AppNavGraph(
                 userRole        = conv?.userRole ?: "Artist",
                 userHandle      = conv?.userHandle?.removePrefix("@") ?: "user",
                 onBack          = { navController.popBackStack() },
-                // Navigate to the artist's profile (uses the global profile tab for now)
+                // Navigate to the chat partner's public profile.
                 onViewProfile   = {
-                    navController.navigate(NavRoutes.PROFILE) {
-                        launchSingleTop = true
-                    }
+                    navController.navigate(NavRoutes.userProfile(userId, NavRoutes.NOTIFICATIONS))
                 },
                 onDeleteMessage = { navController.popBackStack() },
             )
@@ -328,6 +331,28 @@ fun AppNavGraph(
             )
         }
 
+        composable(
+            route     = NavRoutes.USER_PROFILE,
+            arguments = listOf(
+                navArgument("userId") { type = NavType.StringType },
+                navArgument("source") { type = NavType.StringType; defaultValue = NavRoutes.HOME },
+            ),
+        ) { entry ->
+            val source = entry.arguments?.getString("source") ?: NavRoutes.HOME
+            OtherProfileScreen(
+                onBack                    = { navController.popBackStack() },
+                onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, source)) },
+                onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, source)) },
+                onMessage                 = { uid -> navController.navigate(NavRoutes.chat(uid.toString(), source)) },
+                onNavigateToHome          = { navController.navigateToTab(NavRoutes.HOME) },
+                onNavigateToSearch        = { navController.navigateToTab(NavRoutes.SEARCH) },
+                onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
+                onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
+                onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
+                activeRoute               = source,
+            )
+        }
+
         // ── Settings flow ──────────────────────────────────────────────────────
 
         composable(NavRoutes.SETTINGS) {
@@ -413,6 +438,7 @@ fun AppNavGraph(
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToNewCuration   = { navController.navigate(NavRoutes.NEW_CURATION) },
                 onEditArt                 = { navController.navigate(NavRoutes.newArtForEdit()) },
+                onOpenProfile             = { id -> navController.navigate(NavRoutes.userProfile(id.toString(), source)) },
                 activeRoute = source,
             )
         }
@@ -437,6 +463,7 @@ fun AppNavGraph(
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToNewCuration   = { navController.navigate(NavRoutes.NEW_CURATION) },
                 onEditCuration            = { navController.navigate(NavRoutes.NEW_CURATION) },
+                onOpenProfile             = { id -> navController.navigate(NavRoutes.userProfile(id.toString(), source)) },
                 activeRoute = source,
             )
         }

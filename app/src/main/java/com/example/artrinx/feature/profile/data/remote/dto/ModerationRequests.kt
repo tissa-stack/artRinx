@@ -23,3 +23,14 @@ data class ReportCurationRequest(
     @SerializedName("curation_id") val curationId: Int,
     @SerializedName("message") val message: String,
 )
+
+/** POST /api/follow. */
+data class FollowRequest(
+    @SerializedName("followed_id") val followedId: Int,
+)
+
+/** POST /api/report-message — used to report a user/profile. */
+data class ReportMessageRequest(
+    @SerializedName("reported_user_id") val reportedUserId: Int,
+    @SerializedName("message") val message: String,
+)

@@ -61,6 +61,12 @@ object NavRoutes {
 
     fun curationDetail(curationId: String, source: String = HOME) =
         "curation_detail/${Uri.encode(curationId)}?source=${Uri.encode(source)}"
+
+    // Another user's profile. source carries the originating tab for back/highlight behavior.
+    const val USER_PROFILE = "user_profile/{userId}?source={source}"
+
+    fun userProfile(userId: String, source: String = HOME) =
+        "user_profile/${Uri.encode(userId)}?source=${Uri.encode(source)}"
 }
 
 data class OtpArgs(

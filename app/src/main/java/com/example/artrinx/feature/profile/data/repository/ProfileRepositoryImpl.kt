@@ -8,8 +8,10 @@ import com.example.artrinx.feature.home.data.remote.dto.ArtworkDto
 import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.profile.data.remote.ProfileApiService
 import com.example.artrinx.feature.profile.data.remote.dto.BlockRequest
+import com.example.artrinx.feature.profile.data.remote.dto.FollowRequest
 import com.example.artrinx.feature.profile.data.remote.dto.ReportArtworkRequest
 import com.example.artrinx.feature.profile.data.remote.dto.ReportCurationRequest
+import com.example.artrinx.feature.profile.data.remote.dto.ReportMessageRequest
 import com.example.artrinx.feature.profile.domain.model.BlockedUser
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.EditableProfile
@@ -17,6 +19,7 @@ import com.example.artrinx.feature.profile.domain.model.InviteInfo
 import com.example.artrinx.feature.profile.domain.model.InvitedUser
 import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
+import com.example.artrinx.feature.profile.domain.model.PublicProfile
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
 import com.example.artrinx.feature.profile.domain.model.ProfilePlanSummary
@@ -334,6 +337,104 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun reportCuration(curationId: Int, message: String): ApiResult<Unit> {
         return try {
             val response = apiService.reportCuration(ReportCurationRequest(curationId = curationId, message = message))
+            if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun reportUser(userId: Int, message: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.reportMessage(ReportMessageRequest(reportedUserId = userId, message = message))
+            if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getPublicProfile(userId: Int): ApiResult<PublicProfile> {
+        return try {
+            val response = apiService.getPublicProfile(userId)
+            val dto = response.body()?.data
+            if (response.isSuccessful && dto != null) {
+                ApiResult.Success(
+                    PublicProfile(
+                        userId = userId,
+                        handle = dto.username?.let { "@$it" } ?: "",
+                        displayName = dto.displayName ?: dto.username.orEmpty(),
+                        role = dto.profileTypeName.orEmpty(),
+                        bio = dto.bio.orEmpty(),
+                        website = dto.profileLink.orEmpty(),
+                        avatarUrl = dto.profilePictureUrl,
+                        artCount = dto.artworkCount ?: 0,
+                        curationCount = dto.curationCount ?: 0,
+                        followerCount = dto.followerCount ?: 0,
+                        followingCount = dto.followingCount ?: 0,
+                        isFollowing = dto.isFollowing ?: false,
+                        iBlocked = dto.iBlocked ?: false,
+                        theyBlocked = dto.theyBlocked ?: false,
+                        canMessage = dto.canMessage ?: true,
+                        chatroomId = dto.chatroomId,
+                    ),
+                )
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getPublicArtworks(userId: Int, page: Int, size: Int): ApiResult<List<ProfileArtItem>> {
+        return try {
+            val response = apiService.getPublicArtworks(userId, page, size)
+            if (response.isSuccessful) {
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() })
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getPublicCurations(userId: Int, page: Int, size: Int): ApiResult<List<ProfileCurationItem>> {
+        return try {
+            val response = apiService.getPublicCurations(userId, page, size)
+            if (response.isSuccessful) {
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileCurationItem() })
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun followUser(userId: Int): ApiResult<Unit> {
+        return try {
+            val response = apiService.follow(FollowRequest(followedId = userId))
+            if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun unfollowUser(userId: Int): ApiResult<Unit> {
+        return try {
+            val response = apiService.unfollow(userId)
             if (response.isSuccessful) ApiResult.Success(Unit) else profileError(response.code())
         } catch (e: IOException) {
             ApiResult.Error.Network(e)

@@ -53,6 +53,26 @@ data class InviteInfo(
     val remainingInvites: Int?,
 )
 
+/** Another user's public profile, for the Other-Profile screen. */
+data class PublicProfile(
+    val userId: Int,
+    val handle: String,
+    val displayName: String,
+    val role: String,
+    val bio: String,
+    val website: String,
+    val avatarUrl: String?,
+    val artCount: Int,
+    val curationCount: Int,
+    val followerCount: Int,
+    val followingCount: Int,
+    val isFollowing: Boolean,
+    val iBlocked: Boolean,
+    val theyBlocked: Boolean,
+    val canMessage: Boolean,
+    val chatroomId: String?,
+)
+
 /** A user the current user has blocked (§3.8). */
 data class BlockedUser(
     val userId: Int,

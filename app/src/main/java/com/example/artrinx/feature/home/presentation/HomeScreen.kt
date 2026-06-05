@@ -74,6 +74,7 @@ fun HomeScreen(
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
+    onOpenProfile: (Int) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -97,6 +98,7 @@ fun HomeScreen(
         onNavigateToCurationDetail = onNavigateToCurationDetail,
         onNavigateToProfile = onNavigateToProfile,
         onNavigateToNewCuration = onNavigateToNewCuration,
+        onOpenProfile = onOpenProfile,
     )
 }
 
@@ -121,6 +123,7 @@ fun HomeScreenContent(
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
+    onOpenProfile: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -159,6 +162,7 @@ fun HomeScreenContent(
             onNavigateToDetail = onNavigateToDetail,
             onNavigateToCurationDetail = onNavigateToCurationDetail,
             onNavigateToNewCuration = onNavigateToNewCuration,
+            onOpenProfile = onOpenProfile,
             modifier = Modifier.fillMaxSize(),
             bottomPadding = innerPadding,
         )
@@ -183,6 +187,7 @@ fun HomeContent(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
+    onOpenProfile: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
@@ -271,6 +276,7 @@ fun HomeContent(
                         onLike = { onShopLike(post.id) },
                         onClick = { onNavigateToDetail(post.id) },
                         onAddToCuration = { post.id.toIntOrNull()?.let { addToCurationSource = CurationSource.Artwork(it, post.imageUrl) } },
+                        onArtistClick = { post.ownerId?.let(onOpenProfile) },
                     )
                 }
             }
@@ -309,6 +315,7 @@ fun HomeContent(
                                     addToCurationSource = CurationSource.Artwork(it, forYouItem.post.imageUrl)
                                 }
                             },
+                            onArtistClick = { forYouItem.post.ownerId?.let(onOpenProfile) },
                         )
                         is ForYouItem.Sponsored -> Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -465,6 +472,7 @@ fun HomeContent(
                         onLike = { onLike(post.id) },
                         onClick = { onNavigateToDetail(post.id) },
                         onAddToCuration = { post.id.toIntOrNull()?.let { addToCurationSource = CurationSource.Artwork(it, post.imageUrl) } },
+                        onArtistClick = { post.ownerId?.let(onOpenProfile) },
                     )
                 }
             }

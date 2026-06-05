@@ -76,6 +76,7 @@ fun CurationDetailScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
     onEditCuration: () -> Unit = {},
+    onOpenProfile: (Int) -> Unit = {},
     activeRoute: String = "home",
     viewModel: CurationDetailViewModel = hiltViewModel(),
 ) {
@@ -225,6 +226,7 @@ fun CurationDetailScreen(
                     onLike               = viewModel::onLikeToggled,
                     onNavigateToCuration = onNavigateToCuration,
                     onAddToCuration      = { showAddToCuration = true },
+                    onOpenProfile        = onOpenProfile,
                     modifier             = Modifier.weight(1f),
                 )
 
@@ -249,6 +251,7 @@ private fun CurationDetailContent(
     onLike: () -> Unit,
     onNavigateToCuration: (String) -> Unit,
     onAddToCuration: () -> Unit = {},
+    onOpenProfile: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val d        = LocalDimens.current
@@ -413,11 +416,16 @@ private fun CurationDetailContent(
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val authorId = curation.authorId
+                val authorClick = Modifier.then(
+                    if (authorId != null) Modifier.clickable { onOpenProfile(authorId) } else Modifier,
+                )
                 Box(
                     modifier         = Modifier
                         .size(d.avatarSizeLg)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .then(authorClick),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (!curation.curatorAvatarUrl.isNullOrBlank()) {
@@ -437,7 +445,7 @@ private fun CurationDetailContent(
                     }
                 }
                 Spacer(Modifier.width(Spacing.sm))
-                Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f).then(authorClick)) {
                     Text(
                         text       = curation.curatorName,
                         style      = MaterialTheme.typography.bodyMedium,

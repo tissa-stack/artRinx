@@ -45,6 +45,7 @@ fun DiscoverFeedItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onAddToCuration: () -> Unit = {},
+    onArtistClick: () -> Unit = {},
 ) {
     val d = LocalDimens.current
     val context = LocalContext.current
@@ -54,6 +55,7 @@ fun DiscoverFeedItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(enabled = post.ownerId != null, onClick = onArtistClick)
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {

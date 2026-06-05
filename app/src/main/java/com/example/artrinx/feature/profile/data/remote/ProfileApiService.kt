@@ -7,12 +7,15 @@ import com.example.artrinx.feature.home.data.remote.dto.PageDto
 import com.example.artrinx.feature.profile.data.remote.dto.BlockRequest
 import com.example.artrinx.feature.profile.data.remote.dto.BlockedUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.CreateProfileResponseDto
+import com.example.artrinx.feature.profile.data.remote.dto.FollowRequest
 import com.example.artrinx.feature.profile.data.remote.dto.InvitedUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.MediumsResponseDto
 import com.example.artrinx.feature.profile.data.remote.dto.MyProfileDto
 import com.example.artrinx.feature.profile.data.remote.dto.ProfileTypesResponseDto
+import com.example.artrinx.feature.profile.data.remote.dto.PublicUserProfileDto
 import com.example.artrinx.feature.profile.data.remote.dto.ReportArtworkRequest
 import com.example.artrinx.feature.profile.data.remote.dto.ReportCurationRequest
+import com.example.artrinx.feature.profile.data.remote.dto.ReportMessageRequest
 import com.example.artrinx.feature.profile.data.remote.dto.UsernameCheckResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -26,6 +29,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.PartMap
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ProfileApiService {
@@ -67,6 +71,36 @@ interface ProfileApiService {
     /** Report a curation. */
     @POST("api/report-curation")
     suspend fun reportCuration(@Body body: ReportCurationRequest): Response<ResponseBody>
+
+    /** Report a user/profile (uses the report-message endpoint). */
+    @POST("api/report-message")
+    suspend fun reportMessage(@Body body: ReportMessageRequest): Response<ResponseBody>
+
+    // ── Other user's public profile ─────────────────────────────────────────
+    @GET("api/profile/{userId}/public/info")
+    suspend fun getPublicProfile(@Path("userId") userId: Int): Response<EnvelopeDto<PublicUserProfileDto>>
+
+    @GET("api/profile/{userId}/public/artworks")
+    suspend fun getPublicArtworks(
+        @Path("userId") userId: Int,
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<ArtworkDto>>>
+
+    @GET("api/profile/{userId}/public/curations")
+    suspend fun getPublicCurations(
+        @Path("userId") userId: Int,
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<CurationDto>>>
+
+    /** Follow a user. */
+    @POST("api/follow")
+    suspend fun follow(@Body body: FollowRequest): Response<ResponseBody>
+
+    /** Unfollow a user. */
+    @DELETE("api/users/{userId}/unfollow")
+    suspend fun unfollow(@Path("userId") userId: Int): Response<ResponseBody>
 
     /** Current user's own artworks (both public and private). */
     @GET("api/artworks/")

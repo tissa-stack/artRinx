@@ -51,6 +51,7 @@ fun ShoppableFeedItem(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     onAddToCuration: () -> Unit = {},
+    onArtistClick: () -> Unit = {},
 ) {
     val d = LocalDimens.current
     val context = LocalContext.current
@@ -71,6 +72,7 @@ fun ShoppableFeedItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(enabled = post.ownerId != null, onClick = onArtistClick)
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {

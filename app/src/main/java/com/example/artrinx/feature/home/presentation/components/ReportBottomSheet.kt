@@ -67,6 +67,7 @@ fun ReportBottomSheet(
     onSubmitReport: (message: String) -> Unit = {},
     onBlockArt: (() -> Unit)? = null,
     onBlockUser: () -> Unit = {},
+    onUnfollowUser: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val selectedReasons = remember { mutableStateListOf<String>() }
@@ -95,6 +96,7 @@ fun ReportBottomSheet(
                 isBlocking = isBlocking,
                 onBlockArt = onBlockArt,
                 onBlockUser = onBlockUser,
+                onUnfollowUser = onUnfollowUser,
                 onDismiss = onDismiss,
             )
         }
@@ -215,6 +217,7 @@ private fun ReportSent(
     isBlocking: Boolean,
     onBlockArt: (() -> Unit)?,
     onBlockUser: () -> Unit,
+    onUnfollowUser: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
 
@@ -308,6 +311,26 @@ private fun ReportSent(
                 color      = Color.White.copy(alpha = if (isBlocking) 0.6f else 1f),
                 fontWeight = FontWeight.SemiBold,
             )
+        }
+
+        if (onUnfollowUser != null) {
+            Spacer(Modifier.height(Spacing.md))
+            Box(
+                modifier         = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(BrandPrimary)
+                    .clickable(enabled = !isBlocking, onClick = onUnfollowUser)
+                    .padding(vertical = Spacing.md),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text       = "Unfollow \"$profileName\"",
+                    style      = MaterialTheme.typography.labelLarge,
+                    color      = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
 
         Spacer(Modifier.height(Spacing.xxl))

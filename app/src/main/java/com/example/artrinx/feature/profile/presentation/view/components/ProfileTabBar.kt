@@ -30,6 +30,7 @@ fun ProfileTabBar(
     activeTab: ProfileTab,
     onTabSelected: (ProfileTab) -> Unit,
     modifier: Modifier = Modifier,
+    tabs: List<ProfileTab> = ProfileTab.entries,
 ) {
     val d = LocalDimens.current
 
@@ -47,7 +48,7 @@ fun ProfileTabBar(
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(Spacing.xs),
         ) {
-            ProfileTab.entries.forEach { tab ->
+            tabs.forEach { tab ->
                 val isActive = tab == activeTab
                 val bgColor by animateColorAsState(
                     targetValue = if (isActive) BrandPrimary else Color.Transparent,

@@ -77,6 +77,7 @@ fun ArtDetailScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
     onEditArt: () -> Unit = {},
+    onOpenProfile: (Int) -> Unit = {},
     activeRoute: String = "home",
     viewModel: ArtDetailViewModel = hiltViewModel(),
 ) {
@@ -179,6 +180,7 @@ fun ArtDetailScreen(
                     onLike = viewModel::onLikeToggled,
                     onNavigateToDetail = onNavigateToDetail,
                     onAddToCuration = { showAddToCuration = true },
+                    onOpenProfile = onOpenProfile,
                     // Your OWN art → read-only (just the details). Anyone else's art (incl. liked
                     // arts in the Profile tab) keeps all the actions + Send message.
                     showActions = !uiState.isOwn,
@@ -273,6 +275,7 @@ private fun ArtDetailContent(
     onLike: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onAddToCuration: () -> Unit = {},
+    onOpenProfile: (Int) -> Unit = {},
     showActions: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -505,11 +508,16 @@ private fun ArtDetailContent(
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val artistId = post.ownerId
+                val artistClick = Modifier.then(
+                    if (artistId != null) Modifier.clickable { onOpenProfile(artistId) } else Modifier,
+                )
                 Box(
                     modifier = Modifier
                         .size(d.avatarSizeLg)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .then(artistClick),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (!post.artistAvatarUrl.isNullOrBlank()) {
@@ -529,7 +537,7 @@ private fun ArtDetailContent(
                     }
                 }
                 Spacer(Modifier.width(Spacing.sm))
-                Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f).then(artistClick)) {
                     Text(
                         text = post.artistName,
                         style = MaterialTheme.typography.bodyMedium,

@@ -8,6 +8,7 @@ import com.example.artrinx.feature.profile.domain.model.EditableProfile
 import com.example.artrinx.feature.profile.domain.model.InviteInfo
 import com.example.artrinx.feature.profile.domain.model.InvitedUser
 import com.example.artrinx.feature.profile.domain.model.Medium
+import com.example.artrinx.feature.profile.domain.model.PublicProfile
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
@@ -37,6 +38,15 @@ interface ProfileRepository {
     suspend fun reportArtwork(artworkId: Int, message: String): ApiResult<Unit>
     /** Report a curation with a free-text [message]. */
     suspend fun reportCuration(curationId: Int, message: String): ApiResult<Unit>
+    /** Report a user/profile with a free-text [message]. */
+    suspend fun reportUser(userId: Int, message: String): ApiResult<Unit>
+
+    // ── Other user's public profile ─────────────────────────────────────────
+    suspend fun getPublicProfile(userId: Int): ApiResult<PublicProfile>
+    suspend fun getPublicArtworks(userId: Int, page: Int, size: Int): ApiResult<List<ProfileArtItem>>
+    suspend fun getPublicCurations(userId: Int, page: Int, size: Int): ApiResult<List<ProfileCurationItem>>
+    suspend fun followUser(userId: Int): ApiResult<Unit>
+    suspend fun unfollowUser(userId: Int): ApiResult<Unit>
     /** Block (and report) an artwork. */
     suspend fun blockArtwork(artworkId: Int, message: String): ApiResult<Unit>
     /** Block a user. */

@@ -25,17 +25,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
+import androidx.compose.foundation.clickable
 import com.example.artrinx.feature.search.domain.model.UserSearchItem
 
 @Composable
 fun UserResultRow(
     user: UserSearchItem,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
 ) {
     val d = LocalDimens.current
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {

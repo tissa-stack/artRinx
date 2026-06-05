@@ -70,6 +70,7 @@ fun SearchScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
+    onOpenProfile: (String) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -138,6 +139,7 @@ fun SearchScreen(
                             onRetry = viewModel::onRetry,
                             onNavigateToDetail = onNavigateToDetail,
                             onNavigateToCurationDetail = onNavigateToCurationDetail,
+                            onOpenProfile = onOpenProfile,
                         )
                     }
                 }
@@ -225,6 +227,7 @@ private fun SearchResultsContent(
     onRetry: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCurationDetail: (String) -> Unit,
+    onOpenProfile: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -318,7 +321,7 @@ private fun SearchResultsContent(
                     contentPadding = PaddingValues(horizontal = Spacing.lg, vertical = Spacing.sm),
                 ) {
                     items(items = uiState.userResults, key = { it.id }) { user ->
-                        UserResultRow(user = user)
+                        UserResultRow(user = user, onClick = { onOpenProfile(user.id) })
                     }
                 }
 
