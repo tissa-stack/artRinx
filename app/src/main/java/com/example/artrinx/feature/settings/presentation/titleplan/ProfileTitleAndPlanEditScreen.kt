@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
@@ -54,6 +56,14 @@ fun ProfileTitleAndPlanEditScreen(
     val dimens = LocalDimens.current
 
     LaunchedEffect(initialStep) { viewModel.setInitialStep(initialStep) }
+
+    // Navigate back once the change is saved (or was a no-op).
+    LaunchedEffect(state.saved) {
+        if (state.saved) {
+            viewModel.onSaveHandled()
+            onSaved()
+        }
+    }
 
     // Step 1 back → step 0; step 0 back → exit
     BackHandler(enabled = state.step == 1) { viewModel.goToTitleStep() }
@@ -90,6 +100,13 @@ fun ProfileTitleAndPlanEditScreen(
         }
 
         // ── Step content ──────────────────────────────────────────────────────────
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(color = BrandPrimary) }
+            return@Column
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -142,9 +159,17 @@ fun ProfileTitleAndPlanEditScreen(
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (state.saveError != null) {
+                Text(
+                    text = state.saveError!!,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
             val enabled = if (state.step == 0) state.canAdvanceTitle else state.canSavePlan
             Button(
-                onClick = { if (state.step == 0) viewModel.goToPlanStep() else onSaved() },
+                onClick = { if (state.step == 0) viewModel.goToPlanStep() else viewModel.onSave() },
                 enabled = enabled,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -157,10 +182,18 @@ fun ProfileTitleAndPlanEditScreen(
                     disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
                 ),
             ) {
-                Text(
-                    text = if (state.step == 0) "Next" else "Save changes",
-                    style = MaterialTheme.typography.labelLarge,
-                )
+                if (state.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(Spacing.xl),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text(
+                        text = if (state.step == 0) "Next" else "Save changes",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
 
             // 2-step dot indicator

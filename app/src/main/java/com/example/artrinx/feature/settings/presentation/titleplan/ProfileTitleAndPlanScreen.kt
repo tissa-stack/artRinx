@@ -16,10 +16,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -78,48 +80,80 @@ fun ProfileTitleAndPlanScreen(
         }
 
         // ── Body ─────────────────────────────────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = dimens.screenPaddingHorizontal),
-        ) {
-            Spacer(Modifier.height(Spacing.md))
-            Text(
-                text = "Current preferences",
-                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+        when {
+            state.isLoading -> Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(color = BrandPrimary) }
 
-            Spacer(Modifier.height(Spacing.lg))
-            SectionLabel("Profile title")
-            Spacer(Modifier.height(Spacing.sm))
-            ProfileTitleCard(
-                option = state.title,
-                selected = false,
-                expanded = true,
-                onClick = onEditTitle,
-            )
+            state.error != null -> Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = dimens.screenPaddingHorizontal),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = state.error!!,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(Spacing.md))
+                TextButton(onClick = viewModel::onRetry) {
+                    Text("Retry", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            }
 
-            Spacer(Modifier.height(Spacing.lg))
-            SectionLabel("Plan")
-            Spacer(Modifier.height(Spacing.sm))
-            PlanCard(
-                plan = state.plan,
-                selected = false,
-                onClick = onEditPlan,
-            )
+            else -> Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = dimens.screenPaddingHorizontal),
+            ) {
+                Spacer(Modifier.height(Spacing.md))
+                Text(
+                    text = "Current preferences",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
 
-            Spacer(Modifier.height(Spacing.lg))
-            Text(
-                text = "Next Billing Date: ${state.nextBillingDate}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+                state.title?.let { title ->
+                    Spacer(Modifier.height(Spacing.lg))
+                    SectionLabel("Profile title")
+                    Spacer(Modifier.height(Spacing.sm))
+                    ProfileTitleCard(
+                        option = title,
+                        selected = false,
+                        expanded = true,
+                        onClick = onEditTitle,
+                    )
+                }
 
-            Spacer(Modifier.height(Spacing.xxxl))
+                state.plan?.let { plan ->
+                    Spacer(Modifier.height(Spacing.lg))
+                    SectionLabel("Plan")
+                    Spacer(Modifier.height(Spacing.sm))
+                    PlanCard(
+                        plan = plan,
+                        selected = false,
+                        onClick = onEditPlan,
+                    )
+                }
+
+                if (state.nextBillingDate.isNotBlank()) {
+                    Spacer(Modifier.height(Spacing.lg))
+                    Text(
+                        text = "Next Billing Date: ${state.nextBillingDate}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+
+                Spacer(Modifier.height(Spacing.xxxl))
+            }
         }
 
         // ── Actions ──────────────────────────────────────────────────────────────

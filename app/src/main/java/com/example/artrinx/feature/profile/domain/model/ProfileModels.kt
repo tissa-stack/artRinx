@@ -34,6 +34,19 @@ data class ProfileDraft(
     val mediumIds: Set<Int> = emptySet(),
 )
 
+/**
+ * The current user's title + plan, for the "Profile title and plan" settings screen.
+ * [profileTitle] is the raw `profile_title` from the API; [isPremium] reflects the active
+ * subscription (premium only when plan is artist_pro and status is active/trialing); the plan
+ * shown otherwise is the free basic plan they start on at onboarding.
+ */
+data class ProfilePlanSummary(
+    val profileTitle: String,
+    val isPremium: Boolean,
+    /** Formatted next billing/renewal date, or "" when there's nothing to bill (free plan). */
+    val nextBillingDate: String,
+)
+
 /** The current user's profile in editable form, used to prefill the Edit Profile screen. */
 data class EditableProfile(
     val username: String,
@@ -62,8 +75,9 @@ data class ProfileUpdate(
     val country: String? = null,
     val state: String? = null,
     val city: String? = null,
+    val profileTypeId: Int? = null, // sent as profile_type_id (the profile title/role)
 ) {
     val hasAnyField: Boolean
         get() = listOf(username, fullName, displayName, bio, age, country, state, city)
-            .any { it != null }
+            .any { it != null } || profileTypeId != null
 }

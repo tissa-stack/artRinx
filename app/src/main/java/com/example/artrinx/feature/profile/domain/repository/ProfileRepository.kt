@@ -8,6 +8,7 @@ import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
+import com.example.artrinx.feature.profile.domain.model.ProfilePlanSummary
 import com.example.artrinx.feature.profile.domain.model.ProfileType
 import com.example.artrinx.feature.profile.domain.model.ProfileUpdate
 import com.example.artrinx.feature.profile.domain.model.UserProfileData
@@ -19,6 +20,8 @@ interface ProfileRepository {
     suspend fun getProfileData(): ApiResult<UserProfileData>
     /** The current user's profile in editable form, for the Edit Profile screen. */
     suspend fun getEditableProfile(): ApiResult<EditableProfile>
+    /** The current user's profile title + subscription plan, for the Profile-title-and-plan screen. */
+    suspend fun getProfilePlanSummary(): ApiResult<ProfilePlanSummary>
     /** Persist changed profile fields (and optionally a new picture). */
     suspend fun updateProfile(changes: ProfileUpdate, newPictureUri: Uri?): ApiResult<Unit>
     suspend fun checkUsername(username: String): ApiResult<Boolean>

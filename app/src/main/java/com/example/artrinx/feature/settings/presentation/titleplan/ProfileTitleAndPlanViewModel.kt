@@ -1,6 +1,11 @@
 package com.example.artrinx.feature.settings.presentation.titleplan
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.artrinx.core.network.ApiResult
+import com.example.artrinx.core.util.ProfileRefreshBus
+import com.example.artrinx.feature.auth.data.local.SessionDataSource
+import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import com.example.artrinx.feature.settings.domain.model.MockSettingsData
 import com.example.artrinx.feature.settings.domain.model.PlanOption
 import com.example.artrinx.feature.settings.domain.model.ProfileTitleOption
@@ -8,23 +13,69 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ProfileTitleAndPlanUiState(
-    val title: ProfileTitleOption,
-    val plan: PlanOption,
-    val nextBillingDate: String,
+    val title: ProfileTitleOption? = null,
+    val plan: PlanOption? = null,
+    val nextBillingDate: String = "",
+    val isLoading: Boolean = true,
+    val error: String? = null,
 )
 
 @HiltViewModel
-class ProfileTitleAndPlanViewModel @Inject constructor() : ViewModel() {
+class ProfileTitleAndPlanViewModel @Inject constructor(
+    private val repository: ProfileRepository,
+    private val session: SessionDataSource,
+    private val profileRefreshBus: ProfileRefreshBus,
+) : ViewModel() {
 
-    private val _state = MutableStateFlow(
-        ProfileTitleAndPlanUiState(
-            title = MockSettingsData.profileTitles.first { it.id == MockSettingsData.currentProfileTitleId },
-            plan = MockSettingsData.plans.first { it.id == MockSettingsData.currentPlanId },
-            nextBillingDate = MockSettingsData.nextBillingDate,
-        ),
-    )
+    private val _state = MutableStateFlow(ProfileTitleAndPlanUiState())
     val state: StateFlow<ProfileTitleAndPlanUiState> = _state.asStateFlow()
+
+    init {
+        load()
+        observeRefreshes()
+    }
+
+    /** Reload after the title is changed in the edit screen (updateProfile signals the bus). */
+    private fun observeRefreshes() {
+        viewModelScope.launch {
+            profileRefreshBus.events.collect { load() }
+        }
+    }
+
+    private fun load() {
+        _state.update { it.copy(isLoading = true, error = null) }
+        viewModelScope.launch {
+            when (val result = repository.getProfilePlanSummary()) {
+                is ApiResult.Success -> {
+                    val summary = result.data
+                    _state.update {
+                        it.copy(
+                            title = currentTitleOption(session.getUserRole(), summary.profileTitle),
+                            // No paid purchase flow yet → everyone starts on the free basic plan.
+                            plan = if (summary.isPremium) MockSettingsData.premiumPlan else MockSettingsData.basicPlan,
+                            nextBillingDate = summary.nextBillingDate,
+                            isLoading = false,
+                            error = null,
+                        )
+                    }
+                }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isLoading = false, error = result.toMessage())
+                }
+            }
+        }
+    }
+
+    fun onRetry() = load()
+}
+
+private fun ApiResult.Error.toMessage(): String = when (this) {
+    is ApiResult.Error.Network -> "No connection. Please try again."
+    is ApiResult.Error.Server -> "Something went wrong. Please try again."
+    else -> "Couldn't load your plan. Please try again."
 }

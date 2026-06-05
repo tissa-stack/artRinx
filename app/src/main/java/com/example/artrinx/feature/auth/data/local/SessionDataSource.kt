@@ -58,6 +58,14 @@ class SessionDataSource @Inject constructor(
 
     fun isProfileCompleted(): Boolean = prefs.getBoolean(KEY_PROFILE_COMPLETED, false)
 
+    /** The role chosen at onboarding: artist | collector | curious | gallery | agent | admin. */
+    fun getUserRole(): String? = prefs.getString(KEY_USER_ROLE, null)
+
+    /** Keep the cached role in sync after the user changes their profile title. */
+    suspend fun saveUserRole(role: String) = withContext(Dispatchers.IO) {
+        prefs.edit().putString(KEY_USER_ROLE, role).apply()
+    }
+
     suspend fun saveProfileCompleted(completed: Boolean) = withContext(Dispatchers.IO) {
         prefs.edit().putBoolean(KEY_PROFILE_COMPLETED, completed).apply()
     }

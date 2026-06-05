@@ -13,6 +13,7 @@ import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
 import com.example.artrinx.feature.profile.domain.model.ProfileDraft
+import com.example.artrinx.feature.profile.domain.model.ProfilePlanSummary
 import com.example.artrinx.feature.profile.domain.model.ProfileType
 import com.example.artrinx.feature.profile.domain.model.ProfileUpdate
 import com.example.artrinx.feature.profile.domain.model.UserProfileData
@@ -27,6 +28,8 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 
 class ProfileRepositoryImpl @Inject constructor(
@@ -135,6 +138,44 @@ class ProfileRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getProfilePlanSummary(): ApiResult<ProfilePlanSummary> {
+        return try {
+            val response = apiService.getMyProfile()
+            val dto = response.body()?.data
+            if (response.isSuccessful && dto != null) {
+                val sub = dto.subscription
+                // Premium only when on the artist_pro plan AND the subscription is live.
+                val isPremium = sub?.plan == "artist_pro" &&
+                    sub.status in setOf("active", "trialing")
+                ApiResult.Success(
+                    ProfilePlanSummary(
+                        profileTitle = dto.profileTitle.orEmpty(),
+                        isPremium = isPremium,
+                        nextBillingDate = if (isPremium) formatBillingDate(sub?.renewsAt ?: sub?.expiresAt) else "",
+                    ),
+                )
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    /** ISO 8601 (e.g. "2026-12-31T...") → "31 Dec 2026". Returns "" on null/unparseable input. */
+    private fun formatBillingDate(iso: String?): String {
+        if (iso.isNullOrBlank()) return ""
+        return try {
+            val datePart = iso.take(10) // yyyy-MM-dd — avoids timezone/fractional parsing
+            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(datePart) ?: return ""
+            SimpleDateFormat("d MMM yyyy", Locale.US).format(parsed)
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     override suspend fun updateProfile(changes: ProfileUpdate, newPictureUri: Uri?): ApiResult<Unit> =
         withContext(Dispatchers.IO) {
             // Nothing changed and no new picture — treat as a successful no-op (no network call).
@@ -150,6 +191,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 changes.country?.let { parts["country"] = it.toRequestBody(textPlain) }
                 changes.state?.let { parts["state"] = it.toRequestBody(textPlain) }
                 changes.city?.let { parts["city"] = it.toRequestBody(textPlain) }
+                changes.profileTypeId?.let { parts["profile_type_id"] = it.toString().toRequestBody(textPlain) }
 
                 val picturePart = newPictureUri?.let { uri ->
                     context.contentResolver.openInputStream(uri)?.use { stream ->
