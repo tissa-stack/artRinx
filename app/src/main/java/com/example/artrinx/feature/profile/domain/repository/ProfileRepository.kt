@@ -4,6 +4,8 @@ import android.net.Uri
 import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.EditableProfile
+import com.example.artrinx.feature.profile.domain.model.InviteInfo
+import com.example.artrinx.feature.profile.domain.model.InvitedUser
 import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
@@ -22,6 +24,10 @@ interface ProfileRepository {
     suspend fun getEditableProfile(): ApiResult<EditableProfile>
     /** The current user's profile title + subscription plan, for the Profile-title-and-plan screen. */
     suspend fun getProfilePlanSummary(): ApiResult<ProfilePlanSummary>
+    /** The current user's invite code + remaining monthly invites. */
+    suspend fun getInviteInfo(): ApiResult<InviteInfo>
+    /** Users who joined via [code] — the "people I invited" list. */
+    suspend fun getInvitedUsers(code: String, page: Int, size: Int): ApiResult<List<InvitedUser>>
     /** Persist changed profile fields (and optionally a new picture). */
     suspend fun updateProfile(changes: ProfileUpdate, newPictureUri: Uri?): ApiResult<Unit>
     suspend fun checkUsername(username: String): ApiResult<Boolean>

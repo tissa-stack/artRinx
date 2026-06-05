@@ -387,8 +387,7 @@ fun AppNavGraph(
 
         composable(NavRoutes.INVITE_FRIENDS) {
             InviteFriendsScreen(
-                onBack  = { navController.popBackStack() },
-                onShare = { /* TODO: share intent */ },
+                onBack = { navController.popBackStack() },
             )
         }
 

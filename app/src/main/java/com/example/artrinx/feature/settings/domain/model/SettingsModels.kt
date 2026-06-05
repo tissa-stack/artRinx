@@ -57,6 +57,8 @@ data class Invitee(
     val handle: String,
     val date: String,
     @param:DrawableRes val avatarRes: Int? = null,
+    /** Remote avatar (real invitees). Preferred over [avatarRes] when present. */
+    val avatarUrl: String? = null,
 )
 
 // ── Mock data ─────────────────────────────────────────────────────────────────

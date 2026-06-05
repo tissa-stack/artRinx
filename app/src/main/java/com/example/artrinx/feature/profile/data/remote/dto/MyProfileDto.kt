@@ -17,6 +17,8 @@ data class MyProfileDto(
     @SerializedName("profile_link") val profileLink: String? = null,
     @SerializedName("profile_picture_url") val profilePictureUrl: String? = null,
     @SerializedName("full_name_edit_count") val fullNameEditCount: Int? = null,
+    @SerializedName("invitation_code") val invitationCode: String? = null,
+    @SerializedName("remaining_invites") val remainingInvites: Int? = null,
     @SerializedName("subscription") val subscription: SubscriptionDto? = null,
     @SerializedName("artwork_count") val artworkCount: Int? = null,
     @SerializedName("curation_count") val curationCount: Int? = null,

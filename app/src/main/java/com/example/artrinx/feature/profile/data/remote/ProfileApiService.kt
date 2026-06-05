@@ -5,6 +5,7 @@ import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.home.data.remote.dto.EnvelopeDto
 import com.example.artrinx.feature.home.data.remote.dto.PageDto
 import com.example.artrinx.feature.profile.data.remote.dto.CreateProfileResponseDto
+import com.example.artrinx.feature.profile.data.remote.dto.InvitedUserDto
 import com.example.artrinx.feature.profile.data.remote.dto.MediumsResponseDto
 import com.example.artrinx.feature.profile.data.remote.dto.MyProfileDto
 import com.example.artrinx.feature.profile.data.remote.dto.ProfileTypesResponseDto
@@ -28,6 +29,14 @@ interface ProfileApiService {
     /** The current logged-in user's own profile. */
     @GET("api/profile")
     suspend fun getMyProfile(): Response<EnvelopeDto<MyProfileDto>>
+
+    /** Users who joined via [invitationCode] — the "people I invited" list (§2.3). */
+    @GET("api/profiles/by-invite-code")
+    suspend fun getInvitedUsers(
+        @Query("invitation_code") invitationCode: String,
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<InvitedUserDto>>>
 
     /** Current user's own artworks (both public and private). */
     @GET("api/artworks/")

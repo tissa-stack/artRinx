@@ -9,6 +9,8 @@ import com.example.artrinx.feature.home.data.remote.dto.CurationDto
 import com.example.artrinx.feature.profile.data.remote.ProfileApiService
 import com.example.artrinx.feature.profile.domain.model.CurrentUser
 import com.example.artrinx.feature.profile.domain.model.EditableProfile
+import com.example.artrinx.feature.profile.domain.model.InviteInfo
+import com.example.artrinx.feature.profile.domain.model.InvitedUser
 import com.example.artrinx.feature.profile.domain.model.Medium
 import com.example.artrinx.feature.profile.domain.model.ProfileArtItem
 import com.example.artrinx.feature.profile.domain.model.ProfileCurationItem
@@ -221,6 +223,58 @@ class ProfileRepositoryImpl @Inject constructor(
                 ApiResult.Error.Unknown(e)
             }
         }
+
+    override suspend fun getInviteInfo(): ApiResult<InviteInfo> {
+        return try {
+            val response = apiService.getMyProfile()
+            val dto = response.body()?.data
+            if (response.isSuccessful && dto != null) {
+                ApiResult.Success(InviteInfo(code = dto.invitationCode, remainingInvites = dto.remainingInvites))
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getInvitedUsers(code: String, page: Int, size: Int): ApiResult<List<InvitedUser>> {
+        return try {
+            val response = apiService.getInvitedUsers(code, page, size)
+            if (response.isSuccessful) {
+                val items = response.body()?.data?.items.orEmpty().map { dto ->
+                    val username = dto.username.orEmpty()
+                    InvitedUser(
+                        id = dto.id?.toString() ?: username,
+                        name = dto.displayName ?: dto.fullName ?: username,
+                        handle = if (username.isNotBlank()) "@$username" else "",
+                        joinedDate = formatJoinedDate(dto.joinedAt),
+                        avatarUrl = dto.profilePictureUrl,
+                    )
+                }
+                ApiResult.Success(items)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    /** ISO 8601 (e.g. "2026-06-05T14:16:03.122Z") → "05/06/26". Returns "" on null/unparseable input. */
+    private fun formatJoinedDate(iso: String?): String {
+        if (iso.isNullOrBlank()) return ""
+        return try {
+            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(iso.take(10)) ?: return ""
+            SimpleDateFormat("dd/MM/yy", Locale.US).format(parsed)
+        } catch (_: Exception) {
+            ""
+        }
+    }
 
     override suspend fun checkUsername(username: String): ApiResult<Boolean> {
         return try {

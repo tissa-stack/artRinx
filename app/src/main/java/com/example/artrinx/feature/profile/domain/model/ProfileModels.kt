@@ -47,6 +47,21 @@ data class ProfilePlanSummary(
     val nextBillingDate: String,
 )
 
+/** The current user's invite code + remaining monthly invites, for the Invite Friends screen. */
+data class InviteInfo(
+    val code: String?,
+    val remainingInvites: Int?,
+)
+
+/** A user who joined via the current user's invite code (§2.3). */
+data class InvitedUser(
+    val id: String,
+    val name: String,
+    val handle: String, // "@username"
+    val joinedDate: String, // formatted, "" when absent
+    val avatarUrl: String?,
+)
+
 /** The current user's profile in editable form, used to prefill the Edit Profile screen. */
 data class EditableProfile(
     val username: String,
