@@ -21,6 +21,10 @@ object NetworkModule {
     private const val TIMEOUT_SECONDS = 30L
     private const val UPLOAD_WRITE_TIMEOUT_SECONDS = 120L
 
+    // The refresh runs inside a blocking preflight on every authed call, so keep it short — a stuck
+    // /refresh must fail fast rather than freeze the UI for the full 30s.
+    private const val REFRESH_TIMEOUT_SECONDS = 12L
+
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
@@ -65,9 +69,11 @@ object NetworkModule {
     ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(logging)
-            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .connectTimeout(REFRESH_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(REFRESH_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(REFRESH_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .callTimeout(REFRESH_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
 
     @Provides

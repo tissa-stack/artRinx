@@ -24,26 +24,37 @@ class TokenRefreshCoordinator @Inject constructor(
     private val mutex = Mutex()
 
     @Volatile
-    private var lastRefreshAtMs = 0L
+    private var lastAttemptAtMs = 0L
+
+    @Volatile
+    private var lastSuccess = false
 
     /** @return true if a usable (freshly refreshed or still-valid) access token is available. */
     suspend fun refresh(): Boolean = mutex.withLock {
-        // Coalesce: if another caller just refreshed and the token is still valid, reuse it.
-        if (System.currentTimeMillis() - lastRefreshAtMs < RECENCY_WINDOW_MS &&
-            !session.isAccessTokenExpired()
-        ) {
-            return@withLock true
+        val now = System.currentTimeMillis()
+        // Coalesce a burst: reuse the most recent attempt's outcome (success OR failure) instead of
+        // POSTing /refresh again. This collapses the foreground thundering-herd (every screen calls
+        // this on resume once the 15-min token expires) to ONE round-trip, and — crucially — never
+        // re-sends a just-attempted refresh token. Re-sending it after a slow/timed-out attempt
+        // trips the backend's reuse-detection, which invalidates the whole token family and signs
+        // the user out (the "infinite loading + 403 Not authenticated" after idle).
+        if (now - lastAttemptAtMs < ATTEMPT_WINDOW_MS) {
+            return@withLock lastSuccess
         }
 
-        val refreshToken = session.getRefreshToken() ?: return@withLock false
+        val refreshToken = session.getRefreshToken()
+        if (refreshToken.isNullOrBlank()) {
+            lastAttemptAtMs = now
+            lastSuccess = false
+            return@withLock false
+        }
 
-        try {
+        val result = try {
             val response = refreshApi.refresh(RefreshTokenRequest(refreshToken))
             val body = response.body()
             when {
                 response.isSuccessful && body != null -> {
                     session.saveSession(body)
-                    lastRefreshAtMs = System.currentTimeMillis()
                     true
                 }
                 response.code() == 401 -> {
@@ -54,12 +65,16 @@ class TokenRefreshCoordinator @Inject constructor(
                 else -> false
             }
         } catch (e: Exception) {
-            // Network/other error — keep the session; the caller can retry later.
+            // Network/timeout — keep the session; a later attempt (after the window) can retry.
             false
         }
+        lastAttemptAtMs = System.currentTimeMillis()
+        lastSuccess = result
+        result
     }
 
     private companion object {
-        const val RECENCY_WINDOW_MS = 5_000L
+        /** Coalesce window: a burst of refreshes within this collapses to one round-trip. */
+        const val ATTEMPT_WINDOW_MS = 5_000L
     }
 }

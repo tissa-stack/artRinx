@@ -35,7 +35,9 @@ class SessionDataSource @Inject constructor(
             .putLong(KEY_ACCESS_EXPIRY, System.currentTimeMillis() + response.accessExpiresIn * 1000L)
             .putLong(KEY_REFRESH_EXPIRY, System.currentTimeMillis() + response.refreshExpiresIn * 1000L)
             .putString(KEY_USER_ROLE, response.user.role)
-            .putBoolean(KEY_PROFILE_COMPLETED, response.user.profileCompleted)
+            // Gate Home vs Profile-Completion on whether a profile EXISTS (existing users → Home).
+            // profile_completed is computed strictly and is false even for usable profiles.
+            .putBoolean(KEY_PROFILE_COMPLETED, response.user.profileExists)
             .apply()
     }
 

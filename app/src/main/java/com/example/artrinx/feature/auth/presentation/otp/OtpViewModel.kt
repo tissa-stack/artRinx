@@ -79,7 +79,10 @@ class OtpViewModel @Inject constructor(
             when (val result = verifyOtp(request)) {
                 is ApiResult.Success -> {
                     saveSession(result.data)
-                    if (result.data.user.profileCompleted) {
+                    // Existing users (a profile already exists) go straight Home; only brand-new
+                    // signups without a profile go to the completion flow. profile_completed is
+                    // computed strictly by the backend and is false even for usable profiles.
+                    if (result.data.user.profileExists) {
                         _uiState.update { it.copy(isLoading = false, navigateToHome = true) }
                     } else {
                         _uiState.update { it.copy(isLoading = false, navigateToProfileCompletion = true) }
