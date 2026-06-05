@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.auth.data.local.SessionDataSource
+import com.example.artrinx.feature.auth.domain.repository.AuthRepository
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import com.example.artrinx.feature.settings.domain.model.MockSettingsData
 import com.example.artrinx.feature.settings.domain.model.PlanOption
@@ -23,6 +24,9 @@ data class ProfileTitleAndPlanUiState(
     val nextBillingDate: String = "",
     val isLoading: Boolean = true,
     val error: String? = null,
+    val isDeleting: Boolean = false,
+    val deleted: Boolean = false,
+    val deleteError: String? = null,
 )
 
 @HiltViewModel
@@ -30,6 +34,7 @@ class ProfileTitleAndPlanViewModel @Inject constructor(
     private val repository: ProfileRepository,
     private val session: SessionDataSource,
     private val profileRefreshBus: ProfileRefreshBus,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileTitleAndPlanUiState())
@@ -72,10 +77,30 @@ class ProfileTitleAndPlanViewModel @Inject constructor(
     }
 
     fun onRetry() = load()
+
+    fun deleteAccount() {
+        if (_state.value.isDeleting) return
+        _state.update { it.copy(isDeleting = true, deleteError = null) }
+        viewModelScope.launch {
+            when (val r = authRepository.deleteAccount()) {
+                is ApiResult.Success -> _state.update { it.copy(isDeleting = false, deleted = true) }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isDeleting = false, deleteError = r.toDeleteMessage())
+                }
+            }
+        }
+    }
 }
 
 private fun ApiResult.Error.toMessage(): String = when (this) {
     is ApiResult.Error.Network -> "No connection. Please try again."
     is ApiResult.Error.Server -> "Something went wrong. Please try again."
     else -> "Couldn't load your plan. Please try again."
+}
+
+private fun ApiResult.Error.toDeleteMessage(): String = when (this) {
+    is ApiResult.Error.Network -> "No connection. Please try again."
+    is ApiResult.Error.Validation -> message
+    is ApiResult.Error.Server -> "Something went wrong. Please try again."
+    else -> "Couldn't delete your account. Please try again."
 }

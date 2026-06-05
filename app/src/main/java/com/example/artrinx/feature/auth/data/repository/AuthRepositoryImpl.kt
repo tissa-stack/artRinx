@@ -168,6 +168,26 @@ class AuthRepositoryImpl @Inject constructor(
         sessionDataSource.clearSession()
     }
 
+    override suspend fun deleteAccount(): ApiResult<Unit> {
+        return try {
+            val response = apiService.deleteMe()
+            if (response.isSuccessful) {
+                sessionDataSource.clearSession() // sign out only after the server accepts
+                ApiResult.Success(Unit)
+            } else {
+                when (response.code()) {
+                    in 400..499 -> ApiResult.Error.Validation("Couldn't delete your account. Please try again.")
+                    in 500..599 -> ApiResult.Error.Server(response.code())
+                    else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
+                }
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
     // ── Error Parsing ────────────────────────────────────────────────────────
 
     private fun nativeErrorResult(

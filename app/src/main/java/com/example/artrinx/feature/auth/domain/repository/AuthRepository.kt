@@ -23,4 +23,6 @@ interface AuthRepository {
     suspend fun saveProfileCompleted(completed: Boolean)
     suspend fun clearSession()
     suspend fun logout()
+    /** Delete the current account (§3.10); wipes the local session on success. */
+    suspend fun deleteAccount(): ApiResult<Unit>
 }

@@ -363,7 +363,9 @@ fun AppNavGraph(
                 onEdit          = { navController.navigate(NavRoutes.profileTitlePlanEdit(0)) },
                 onEditTitle     = { navController.navigate(NavRoutes.profileTitlePlanEdit(0)) },
                 onEditPlan      = { navController.navigate(NavRoutes.profileTitlePlanEdit(1)) },
-                onDeleteAccount = { /* TODO: delete account */ },
+                onDeleteAccount = {
+                    navController.navigate(NavRoutes.AUTH) { popUpTo(0) { inclusive = true } }
+                },
             )
         }
 

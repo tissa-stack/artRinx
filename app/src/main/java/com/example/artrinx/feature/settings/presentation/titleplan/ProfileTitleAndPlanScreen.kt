@@ -23,8 +23,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -36,6 +40,7 @@ import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.DangerRed
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
+import com.example.artrinx.feature.settings.presentation.components.DeleteAccountDialog
 import com.example.artrinx.feature.settings.presentation.titleplan.components.PlanCard
 import com.example.artrinx.feature.settings.presentation.titleplan.components.ProfileTitleCard
 
@@ -50,6 +55,21 @@ fun ProfileTitleAndPlanScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val dimens = LocalDimens.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Account deleted → leave Settings and land on the invite-code entry screen.
+    LaunchedEffect(state.deleted) {
+        if (state.deleted) onDeleteAccount()
+    }
+
+    if (showDeleteDialog) {
+        DeleteAccountDialog(
+            onConfirm = viewModel::deleteAccount,
+            onDismiss = { if (!state.isDeleting) showDeleteDialog = false },
+            isDeleting = state.isDeleting,
+            errorText = state.deleteError,
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -165,7 +185,7 @@ fun ProfileTitleAndPlanScreen(
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             Button(
-                onClick = onDeleteAccount,
+                onClick = { showDeleteDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),
