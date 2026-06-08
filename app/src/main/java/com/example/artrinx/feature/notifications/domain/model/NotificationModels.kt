@@ -22,37 +22,96 @@ enum class ConversationState { INVITATION_PENDING, ACTIVE }
 
 @Immutable
 data class ConversationItem(
-    val id: String,
+    val id: String,                    // the OTHER user's id (as String) — the chat nav key
     val userName: String,
     val userHandle: String,
     val userRole: String = "Artist",
     @param:DrawableRes val avatarRes: Int? = null,
+    val avatarUrl: String? = null,
     val lastMessage: String,
     val timestamp: String,
     val isUnread: Boolean = false,
+    val unreadCount: Int = 0,
     val state: ConversationState = ConversationState.ACTIVE,
 )
 
 // ── Chat messages ─────────────────────────────────────────────────────────────
 
+/** Local delivery state for optimistic send (not on the wire). */
+enum class SendStatus { SENDING, SENT, FAILED }
+
+/**
+ * The current "what can I do in this chat" gate, derived from message authorship + block flags
+ * (see plan: the invitation booleans are ambiguous, so authorship + the send-time 403 are the
+ * authoritative signals).
+ */
+enum class ChatGate { FRESH_INVITE, INVITE_SENT_WAITING, INVITE_RECEIVED, ACTIVE, BLOCKED }
+
 @Immutable
 data class ChatMessage(
-    val id: String,
+    val id: String,                    // server uuid, or temp client id while sending
     val content: String,
-    val isSent: Boolean,               // true = sent by current user
-    val timestamp: String,
-    val isInvitation: Boolean = false, // first message in an invited chat
+    val isSent: Boolean,               // true = sent by current user (senderId == currentUserId)
+    val timestamp: String,             // display string ("Mon, Oct 28 at 4:43 PM")
+    val createdAtIso: String = "",     // raw ISO — used for sorting
+    val createdAtEpochMs: Long = 0L,   // parsed epoch — used for the 15-min edit window
+    val clientMessageId: String? = null,
+    val isRead: Boolean = false,
+    val isEdited: Boolean = false,
+    val isDeleted: Boolean = false,
+    val sendStatus: SendStatus = SendStatus.SENT,
+    // Shared-artwork card (populated for share-an-artwork messages).
+    val artworkTitle: String? = null,
+    val artworkImageUrl: String? = null,
+    val sharedArtistName: String? = null,
+    val sharedArtistAvatarUrl: String? = null,
+    // Legacy flags kept for the mock data; no longer drive UI.
+    val isInvitation: Boolean = false,
     val isInvitationAccepted: Boolean = false,
+)
+
+// ── Repository result models ──────────────────────────────────────────────────
+
+@Immutable
+data class ChatThread(
+    val messages: List<ChatMessage>,
+    val invitationStatus: Boolean,
+    val isActive: Boolean,
+    val iBlocked: Boolean,
+    val theyBlocked: Boolean,
+    val nextCursor: String?,
+)
+
+@Immutable
+data class ChatroomResolution(
+    val exists: Boolean,
+    val chatroomId: String?,
+    val invitationStatus: Boolean,
+    val isActive: Boolean,
+    val iBlocked: Boolean,
+    val theyBlocked: Boolean,
+    val remainingInvites: Int?,
+)
+
+@Immutable
+data class SendResult(
+    val message: ChatMessage,
+    val chatroomId: String?,
+    val invitationStatus: Boolean,
+    val isActive: Boolean,
+    val iBlocked: Boolean,
+    val theyBlocked: Boolean,
 )
 
 // ── New message user list ─────────────────────────────────────────────────────
 
 @Immutable
 data class UserContact(
-    val id: String,
+    val id: String,                    // the user's id (chat nav key)
     val name: String,
     val handle: String,
     @param:DrawableRes val avatarRes: Int? = null,
+    val avatarUrl: String? = null,
 )
 
 // ── Notification tab enum ─────────────────────────────────────────────────────

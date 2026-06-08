@@ -231,18 +231,17 @@ fun AppNavGraph(
             arguments = listOf(navArgument("userId") { type = NavType.StringType }),
         ) { entry ->
             val userId = entry.arguments?.getString("userId") ?: ""
-            val conv = com.example.artrinx.feature.notifications.domain.model.MockNotificationData
-                .conversations.find { it.id == userId }
             ChatMenuScreen(
-                userName        = conv?.userName ?: "User",
-                userRole        = conv?.userRole ?: "Artist",
-                userHandle      = conv?.userHandle?.removePrefix("@") ?: "user",
-                onBack          = { navController.popBackStack() },
+                onBack        = { navController.popBackStack() },
                 // Navigate to the chat partner's public profile.
-                onViewProfile   = {
+                onViewProfile = {
                     navController.navigate(NavRoutes.userProfile(userId, NavRoutes.NOTIFICATIONS))
                 },
-                onDeleteMessage = { navController.popBackStack() },
+                // Chat deleted: leave the menu and the now-empty chat.
+                onChatDeleted = {
+                    navController.popBackStack()
+                    navController.popBackStack()
+                },
             )
         }
 

@@ -227,6 +227,9 @@ fun CurationDetailScreen(
                     onNavigateToCuration = onNavigateToCuration,
                     onAddToCuration      = { showAddToCuration = true },
                     onOpenProfile        = onOpenProfile,
+                    onInviteSheetOpened  = viewModel::onInviteSheetOpened,
+                    onSendInvite         = viewModel::onSendInvite,
+                    onInviteSheetClosed  = viewModel::onInviteSheetClosed,
                     modifier             = Modifier.weight(1f),
                 )
 
@@ -252,6 +255,9 @@ private fun CurationDetailContent(
     onNavigateToCuration: (String) -> Unit,
     onAddToCuration: () -> Unit = {},
     onOpenProfile: (Int) -> Unit = {},
+    onInviteSheetOpened: () -> Unit = {},
+    onSendInvite: (String) -> Unit = {},
+    onInviteSheetClosed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val d        = LocalDimens.current
@@ -265,13 +271,18 @@ private fun CurationDetailContent(
     }
 
     if (showSendSheet) {
+        LaunchedEffect(Unit) { onInviteSheetOpened() }
         SendMessageBottomSheet(
             artistName      = curation.curatorName,
             artistRole      = "Artist",
             artistAvatarUrl = curation.curatorAvatarUrl,
             artworkTitle    = curation.title,
             artworkImageUrl = currentArtworkUrl,
-            onDismiss       = { showSendSheet = false },
+            invitationsLeft = uiState.invitationsLeft,
+            isSending       = uiState.isSendingInvite,
+            sent            = uiState.inviteSent,
+            onSend          = onSendInvite,
+            onDismiss       = { showSendSheet = false; onInviteSheetClosed() },
         )
     }
 

@@ -24,10 +24,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,25 +34,24 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
-import com.example.artrinx.feature.notifications.domain.model.MockNotificationData
 import com.example.artrinx.feature.notifications.domain.model.UserContact
 
 @Composable
 fun NewMessageScreen(
     onBack: () -> Unit,
     onUserSelected: (UserContact) -> Unit,
+    viewModel: NewMessageViewModel = hiltViewModel(),
 ) {
-    var query by remember { mutableStateOf("") }
+    val state by viewModel.state.collectAsState()
+    val query = state.query
     val d     = LocalDimens.current
-    val filtered = MockNotificationData.contacts.filter {
-        query.isEmpty() || it.name.contains(query, ignoreCase = true) ||
-            it.handle.contains(query, ignoreCase = true)
-    }
+    val filtered = state.results
 
     Column(
         modifier = Modifier
@@ -99,7 +96,7 @@ fun NewMessageScreen(
             Spacer(Modifier.width(Spacing.sm))
             BasicTextField(
                 value         = query,
-                onValueChange = { query = it },
+                onValueChange = viewModel::onQueryChange,
                 modifier      = Modifier.weight(1f),
                 textStyle     = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground),
@@ -126,8 +123,9 @@ fun NewMessageScreen(
                         .padding(horizontal = Spacing.lg, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (user.avatarRes != null) {
-                        AsyncImage(model = user.avatarRes, contentDescription = user.name,
+                    val avatarModel: Any? = user.avatarUrl ?: user.avatarRes
+                    if (avatarModel != null) {
+                        AsyncImage(model = avatarModel, contentDescription = user.name,
                             contentScale = ContentScale.Crop,
                             modifier     = Modifier.size(d.avatarSizeLg).clip(CircleShape))
                     } else {

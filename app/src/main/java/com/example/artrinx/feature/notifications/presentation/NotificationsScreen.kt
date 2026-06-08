@@ -124,9 +124,13 @@ fun NotificationsScreen(
                         conversations      = state.conversations,
                         messageQuery       = state.messageQuery,
                         invitationCount    = state.invitationCount,
+                        isRefreshing       = state.isRefreshing,
+                        onRefresh          = { viewModel.refreshConversations(isUserRefresh = true) },
                         onQueryChange      = viewModel::onMessageQueryChange,
                         onConversationClick = { conv -> onNavigateToChat(conv) },
                         onNewMessage       = onNavigateToNewMessage,
+                        onMarkRead         = viewModel::onMarkConversationRead,
+                        onDelete           = viewModel::onDeleteConversation,
                         modifier           = Modifier.weight(1f),
                     )
                 }

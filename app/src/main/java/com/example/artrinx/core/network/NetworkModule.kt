@@ -90,6 +90,22 @@ object NetworkModule {
     fun provideTokenRefreshApi(@Named("refresh") retrofit: Retrofit): TokenRefreshApi =
         retrofit.create(TokenRefreshApi::class.java)
 
+    // ── Bare client for the chat WebSocket (no auth interceptor — the Bearer is set as a header) ─
+    // OkHttp does NOT send protocol pings by default, so configure pingInterval here (§12.5). The
+    // main client is unsuitable: its auth interceptor/authenticator don't apply to the WS upgrade.
+
+    @Provides
+    @Singleton
+    @Named("ws")
+    fun provideWebSocketOkHttpClient(
+        logging: HttpLoggingInterceptor,
+    ): OkHttpClient =
+        OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .pingInterval(25, TimeUnit.SECONDS)
+            .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .build()
+
     // ── Bare client for the signed-URL PUT (no auth interceptor/authenticator) ──────────────
     // The signed CDN URL IS the credential — attaching our Bearer token would both leak it and
     // trip the preflight refresh. Larger write timeout for big image uploads. Used directly

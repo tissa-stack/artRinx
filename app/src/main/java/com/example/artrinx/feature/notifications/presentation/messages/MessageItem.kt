@@ -129,9 +129,10 @@ fun SwipeableMessageItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Avatar
-            if (item.avatarRes != null) {
+            val avatarModel: Any? = item.avatarUrl ?: item.avatarRes
+            if (avatarModel != null) {
                 AsyncImage(
-                    model              = item.avatarRes,
+                    model              = avatarModel,
                     contentDescription = item.userName,
                     contentScale       = ContentScale.Crop,
                     modifier           = Modifier.size(d.avatarSizeLg).clip(CircleShape),
@@ -154,7 +155,7 @@ fun SwipeableMessageItem(
 
             // Text content — name/timestamp / invitation badge / preview + unread dot
             Column(modifier = Modifier.weight(1f)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                     Text(
                         text       = item.userName,
                         style      = MaterialTheme.typography.bodyMedium,
@@ -164,16 +165,20 @@ fun SwipeableMessageItem(
                         maxLines   = 1,
                         overflow   = TextOverflow.Ellipsis,
                     )
-                    Text(item.timestamp,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Timestamp, with the "invitation pending" badge stacked beneath it (right-aligned).
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(item.timestamp,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (item.state == ConversationState.INVITATION_PENDING) {
+                            Text("invitation pending",
+                                style     = MaterialTheme.typography.labelSmall,
+                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontStyle = FontStyle.Italic)
+                        }
+                    }
                 }
-                if (item.state == ConversationState.INVITATION_PENDING) {
-                    Text("invitation pending",
-                        style     = MaterialTheme.typography.labelSmall,
-                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontStyle = FontStyle.Italic)
-                }
+                Spacer(Modifier.height(Spacing.xs))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text     = item.lastMessage,

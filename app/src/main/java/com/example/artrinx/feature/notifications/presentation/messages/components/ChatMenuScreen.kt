@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,18 +31,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.Spacing
 
 @Composable
 fun ChatMenuScreen(
-    userName: String,
-    userRole: String,
-    userHandle: String,
     onBack: () -> Unit,
     onViewProfile: () -> Unit,
-    onDeleteMessage: () -> Unit,
+    onChatDeleted: () -> Unit,
+    viewModel: ChatMenuViewModel = hiltViewModel(),
 ) {
+    val state by viewModel.state.collectAsState()
+    val userName = state.name
+    val userRole = state.role
+    val userHandle = state.handle
+
     // Two-step report flow: reason → confirmation
     var showReasonSheet   by remember { mutableStateOf(false) }
     var showReportSheet   by remember { mutableStateOf(false) }
@@ -51,6 +56,7 @@ fun ChatMenuScreen(
         ReportReasonSheet(
             onDismiss = { showReasonSheet = false },
             onSubmit  = {
+                viewModel.reportUser()
                 showReasonSheet = false
                 showReportSheet = true
             },
@@ -61,10 +67,14 @@ fun ChatMenuScreen(
             userName  = userName,
             onDismiss = { showReportSheet = false },
             onBlock   = {
+                viewModel.blockUser()
                 showReportSheet = false
                 showBlockedDialog = true
             },
-            onUnfollow = { showReportSheet = false },
+            onUnfollow = {
+                viewModel.unfollowUser()
+                showReportSheet = false
+            },
         )
     }
     if (showBlockedDialog) {
@@ -115,9 +125,9 @@ fun ChatMenuScreen(
             // ── Menu options ──────────────────────────────────────────────
             val options = listOf(
                 Triple(painterResource(R.drawable.ic_eye),    "View profile",   { onViewProfile() }),
-                Triple(null,                                   "Delete message", { onDeleteMessage(); onBack() }),
+                Triple(null,                                   "Delete message", { viewModel.deleteChat(); onChatDeleted() }),
                 Triple(painterResource(R.drawable.ic_report), "Report profile", { showReasonSheet = true }),
-                Triple(painterResource(R.drawable.ic_block),  "Block profile",  { showBlockedDialog = true }),
+                Triple(painterResource(R.drawable.ic_block),  "Block profile",  { viewModel.blockUser(); showBlockedDialog = true }),
             )
 
             options.forEach { (icon, label, action) ->

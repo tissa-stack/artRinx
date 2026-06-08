@@ -48,7 +48,6 @@ import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import androidx.compose.foundation.clickable
 
-private enum class SheetPhase { FORM, SENT }
 private const val MAX_CHARS = 1000
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,10 +58,13 @@ fun SendMessageBottomSheet(
     artistAvatarUrl: String?,
     artworkTitle: String,
     artworkImageUrl: String,
+    invitationsLeft: Int?,
+    isSending: Boolean,
+    sent: Boolean,
+    onSend: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var phase by remember { mutableStateOf(SheetPhase.FORM) }
     var message by remember { mutableStateOf("") }
 
     ModalBottomSheet(
@@ -70,20 +72,24 @@ fun SendMessageBottomSheet(
         sheetState       = sheetState,
         containerColor   = MaterialTheme.colorScheme.surface,
     ) {
-        when (phase) {
-            SheetPhase.FORM -> InvitationForm(
-                artistName     = artistName,
-                artistRole     = artistRole,
-                artistAvatarUrl = artistAvatarUrl,
-                artworkTitle   = artworkTitle,
-                artworkImageUrl = artworkImageUrl,
-                message        = message,
-                onMessageChange = { if (it.length <= MAX_CHARS) message = it },
-                onSend         = { phase = SheetPhase.SENT },
+        if (sent) {
+            InvitationSent(
+                artistName       = artistName,
+                invitationsLeft  = invitationsLeft,
+                onDismiss        = onDismiss,
             )
-            SheetPhase.SENT -> InvitationSent(
-                artistName = artistName,
-                onDismiss  = onDismiss,
+        } else {
+            InvitationForm(
+                artistName      = artistName,
+                artistRole      = artistRole,
+                artistAvatarUrl = artistAvatarUrl,
+                artworkTitle    = artworkTitle,
+                artworkImageUrl = artworkImageUrl,
+                message         = message,
+                invitationsLeft = invitationsLeft,
+                isSending       = isSending,
+                onMessageChange = { if (it.length <= MAX_CHARS) message = it },
+                onSend          = { onSend(message.trim()) },
             )
         }
     }
@@ -99,6 +105,8 @@ private fun InvitationForm(
     artworkTitle: String,
     artworkImageUrl: String,
     message: String,
+    invitationsLeft: Int?,
+    isSending: Boolean,
     onMessageChange: (String) -> Unit,
     onSend: () -> Unit,
 ) {
@@ -269,8 +277,8 @@ private fun InvitationForm(
 
         Spacer(Modifier.height(Spacing.xl))
 
-        // Send message button — blue when message is typed, dark/disabled when empty
-        val canSend = message.isNotEmpty()
+        // Send message button — blue when message is typed, dark/disabled when empty or sending
+        val canSend = message.isNotBlank() && !isSending
         Box(
             modifier         = Modifier
                 .fillMaxWidth()
@@ -281,7 +289,7 @@ private fun InvitationForm(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text       = "Send message",
+                text       = if (isSending) "Sending…" else "Send message",
                 style      = MaterialTheme.typography.labelLarge,
                 color      = Color.White.copy(alpha = if (canSend) 1f else 0.85f),
                 fontWeight = FontWeight.SemiBold,
@@ -297,7 +305,8 @@ private fun InvitationForm(
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
         ) {
             Text(
-                text  = "You have 15 invitations left",
+                text  = invitationsLeft?.let { "You have $it invitations left" }
+                    ?: "Invitations are limited each month",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -319,6 +328,7 @@ private fun InvitationForm(
 @Composable
 private fun InvitationSent(
     artistName: String,
+    invitationsLeft: Int?,
     onDismiss: () -> Unit,
 ) {
     Column(
@@ -344,8 +354,9 @@ private fun InvitationSent(
         )
         Spacer(Modifier.height(Spacing.md))
         Text(
-            text      = "Your invitation is in $artistName's inbox — you have 14 invitations " +
-                    "left this month.\n\nGet notified when they respond by turning on notifications.",
+            text      = "Your invitation is in $artistName's inbox" +
+                    (invitationsLeft?.let { " — you have $it invitations left this month" } ?: "") +
+                    ".\n\nGet notified when they respond by turning on notifications.",
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

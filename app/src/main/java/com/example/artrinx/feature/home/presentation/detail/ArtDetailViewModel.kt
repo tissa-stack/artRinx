@@ -9,6 +9,7 @@ import com.example.artrinx.core.util.ProfileRefreshBus
 import com.example.artrinx.feature.home.domain.model.ArtworkItem
 import com.example.artrinx.feature.home.domain.model.ShoppablePost
 import com.example.artrinx.feature.home.domain.repository.HomeRepository
+import com.example.artrinx.feature.notifications.domain.repository.MessagesRepository
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import com.example.artrinx.feature.upload.domain.EditTargetStore
 import com.example.artrinx.feature.upload.domain.repository.UploadRepository
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @Immutable
@@ -37,6 +39,10 @@ data class ArtDetailUiState(
     val reportSent: Boolean = false,
     val isBlocking: Boolean = false,
     val actionError: String? = null,
+    // ── Send-message invitation sheet ──
+    val isSendingInvite: Boolean = false,
+    val inviteSent: Boolean = false,
+    val invitationsLeft: Int? = null,
 )
 
 @HiltViewModel
@@ -44,6 +50,7 @@ class ArtDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: HomeRepository,
     private val profileRepository: ProfileRepository,
+    private val messagesRepository: MessagesRepository,
     private val uploadRepository: UploadRepository,
     private val editTargetStore: EditTargetStore,
     private val profileRefreshBus: ProfileRefreshBus,
@@ -52,6 +59,8 @@ class ArtDetailViewModel @Inject constructor(
     private val artworkId: Int? = savedStateHandle.get<String>("postId")?.toIntOrNull()
     private val source: String? = savedStateHandle.get<String>("source")
     private val isFromProfile: Boolean = source == "profile"
+
+    private var currentUserId: Int = 0
 
     private val _uiState = MutableStateFlow(ArtDetailUiState())
     val uiState: StateFlow<ArtDetailUiState> = _uiState.asStateFlow()
@@ -85,7 +94,8 @@ class ArtDetailViewModel @Inject constructor(
             val meJob = async { profileRepository.getMyProfile() }
             val detailRes = detailJob.await()
             val similarRes = similarJob?.await()
-            val currentUserId = (meJob.await() as? ApiResult.Success)?.data?.id
+            val meId = (meJob.await() as? ApiResult.Success)?.data?.id
+            currentUserId = meId ?: 0
 
             if (detailRes is ApiResult.Success) {
                 val post = detailRes.data
@@ -95,7 +105,7 @@ class ArtDetailViewModel @Inject constructor(
                         error = false,
                         post = post,
                         moreLikeThis = (similarRes as? ApiResult.Success)?.data.orEmpty(),
-                        isOwn = currentUserId != null && post.ownerId == currentUserId,
+                        isOwn = meId != null && post.ownerId == meId,
                     )
                 }
             } else {
@@ -201,6 +211,44 @@ class ArtDetailViewModel @Inject constructor(
             }
         }
     }
+
+    // ── Send-message invitation ────────────────────────────────────────────────
+
+    /** Fetch remaining invites for the sheet footer when it opens. */
+    fun onInviteSheetOpened() {
+        val ownerId = _uiState.value.post?.ownerId ?: return
+        viewModelScope.launch {
+            val res = messagesRepository.resolveChatroom(ownerId)
+            if (res is ApiResult.Success) {
+                _uiState.update { it.copy(invitationsLeft = res.data.remainingInvites) }
+            }
+        }
+    }
+
+    /** Send the invitation message, sharing this artwork (image_id = artworkId). */
+    fun onSendInvite(text: String) {
+        val ownerId = _uiState.value.post?.ownerId ?: return
+        if (text.isBlank() || _uiState.value.isSendingInvite) return
+        _uiState.update { it.copy(isSendingInvite = true, actionError = null) }
+        viewModelScope.launch {
+            val cid = UUID.randomUUID().toString()
+            when (messagesRepository.sendMessage(ownerId, currentUserId, text, imageId = artworkId, clientMessageId = cid)) {
+                is ApiResult.Success -> _uiState.update {
+                    it.copy(isSendingInvite = false, inviteSent = true,
+                        invitationsLeft = it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) })
+                }
+                is ApiResult.Error.Blocked -> _uiState.update {
+                    it.copy(isSendingInvite = false,
+                        actionError = "You can't message this profile right now.")
+                }
+                is ApiResult.Error -> _uiState.update {
+                    it.copy(isSendingInvite = false, actionError = "Couldn't send your invitation. Please try again.")
+                }
+            }
+        }
+    }
+
+    fun onInviteSheetClosed() = _uiState.update { it.copy(isSendingInvite = false, inviteSent = false) }
 
     /** Reset moderation flags when the report sheet is dismissed (so reopening starts fresh). */
     fun onReportSheetClosed() = _uiState.update {

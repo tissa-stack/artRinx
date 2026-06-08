@@ -8,6 +8,7 @@ import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.feature.home.data.local.CurationPreviewStore
 import com.example.artrinx.feature.home.domain.model.CurationItem
 import com.example.artrinx.feature.home.domain.repository.HomeRepository
+import com.example.artrinx.feature.notifications.domain.repository.MessagesRepository
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import com.example.artrinx.feature.upload.domain.EditTargetStore
 import com.example.artrinx.feature.upload.domain.repository.CurationRepository
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @Immutable
@@ -38,6 +40,10 @@ data class CurationDetailUiState(
     val reportSent: Boolean = false,
     val isBlocking: Boolean = false,
     val actionError: String? = null,
+    // ── Send-message invitation sheet ──
+    val isSendingInvite: Boolean = false,
+    val inviteSent: Boolean = false,
+    val invitationsLeft: Int? = null,
 )
 
 @HiltViewModel
@@ -46,6 +52,7 @@ class CurationDetailViewModel @Inject constructor(
     private val repository: HomeRepository,
     private val curationPreviewStore: CurationPreviewStore,
     private val profileRepository: ProfileRepository,
+    private val messagesRepository: MessagesRepository,
     private val curationRepository: CurationRepository,
     private val editTargetStore: EditTargetStore,
 ) : ViewModel() {
@@ -53,6 +60,8 @@ class CurationDetailViewModel @Inject constructor(
     private val curationId: Int? = savedStateHandle.get<String>("curationId")?.toIntOrNull()
     private val source: String? = savedStateHandle.get<String>("source")
     private val isFromProfile: Boolean = source == "profile"
+
+    private var currentUserId: Int = 0
 
     private val _uiState = MutableStateFlow(CurationDetailUiState())
     val uiState: StateFlow<CurationDetailUiState> = _uiState.asStateFlow()
@@ -83,7 +92,8 @@ class CurationDetailViewModel @Inject constructor(
             val meJob = async { profileRepository.getMyProfile() }
             val detailRes = detailJob.await()
             val moreRes = moreJob?.await()
-            val currentUserId = (meJob.await() as? ApiResult.Success)?.data?.id
+            val meId = (meJob.await() as? ApiResult.Success)?.data?.id
+            currentUserId = meId ?: 0
 
             if (detailRes is ApiResult.Success) {
                 val fetched = detailRes.data
@@ -108,7 +118,7 @@ class CurationDetailViewModel @Inject constructor(
                         moreLikeThis = more,
                         likeCount = curation.likeCount,
                         isLiked = curation.isLiked,
-                        isOwn = currentUserId != null && curation.authorId == currentUserId,
+                        isOwn = meId != null && curation.authorId == meId,
                     )
                 }
             } else {
@@ -195,6 +205,42 @@ class CurationDetailViewModel @Inject constructor(
             }
         }
     }
+
+    // ── Send-message invitation ────────────────────────────────────────────────
+
+    fun onInviteSheetOpened() {
+        val ownerId = _uiState.value.curation?.authorId ?: return
+        viewModelScope.launch {
+            val res = messagesRepository.resolveChatroom(ownerId)
+            if (res is ApiResult.Success) {
+                _uiState.update { it.copy(invitationsLeft = res.data.remainingInvites) }
+            }
+        }
+    }
+
+    /** Invitation to the curator (text-only — a curation has no artwork image_id). */
+    fun onSendInvite(text: String) {
+        val ownerId = _uiState.value.curation?.authorId ?: return
+        if (text.isBlank() || _uiState.value.isSendingInvite) return
+        _uiState.update { it.copy(isSendingInvite = true, actionError = null) }
+        viewModelScope.launch {
+            val cid = UUID.randomUUID().toString()
+            when (messagesRepository.sendMessage(ownerId, currentUserId, text, clientMessageId = cid)) {
+                is ApiResult.Success -> _uiState.update {
+                    it.copy(isSendingInvite = false, inviteSent = true,
+                        invitationsLeft = it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) })
+                }
+                is ApiResult.Error.Blocked -> _uiState.update {
+                    it.copy(isSendingInvite = false, actionError = "You can't message this profile right now.")
+                }
+                is ApiResult.Error -> _uiState.update {
+                    it.copy(isSendingInvite = false, actionError = "Couldn't send your invitation. Please try again.")
+                }
+            }
+        }
+    }
+
+    fun onInviteSheetClosed() = _uiState.update { it.copy(isSendingInvite = false, inviteSent = false) }
 
     fun onReportSheetClosed() = _uiState.update {
         it.copy(isReporting = false, reportSent = false, isBlocking = false, actionError = null)

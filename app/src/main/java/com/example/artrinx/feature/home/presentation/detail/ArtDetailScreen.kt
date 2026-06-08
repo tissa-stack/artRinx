@@ -181,6 +181,9 @@ fun ArtDetailScreen(
                     onNavigateToDetail = onNavigateToDetail,
                     onAddToCuration = { showAddToCuration = true },
                     onOpenProfile = onOpenProfile,
+                    onInviteSheetOpened = viewModel::onInviteSheetOpened,
+                    onSendInvite = viewModel::onSendInvite,
+                    onInviteSheetClosed = viewModel::onInviteSheetClosed,
                     // Your OWN art → read-only (just the details). Anyone else's art (incl. liked
                     // arts in the Profile tab) keeps all the actions + Send message.
                     showActions = !uiState.isOwn,
@@ -276,6 +279,9 @@ private fun ArtDetailContent(
     onNavigateToDetail: (String) -> Unit,
     onAddToCuration: () -> Unit = {},
     onOpenProfile: (Int) -> Unit = {},
+    onInviteSheetOpened: () -> Unit = {},
+    onSendInvite: (String) -> Unit = {},
+    onInviteSheetClosed: () -> Unit = {},
     showActions: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -295,13 +301,18 @@ private fun ArtDetailContent(
     }
 
     if (showSendSheet) {
+        LaunchedEffect(Unit) { onInviteSheetOpened() }
         SendMessageBottomSheet(
             artistName      = post.artistName,
             artistRole      = post.artistRole,
             artistAvatarUrl = post.artistAvatarUrl,
             artworkTitle    = post.title,
             artworkImageUrl = post.imageUrl,
-            onDismiss       = { showSendSheet = false },
+            invitationsLeft = uiState.invitationsLeft,
+            isSending       = uiState.isSendingInvite,
+            sent            = uiState.inviteSent,
+            onSend          = onSendInvite,
+            onDismiss       = { showSendSheet = false; onInviteSheetClosed() },
         )
     }
 
