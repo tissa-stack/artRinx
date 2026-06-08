@@ -4,8 +4,10 @@ import android.net.Uri
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import com.rinx.artRINXapp.core.tour.TourHost
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.collectAsState
@@ -59,12 +61,15 @@ fun AppNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
     NavHost(
         navController    = navController,
         startDestination = startDestination,
-        modifier         = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier         = Modifier.fillMaxSize(),
         enterTransition    = { EnterTransition.None },
         exitTransition     = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
@@ -479,6 +484,8 @@ fun AppNavGraph(
                 activeRoute = source,
             )
         }
+    }
+        TourHost(navController = navController)
     }
 }
 

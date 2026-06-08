@@ -22,7 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -54,6 +57,7 @@ fun BottomNavBar(
     activeRoute: String,
     modifier: Modifier = Modifier,
     onNavigate: (String) -> Unit = {},
+    onItemBounds: ((route: String, Rect) -> Unit)? = null,
 ) {
     val d = LocalDimens.current
     Surface(
@@ -76,6 +80,7 @@ fun BottomNavBar(
                         entry = entry,
                         isActive = entry.route == activeRoute,
                         onNavigate = onNavigate,
+                        onBounds = onItemBounds,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -90,6 +95,13 @@ fun BottomNavBar(
                             .size(d.avatarSizeLg)
                             .clip(CircleShape)
                             .background(BrandPrimary)
+                            .then(
+                                if (onItemBounds != null) {
+                                    Modifier.onGloballyPositioned { onItemBounds("create", it.boundsInWindow()) }
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .clickable { onNavigate("create") }
                             .semantics { role = Role.Button },
                         contentAlignment = Alignment.Center,
@@ -131,11 +143,19 @@ private fun NavIconSlot(
     isActive: Boolean,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onBounds: ((route: String, Rect) -> Unit)? = null,
 ) {
     val d = LocalDimens.current
     Box(
         modifier = modifier
             .height(d.bottomNavHeight)
+            .then(
+                if (onBounds != null) {
+                    Modifier.onGloballyPositioned { onBounds(entry.route, it.boundsInWindow()) }
+                } else {
+                    Modifier
+                },
+            )
             .clickable { onNavigate(entry.route) }
             .padding(Spacing.xs)
             .semantics { role = Role.Button },

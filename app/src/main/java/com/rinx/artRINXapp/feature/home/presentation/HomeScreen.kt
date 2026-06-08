@@ -34,9 +34,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.core.push.NotificationPermissionEffect
+import com.rinx.artRINXapp.core.tour.TourTarget
+import com.rinx.artRINXapp.core.tour.TourViewModel
+import com.rinx.artRINXapp.core.tour.TourStep
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -79,14 +83,35 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Home is the post-login / post-registration landing — ask for notification permission here.
-    NotificationPermissionEffect()
+    // First-launch tour (global overlay lives above the NavHost; here we just start it, mirror the
+    // active flag for bounds-reporting, and keep the Home segment in sync with the tour step).
+    val tour: TourViewModel = hiltViewModel()
+    val tourState by tour.state.collectAsState()
+    LaunchedEffect(Unit) { tour.startIfFirstTime() }
+    LaunchedEffect(tourState.active, tourState.step) {
+        if (tourState.active) segmentForTourStep(tourState.step)?.let(viewModel::onTabSelected)
+    }
 
+    // Home is the post-login / post-registration landing — ask for notification permission here,
+    // but not while the first-launch tour is up (avoid the OS dialog covering the coach-marks).
+    if (!tourState.active) NotificationPermissionEffect()
+
+    val tourActive = tourState.active
     HomeScreenContent(
         uiState = uiState,
         reselectTick = reselectTick,
         onReselect = onReselect,
         onTabSelected = viewModel::onTabSelected,
+        onTabBounds = if (tourActive) {
+            { tab, rect -> tour.report(tab.toTourTarget(), rect) }
+        } else {
+            null
+        },
+        onItemBounds = if (tourActive) {
+            { route, rect -> route.toTourTarget()?.let { tour.report(it, rect) } }
+        } else {
+            null
+        },
         onRetry = viewModel::onRetry,
         onLike = viewModel::onLikeToggled,
         onShopLike = viewModel::onShopLikeToggled,
@@ -114,6 +139,8 @@ fun HomeScreenContent(
     onLike: (String) -> Unit,
     reselectTick: Int = 0,
     onReselect: () -> Unit = {},
+    onTabBounds: ((HomeTab, Rect) -> Unit)? = null,
+    onItemBounds: ((String, Rect) -> Unit)? = null,
     onShopLike: (String) -> Unit = {},
     onRefresh: () -> Unit = {},
     onRetryUpload: () -> Unit = {},
@@ -146,6 +173,7 @@ fun HomeScreenContent(
                         "profile"       -> onNavigateToProfile()
                     }
                 },
+                onItemBounds = onItemBounds,
             )
         },
         contentWindowInsets = WindowInsets(0),
@@ -167,10 +195,31 @@ fun HomeScreenContent(
             onNavigateToCurationDetail = onNavigateToCurationDetail,
             onNavigateToNewCuration = onNavigateToNewCuration,
             onOpenProfile = onOpenProfile,
+            onTabBounds = onTabBounds,
             modifier = Modifier.fillMaxSize(),
             bottomPadding = innerPadding,
         )
     }
+}
+
+private fun String.toTourTarget(): TourTarget? = when (this) {
+    "home" -> TourTarget.HOME_NAV
+    "create" -> TourTarget.CREATE_NAV
+    else -> null
+}
+
+private fun HomeTab.toTourTarget(): TourTarget = when (this) {
+    HomeTab.DISCOVER -> TourTarget.DISCOVER_TAB
+    HomeTab.SHOP -> TourTarget.SHOP_TAB
+    HomeTab.FOR_YOU -> TourTarget.FORYOU_TAB
+}
+
+/** Home top-segment to show for each tour step (null = leave the segment unchanged). */
+private fun segmentForTourStep(step: Int): HomeTab? = when (TourStep.ordered.getOrNull(step)) {
+    TourStep.SHOP -> HomeTab.SHOP
+    TourStep.FOR_YOU -> HomeTab.FOR_YOU
+    TourStep.WELCOME, TourStep.DISCOVER, TourStep.CREATE -> HomeTab.DISCOVER
+    else -> null
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -192,6 +241,7 @@ fun HomeContent(
     onNavigateToCurationDetail: (String) -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
     onOpenProfile: (Int) -> Unit = {},
+    onTabBounds: ((HomeTab, Rect) -> Unit)? = null,
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
@@ -236,6 +286,7 @@ fun HomeContent(
                 activeTab = uiState.activeTab,
                 onTabSelected = onTabSelected,
                 isDarkTheme = isDarkTheme,
+                onTabBounds = onTabBounds,
             )
         }
 

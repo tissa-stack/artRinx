@@ -20,8 +20,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -39,6 +42,7 @@ fun TopTabs(
     onTabSelected: (HomeTab) -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier,
+    onTabBounds: ((HomeTab, Rect) -> Unit)? = null,
 ) {
     val d = LocalDimens.current
     Column(
@@ -97,6 +101,13 @@ fun TopTabs(
                         .fillMaxHeight()          // fills container height minus 4dp top+bottom inset
                         .clip(RoundedCornerShape(Spacing.md))
                         .background(bgColor)
+                        .then(
+                            if (onTabBounds != null) {
+                                Modifier.onGloballyPositioned { onTabBounds(tab, it.boundsInWindow()) }
+                            } else {
+                                Modifier
+                            },
+                        )
                         .clickable { onTabSelected(tab) }
                         .semantics {
                             role = Role.Tab
