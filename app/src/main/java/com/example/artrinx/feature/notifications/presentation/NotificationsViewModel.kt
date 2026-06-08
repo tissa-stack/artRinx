@@ -6,10 +6,10 @@ import com.example.artrinx.core.network.ApiResult
 import com.example.artrinx.core.network.ChatEvent
 import com.example.artrinx.core.network.ChatWebSocketManager
 import com.example.artrinx.feature.notifications.domain.model.ConversationItem
-import com.example.artrinx.feature.notifications.domain.model.MockNotificationData
 import com.example.artrinx.feature.notifications.domain.model.NotifTab
 import com.example.artrinx.feature.notifications.domain.model.NotificationItem
 import com.example.artrinx.feature.notifications.domain.repository.MessagesRepository
+import com.example.artrinx.feature.notifications.domain.repository.NotificationsRepository
 import com.example.artrinx.feature.profile.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,17 +21,19 @@ import javax.inject.Inject
 
 data class NotificationsUiState(
     val activeTab: NotifTab = NotifTab.NOTIFICATIONS,
-    val notifications: List<NotificationItem> = MockNotificationData.notifications,
+    val notifications: List<NotificationItem> = emptyList(),
     val conversations: List<ConversationItem> = emptyList(),
     val messageQuery: String = "",
     val invitationCount: Int = 0,
     val isLoadingConversations: Boolean = true,
+    val isLoadingNotifications: Boolean = true,
     val isRefreshing: Boolean = false,
 )
 
 @HiltViewModel
 class NotificationsViewModel @Inject constructor(
     private val messagesRepository: MessagesRepository,
+    private val notificationsRepository: NotificationsRepository,
     private val profileRepository: ProfileRepository,
     private val webSocket: ChatWebSocketManager,
 ) : ViewModel() {
@@ -40,19 +42,39 @@ class NotificationsViewModel @Inject constructor(
     val state: StateFlow<NotificationsUiState> = _state.asStateFlow()
 
     init {
+        loadNotifications()
         refreshConversations()
         loadInvitationCount()
         viewModelScope.launch {
             webSocket.events.collect { event ->
-                // Inbox previews / unread badges change on any new or read message — refresh.
-                if (event is ChatEvent.NewMessage || event is ChatEvent.Read) refreshConversations()
+                when (event) {
+                    // Inbox previews / unread badges change on any new or read message — refresh.
+                    is ChatEvent.NewMessage, is ChatEvent.Read -> refreshConversations()
+                    // A new notification arrived over the socket — refresh the list.
+                    is ChatEvent.IncomingNotification -> loadNotifications()
+                    else -> Unit
+                }
             }
         }
     }
 
     fun onTabSelected(tab: NotifTab) {
         _state.update { it.copy(activeTab = tab) }
-        if (tab == NotifTab.MESSAGES) refreshConversations()
+        when (tab) {
+            NotifTab.MESSAGES -> refreshConversations()
+            NotifTab.NOTIFICATIONS -> loadNotifications()
+        }
+    }
+
+    fun loadNotifications() {
+        viewModelScope.launch {
+            when (val res = notificationsRepository.getNotifications()) {
+                is ApiResult.Success -> _state.update {
+                    it.copy(notifications = res.data, isLoadingNotifications = false)
+                }
+                else -> _state.update { it.copy(isLoadingNotifications = false) }
+            }
+        }
     }
 
     fun onMessageQueryChange(q: String) = _state.update { it.copy(messageQuery = q) }
@@ -95,15 +117,20 @@ class NotificationsViewModel @Inject constructor(
         }
     }
 
-    // ── Notifications (still mock — out of scope for the chat task) ────────────────
+    // ── Notifications ──────────────────────────────────────────────────────────────
 
+    /** No delete endpoint exists (§8) — remove locally only. */
     fun onDeleteNotification(id: String) = _state.update {
         it.copy(notifications = it.notifications.filter { n -> n.id != id })
     }
 
-    fun onMarkNotificationRead(id: String) = _state.update {
-        it.copy(notifications = it.notifications.map { n ->
-            if (n.id == id) n.copy(isRead = true) else n
-        })
+    /** Optimistic local read, then PATCH /api/notifications/{id}/read (§8.1). */
+    fun onMarkNotificationRead(id: String) {
+        _state.update {
+            it.copy(notifications = it.notifications.map { n ->
+                if (n.id == id) n.copy(isRead = true) else n
+            })
+        }
+        viewModelScope.launch { notificationsRepository.markRead(id) }
     }
 }

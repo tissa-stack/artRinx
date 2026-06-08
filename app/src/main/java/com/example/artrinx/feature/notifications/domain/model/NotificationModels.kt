@@ -12,8 +12,11 @@ data class NotificationItem(
     val message: String,
     val timeAgo: String,
     val isRead: Boolean = true,
-    @param:DrawableRes val thumbnailRes: Int? = null,  // square art image
-    @param:DrawableRes val avatarRes: Int? = null,     // circular person avatar
+    @param:DrawableRes val thumbnailRes: Int? = null,  // square art image (mock/local)
+    @param:DrawableRes val avatarRes: Int? = null,     // circular person avatar (mock/local)
+    val thumbnailUrl: String? = null,                  // square art image (from API target)
+    val avatarUrl: String? = null,                     // circular person avatar (from API actor)
+    val type: String? = null,                          // raw API type, for future tap routing
 )
 
 // ── Messages / Conversations ──────────────────────────────────────────────────

@@ -141,19 +141,21 @@ fun SwipeableNotificationItem(
                 .padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalAlignment = Alignment.Top,
         ) {
-            // Thumbnail (square) or avatar (circle)
-            if (item.thumbnailRes != null) {
+            // Thumbnail (square art) takes priority over the actor avatar (circle).
+            val thumbModel:  Any? = item.thumbnailUrl ?: item.thumbnailRes
+            val avatarModel: Any? = item.avatarUrl ?: item.avatarRes
+            if (thumbModel != null) {
                 AsyncImage(
-                    model              = item.thumbnailRes,
+                    model              = thumbModel,
                     contentDescription = null,
                     contentScale       = ContentScale.Crop,
                     modifier           = Modifier
                         .size(d.avatarSizeLg)
                         .clip(RoundedCornerShape(Spacing.xs)),
                 )
-            } else if (item.avatarRes != null) {
+            } else if (avatarModel != null) {
                 AsyncImage(
-                    model              = item.avatarRes,
+                    model              = avatarModel,
                     contentDescription = null,
                     contentScale       = ContentScale.Crop,
                     modifier           = Modifier

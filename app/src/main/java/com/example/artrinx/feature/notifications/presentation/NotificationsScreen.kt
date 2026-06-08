@@ -116,6 +116,7 @@ fun NotificationsScreen(
                 when (state.activeTab) {
                     NotifTab.NOTIFICATIONS -> NotificationsContent(
                         notifications = state.notifications,
+                        isLoading     = state.isLoadingNotifications,
                         onDelete      = viewModel::onDeleteNotification,
                         onMarkRead    = viewModel::onMarkNotificationRead,
                         modifier      = Modifier.weight(1f),
