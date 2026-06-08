@@ -3,10 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
-    namespace = "com.example.artrinx"
+    namespace = "com.rinx.artRINXapp"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -14,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.artrinx"
+        applicationId = "com.rinx.artRINXapp"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -58,6 +59,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.coil.compose)
     implementation(libs.androidx.exifinterface)
+    // Firebase Cloud Messaging (push notifications)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.androidx.compose.ui.text.google.fonts)
     // Hilt
     implementation(libs.dagger.hilt.core)

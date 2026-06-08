@@ -19,6 +19,8 @@ okhttp = "4.12.0"
 securityCrypto = "1.1.0-alpha06"
 coil = "2.7.0"
 exifinterface = "1.3.7"
+googleServices = "4.4.2"
+firebaseBom = "33.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -51,10 +53,13 @@ squareup-okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-inte
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 

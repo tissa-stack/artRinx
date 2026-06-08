@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "588835405696",
+    "project_id": "rinxv2",
+    "storage_bucket": "rinxv2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:588835405696:android:3ed80f93f84acbdbd78b65",
+        "android_client_info": {
+          "package_name": "com.rinx.artRINXapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtnsFsSc6a3WV80RUmSa3mOZlSRLymPPA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
