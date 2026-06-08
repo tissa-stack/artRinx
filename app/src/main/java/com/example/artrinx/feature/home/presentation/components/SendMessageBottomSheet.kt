@@ -43,7 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import coil.compose.AsyncImage
 import com.example.artrinx.R
 import com.example.artrinx.core.theme.BrandPrimary
-import com.example.artrinx.core.theme.DarkCardSurface
+import com.example.artrinx.core.theme.InactiveButton
 import com.example.artrinx.core.theme.LocalDimens
 import com.example.artrinx.core.theme.Spacing
 import androidx.compose.foundation.clickable
@@ -173,7 +173,7 @@ private fun InvitationForm(
                 contentDescription = artworkTitle,
                 contentScale       = ContentScale.Crop,
                 modifier           = Modifier
-                    .size(Spacing.huge + Spacing.xxl)   // 64dp thumbnail
+                    .size(Spacing.giant + Spacing.huge)   // 88dp thumbnail
                     .clip(RoundedCornerShape(Spacing.sm))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
             )
@@ -244,7 +244,7 @@ private fun InvitationForm(
         // Info section
         Row(verticalAlignment = Alignment.Top) {
             Icon(
-                painter            = painterResource(R.drawable.ic_message_send),
+                painter            = painterResource(R.drawable.ic_forward_inbox),
                 contentDescription = null,
                 tint               = MaterialTheme.colorScheme.onBackground,
                 modifier           = Modifier.size(Spacing.xl).padding(top = Spacing.xs),
@@ -275,7 +275,7 @@ private fun InvitationForm(
             modifier         = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(50))
-                .background(if (canSend) BrandPrimary else DarkCardSurface)
+                .background(if (canSend) BrandPrimary else InactiveButton)
                 .then(if (canSend) Modifier.clickable { onSend() } else Modifier)
                 .padding(vertical = Spacing.md),
             contentAlignment = Alignment.Center,
@@ -283,7 +283,7 @@ private fun InvitationForm(
             Text(
                 text       = "Send message",
                 style      = MaterialTheme.typography.labelLarge,
-                color      = Color.White.copy(alpha = if (canSend) 1f else 0.5f),
+                color      = Color.White.copy(alpha = if (canSend) 1f else 0.85f),
                 fontWeight = FontWeight.SemiBold,
             )
         }
