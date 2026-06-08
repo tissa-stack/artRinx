@@ -14,6 +14,8 @@ import javax.inject.Inject
 data class SettingsUiState(
     val isLoggingOut: Boolean = false,
     val loggedOut: Boolean = false,
+    /** False for phone-only accounts → the account row reads "Add email" instead of "Change email". */
+    val hasEmail: Boolean = true,
 )
 
 @HiltViewModel
@@ -21,8 +23,14 @@ class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(SettingsUiState())
+    private val _state = MutableStateFlow(SettingsUiState(hasEmail = !authRepository.getEmail().isNullOrBlank()))
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
+
+    /** Re-read whether the account has an email — call on resume so the row flips to "Change email"
+     *  right after a phone-only user adds one and returns from the Change Email screen. */
+    fun refreshHasEmail() {
+        _state.update { it.copy(hasEmail = !authRepository.getEmail().isNullOrBlank()) }
+    }
 
     fun logout() {
         if (_state.value.isLoggingOut) return

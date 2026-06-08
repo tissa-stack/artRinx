@@ -5,6 +5,10 @@ import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.auth.data.remote.AuthApiService
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ApiErrorResponse
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ApiMessageResponse
+import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactConfirmAddRequest
+import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactConfirmChangeRequest
+import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactStartAddRequest
+import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactStartChangeRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.NativeAuthErrorResponse
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyRequest
@@ -166,6 +170,93 @@ class AuthRepositoryImpl @Inject constructor(
             }
         }
         sessionDataSource.clearSession()
+    }
+
+    // ── Change email (contact change, §1.8) ───────────────────────────────────
+
+    override fun getEmail(): String? = sessionDataSource.getEmail()
+
+    override suspend fun startChangeEmail(newEmail: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactStartChange(ContactStartChangeRequest(newValue = newEmail))
+            if (response.isSuccessful) {
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun confirmChangeEmail(newEmail: String, code: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactConfirmChange(
+                ContactConfirmChangeRequest(newValue = newEmail, code = code),
+            )
+            if (response.isSuccessful) {
+                adoptSessionIfEnvelope(response.body()?.string())
+                sessionDataSource.saveEmail(newEmail)
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun startAddEmail(newEmail: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactStartAdd(ContactStartAddRequest(value = newEmail))
+            if (response.isSuccessful) {
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun confirmAddEmail(newEmail: String, code: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactConfirmAdd(
+                ContactConfirmAddRequest(value = newEmail, code = code),
+            )
+            if (response.isSuccessful) {
+                adoptSessionIfEnvelope(response.body()?.string())
+                sessionDataSource.saveEmail(newEmail)
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    /**
+     * Contact confirm endpoints may return a fresh auth envelope (the server revokes other devices'
+     * refresh tokens) or an empty success. If an envelope is present, adopt the new token pair so
+     * THIS device stays signed in; otherwise leave the session untouched.
+     */
+    private suspend fun adoptSessionIfEnvelope(raw: String?) {
+        if (raw.isNullOrBlank()) return
+        runCatching {
+            val envelope = gson.fromJson(raw, OtpVerifyResponse::class.java)
+            if (envelope != null && envelope.accessToken.isNotBlank() && envelope.refreshToken.isNotBlank()) {
+                sessionDataSource.saveSession(envelope)
+            }
+        }
     }
 
     override suspend fun deleteAccount(): ApiResult<Unit> {

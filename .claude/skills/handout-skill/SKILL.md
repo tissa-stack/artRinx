@@ -9,6 +9,43 @@ This document maps every screen to its API calls + UX behaviors. The Chat screen
 
 ---
 
+## Changes since 2026-06-08 (pricing & limits revamp — please skim before reading the rest)
+
+Backend shipped a pricing/limits revamp. Anywhere in this doc that references plan pricing, feature copy, or invitation counters has been updated; the highlights:
+
+1. **`remaining_chat_invites` (and `remaining_invites` on chat surfaces) wire field semantic changed.** Field name unchanged for back-compat. Number on the wire used to mean "peer-share invites left" (5/5/25 by tier); now means **"message requests left — new chats you can start this month"** (15/25/25 by tier). Backend confirmed (Q1, Option A): both `/profile.remaining_chat_invites` and the chat-surface endpoints all return the new meaning today. Just update the user-facing label.
+
+2. **`/profile` carries BOTH counters today, under back-compat names:**
+    - `total_user_invites` / `remaining_invites` → **peer-share cap** (5/5/25), the codes you give to friends
+    - `remaining_chat_invites` → **message-request cap** (15/25/25), starting new conversations
+
+3. **Backend ships additive nested objects this week** so you don't have to remember which old name means what:
+   ```json
+   "peer_invites":    {"monthly_cap": 5,  "remaining": 3},
+   "message_requests": {"monthly_cap": 15, "remaining": 12}
+   ```
+   Both old and new names will be returned side-by-side; migrate at your own pace.
+
+4. **"Unlimited messages within active chats" is still true.** The 15/25/25 cap is **only on STARTING a new conversation** (when a new chatroom is created). Once a chat is active, messages within it are unlimited on every tier.
+
+5. **Pricing changes:** Artist Pro $9/mo → **$14.99/mo** with a **2-month Apple intro trial** (configured in App Store Connect; Google Play Billing has the equivalent on the Android side — see Subscriptions section). Gallery stays $99/mo Stripe-only with **no trial**.
+
+6. **Tier matrix:**
+
+   |                              | Artworks (active) | Peer invites / mo | New chats / mo | Profile + shop link | Events | City push |
+      |---|---|---|---|---|---|---|
+   | Basic (Art Curious / Collector / Artist free) | 10 | 5 | 15 | no | no | no |
+   | Artist Pro ($14.99 + 2-month intro trial) | 99 | 5 | 25 | yes | no | no |
+   | Gallery ($99/mo, web-only Stripe, no trial) | 99 | 25 | 25 | yes | yes | yes |
+
+7. **iOS-side copy renamed** "X invitations left" → "X new chats this month" (and the limit-reached toast clarifies "Unlimited messages within your active chats"). Android should follow the same wording for consistency.
+
+8. **City push** for Gallery event creation is now **exact city match only** (was previously falling back to state + country). FCM payload shape unchanged.
+
+9. **Provider enum:** `subscription.provider` is now confirmed as `"apple" | "stripe" | null` (null = free / no subscription row). Stripe-billed Gallery returns `plan: "gallery"`, `status: "active"`, `provider: "stripe"`.
+
+---
+
 ## Table of Contents
 1. [Auth & Session](#auth--session)
 2. [Onboarding / Invite / Signup](#onboarding--invite--signup)
@@ -236,18 +273,55 @@ else:
 
 ### SelectPlanView (Settings → Select plan)
 - **No API calls on appear** — reads `profile.subscription` from app state.
-- StoreKit calls for Artist Pro purchases:
-    - On tap "Upgrade" → StoreKit `Product.purchase()`
-    - On verified transaction → **`POST subscriptions/verify-apple`** with `{transaction_id, original_transaction_id, jws_representation}` (the JWS payload from `Transaction.jsonRepresentation`).
-- Restore Purchases tap → StoreKit `AppStore.sync()` → if entitlement found, **`POST subscriptions/restore-apple`** with same payload.
+- IAP purchase flow for Artist Pro:
+    - iOS: StoreKit `Product.purchase()` → on verified transaction → **`POST subscriptions/verify-apple`** with `{transaction_id, original_transaction_id, jws_representation}` (the JWS payload from `Transaction.jsonRepresentation`).
+    - Android: Google Play Billing equivalent. Expected backend endpoint: `subscriptions/verify-google` (confirm with backend; not currently present in iOS code). Send the purchase token + product ID + signature.
+- Restore Purchases tap:
+    - iOS: StoreKit `AppStore.sync()` → if entitlement found, **`POST subscriptions/restore-apple`**.
+    - Android: Play Billing `queryPurchasesAsync()` → call the Android equivalent.
 
-### Plan card behavior ⭐
+### Plan card content (2026-06 pricing revamp)
+
+iOS keeps all plan copy in a single source-of-truth enum (`PlanType.swift`). Android should mirror. Current strings on each card:
+
+**Basic** — Free — "For everyone"
+- Browse and like art
+- Follow and share profiles
+- Upload 10 artworks
+- Invite 5 friends per month
+- Start up to 15 new chats per month
+- Unlimited messages within active chats
+
+**Artist Pro** — $14.99/mo — "For artists"
+- *(+ a small gift-icon "N months free trial" line is rendered dynamically below the subtitle when the StoreKit product reports an introductory offer with payment mode = free trial. iOS reads `product.subscription?.introductoryOffer?.period` and formats. Android does the equivalent via Play Billing's `SubscriptionOfferDetails.pricingPhases`.)*
+- Browse and like art
+- Follow and share profiles
+- Upload 99 artworks
+- Profile link
+- Shop art link
+- Invite 5 friends per month
+- Start up to 25 new chats per month
+- Unlimited messages within active chats
+
+**Gallery** — $99/mo — "For exhibition spaces & curators"
+- Browse and like art
+- Follow and share profiles
+- Upload 99 artworks
+- Profile link
+- Shop art link
+- Invite 25 friends per month
+- Start up to 25 new chats per month
+- Unlimited messages within active chats
+- Create events  (web only)
+- City-targeted push notifications for events  (web only)
+
+### Plan card CTA behavior ⭐
 | Plan | Card CTA |
 |---|---|
 | Basic (when user is on Basic) | "Current Plan" pill — no button |
-| Artist Pro (when user is Artist Free) | Colored "Upgrade" button → StoreKit purchase |
+| Artist Pro (when user is Artist Free) | Colored "Upgrade" button → IAP purchase. Auto-renewable subscription disclosure (price + "auto-renews monthly until cancelled" + Terms/Privacy links) renders below the button — required by App Store 3.1.3 / Play equivalent. |
 | Artist Pro (when user is Artist Pro) | "Current Plan" pill |
-| Gallery (any state) | **"Managed on artrinx.com"** text-only footer — NO button, NO purchase CTA. Apple anti-steering. |
+| Gallery (any state) | **"Managed on artrinx.com"** text-only footer — NO button, NO purchase CTA. Apple anti-steering (3.1.1) / Play equivalent. |
 
 ### Paywall footer (Restore Purchases + Manage Subscription) — visibility matrix
 | Role + state | Footer renders? |
@@ -255,7 +329,28 @@ else:
 | Artist Free | Yes — Restore only |
 | Artist Pro (Apple-subscribed) | Yes — Manage + Restore |
 | Collector / Art Curious | **No** — no IAP path |
-| Gallery (any state, even subscribed) | **No** — Stripe billing, no Apple sub to manage |
+| Gallery (any state, even subscribed) | **No** — Stripe billing, no IAP to manage |
+
+### Dynamic intro-trial line (Artist Pro only)
+
+Source of truth is **App Store Connect** (or Google Play Console on Android). Don't hardcode "2 months free" in code — read the offer dynamically and format. iOS implementation in `PlanCardView.introTrialLine`:
+- Returns `nil` when no offer is configured, when the product hasn't finished loading, or when offer mode isn't free trial.
+- When present, formats as `"N months free trial"` (or days/weeks/years per offer unit, singularizing for value == 1).
+- Renders a small gift-icon line beneath the subtitle.
+
+Backend Q3 rationale: ASC/Play is the canonical place for offer config. Product may A/B-test trial length later; dynamic copy adapts without an app update.
+
+### Per-tier message-request limit (NEW)
+
+The chat compose banner and the post-send success copy both read `profile.remaining_chat_invites` (server-driven). iOS rendered strings:
+
+| Surface | String |
+|---|---|
+| Chat compose banner (when chatroom doesn't exist yet) | "You have N new chats this month" |
+| Post-send success view | "Your message is on its way to NAME — you have N new chats left this month." |
+| Quota-exhausted toast | "You've reached your monthly limit for starting new chats. Unlimited messages within your active chats." |
+
+These replaced the old "X invitations left" / "Your invitation is in NAME's inbox" / "chat invite limit" copy. Android please use the same phrasing.
 
 ---
 
@@ -455,8 +550,9 @@ This is the single most important behavior to get right. The compose field at th
         Body: "This message will act as your invitation to chat for
                the first time with this profile. You can only send
                one message in this invite until they accept."
-        Footnote (right-aligned): "You have <N> invitations left"
-        (N comes from profile.remaining_chat_invitations)
+        Footnote (right-aligned): "You have <N> new chats this month"
+        (N comes from profile.remaining_chat_invites — new semantic
+        per 2026-06 revamp; see top of doc)
    → FIELD: enabled. Placeholder: "Write Your Message"
    → SEND BUTTON: enabled when text is non-empty
 
@@ -617,4 +713,4 @@ Quick reference for behaviors gated on `profile.subscription`:
 
 ---
 
-*Last updated: iOS main HEAD at 2026-06-08. Backend contracts: stage rev 112+ (post chat-access surface, post engagement-notifications spec).*
+*Last updated: iOS main HEAD at 2026-06-09. Backend contracts: stage rev 112+ (post chat-access surface, post engagement-notifications spec, post 2026-06 pricing & limits revamp).*

@@ -35,6 +35,7 @@ class SessionDataSource @Inject constructor(
             .putLong(KEY_ACCESS_EXPIRY, System.currentTimeMillis() + response.accessExpiresIn * 1000L)
             .putLong(KEY_REFRESH_EXPIRY, System.currentTimeMillis() + response.refreshExpiresIn * 1000L)
             .putString(KEY_USER_ROLE, response.user.role)
+            .putString(KEY_EMAIL, response.user.email)
             // Gate Home vs Profile-Completion on whether a profile EXISTS (existing users → Home).
             // profile_completed is computed strictly and is false even for usable profiles.
             .putBoolean(KEY_PROFILE_COMPLETED, response.user.profileExists)
@@ -63,6 +64,14 @@ class SessionDataSource @Inject constructor(
     /** The role chosen at onboarding: artist | collector | curious | gallery | agent | admin. */
     fun getUserRole(): String? = prefs.getString(KEY_USER_ROLE, null)
 
+    /** The user's current email, cached from the auth envelope (login / email-change confirm). */
+    fun getEmail(): String? = prefs.getString(KEY_EMAIL, null)
+
+    /** Persist the email after a successful add/change confirm (covers an empty-body server reply). */
+    suspend fun saveEmail(email: String) = withContext(Dispatchers.IO) {
+        prefs.edit().putString(KEY_EMAIL, email).apply()
+    }
+
     /** Keep the cached role in sync after the user changes their profile title. */
     suspend fun saveUserRole(role: String) = withContext(Dispatchers.IO) {
         prefs.edit().putString(KEY_USER_ROLE, role).apply()
@@ -79,6 +88,7 @@ class SessionDataSource @Inject constructor(
             .remove(KEY_ACCESS_EXPIRY)
             .remove(KEY_REFRESH_EXPIRY)
             .remove(KEY_USER_ROLE)
+            .remove(KEY_EMAIL)
             .remove(KEY_PROFILE_COMPLETED)
             .apply()
     }
@@ -89,6 +99,7 @@ class SessionDataSource @Inject constructor(
         const val KEY_ACCESS_EXPIRY = "access_token_expiry_epoch"
         const val KEY_REFRESH_EXPIRY = "refresh_token_expiry_epoch"
         const val KEY_USER_ROLE = "user_role"
+        const val KEY_EMAIL = "user_email"
         const val KEY_PROFILE_COMPLETED = "profile_completed"
     }
 }

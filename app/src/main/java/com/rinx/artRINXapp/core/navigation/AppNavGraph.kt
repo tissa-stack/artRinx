@@ -40,6 +40,7 @@ import com.rinx.artRINXapp.feature.notifications.presentation.messages.component
 import com.rinx.artRINXapp.feature.search.presentation.SearchScreen
 import com.rinx.artRINXapp.feature.settings.presentation.SettingsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedAccountsScreen
+import com.rinx.artRINXapp.feature.settings.presentation.changeemail.ChangeEmailScreen
 import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileScreen
 import com.rinx.artRINXapp.feature.settings.presentation.invite.InviteFriendsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.ProfileTitleAndPlanEditScreen
@@ -376,7 +377,7 @@ fun AppNavGraph(
             SettingsScreen(
                 onBack                = { navController.popBackStack() },
                 onEditProfile         = { navController.navigate(NavRoutes.EDIT_PROFILE) },
-                onChangeEmail         = { /* TODO: change email screen */ },
+                onChangeEmail         = { navController.navigate(NavRoutes.CHANGE_EMAIL) },
                 onProfileTitleAndPlan = { navController.navigate(NavRoutes.PROFILE_TITLE_PLAN) },
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
@@ -396,6 +397,13 @@ fun AppNavGraph(
             EditProfileScreen(
                 onBack  = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() },
+            )
+        }
+
+        composable(NavRoutes.CHANGE_EMAIL) {
+            ChangeEmailScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
             )
         }
 

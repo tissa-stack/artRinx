@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,6 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +69,17 @@ fun SettingsScreen(
 
     LaunchedEffect(state.loggedOut) {
         if (state.loggedOut) onLogout()
+    }
+
+    // Re-check email presence on resume so the account row flips "Add email" → "Change email"
+    // right after a phone-only user adds one and returns from the Change Email screen.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshHasEmail()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(
@@ -104,7 +119,11 @@ fun SettingsScreen(
         ) {
             SectionHeader("Account")
             SettingsRow(painter = R.drawable.ic_navigation_profile, label = "Edit profile", onClick = onEditProfile)
-            SettingsRow(imageVector = Icons.Outlined.MailOutline, label = "Change email", onClick = onChangeEmail)
+            SettingsRow(
+                imageVector = Icons.Outlined.MailOutline,
+                label = if (state.hasEmail) "Change email" else "Add email",
+                onClick = onChangeEmail,
+            )
             SettingsRow(painter = R.drawable.ic_profile_title_and_plan, label = "Profile title and plan", onClick = onProfileTitleAndPlan)
             SettingsRow(painter = R.drawable.ic_invite_friends, label = "Invite Friends", onClick = onInviteFriends)
 
