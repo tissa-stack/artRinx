@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.auth.domain.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.feature.auth.domain.model.InviteVerification
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyResponse
@@ -9,7 +10,7 @@ import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistResponse
 
 interface AuthRepository {
-    suspend fun verifyInviteCode(code: String): ApiResult<String>
+    suspend fun verifyInviteCode(code: String): ApiResult<InviteVerification>
     suspend fun joinWaitlist(request: WaitlistRequest): ApiResult<WaitlistResponse>
     suspend fun requestOtp(request: OtpRequest): ApiResult<Unit>
     suspend fun verifyOtp(request: OtpVerifyRequest): ApiResult<OtpVerifyResponse>
@@ -23,6 +24,8 @@ interface AuthRepository {
     suspend fun saveProfileCompleted(completed: Boolean)
     suspend fun clearSession()
     suspend fun logout()
+    /** Revoke all refresh tokens for the user server-side, then wipe the local session. */
+    suspend fun signOutEverywhere()
     /** Delete the current account (§3.10); wipes the local session on success. */
     suspend fun deleteAccount(): ApiResult<Unit>
 

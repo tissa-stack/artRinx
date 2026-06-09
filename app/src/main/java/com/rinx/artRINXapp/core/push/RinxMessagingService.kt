@@ -40,9 +40,14 @@ class RinxMessagingService : FirebaseMessagingService() {
             message.data["notification_id"]?.let { putExtra(EXTRA_NOTIFICATION_ID, it) }
             message.data["route"]?.let { putExtra(EXTRA_ROUTE, it) }
             message.data["url"]?.let { putExtra(EXTRA_URL, it) }
+            message.data["kind"]?.let { putExtra(EXTRA_KIND, it) }
         }
-        val notifId = message.data["notification_id"]?.toIntOrNull()
-            ?: message.data["collapse_id"]?.hashCode()
+        // Collapse by collapse_id so repeated pushes about the same resource (e.g. "curation_297")
+        // replace each other instead of stacking (handout §collapse_key). Fall back to the unique
+        // notification_id, then a timestamp.
+        val collapseId = message.data["collapse_id"]
+        val notifId = collapseId?.hashCode()
+            ?: message.data["notification_id"]?.toIntOrNull()
             ?: System.currentTimeMillis().toInt()
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -59,6 +64,7 @@ class RinxMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
+            .apply { if (collapseId != null) setGroup(collapseId) }
             .build()
 
         // POST_NOTIFICATIONS is runtime-gated on Android 13+; skip silently if not granted.
@@ -75,5 +81,6 @@ class RinxMessagingService : FirebaseMessagingService() {
         const val EXTRA_NOTIFICATION_ID = "push_notification_id"
         const val EXTRA_ROUTE = "push_route"
         const val EXTRA_URL = "push_url"
+        const val EXTRA_KIND = "push_kind"
     }
 }

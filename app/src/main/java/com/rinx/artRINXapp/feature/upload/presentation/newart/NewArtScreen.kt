@@ -28,16 +28,22 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +57,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,6 +70,7 @@ import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
+import com.rinx.artRINXapp.feature.upload.domain.model.ShopLinkVisibility
 import com.rinx.artRINXapp.feature.upload.presentation.components.CreationStatusOverlay
 import com.rinx.artRINXapp.feature.upload.presentation.newart.components.MediumPickerSheet
 import com.rinx.artRINXapp.feature.upload.presentation.newart.components.PrivacyPickerSheet
@@ -86,9 +94,19 @@ fun NewArtScreen(
     val state        by viewModel.state.collectAsState()
     val d            = LocalDimens.current
     val focusManager = LocalFocusManager.current
+    var showShopPaywall by remember { mutableStateOf(false) }
 
     LaunchedEffect(imageUri) {
         if (imageUri != null) viewModel.onImageSet(imageUri)
+    }
+
+    if (showShopPaywall) {
+        AlertDialog(
+            onDismissRequest = { showShopPaywall = false },
+            title = { Text("Artist Pro feature") },
+            text = { Text("Adding a shop link to your art is part of Artist Pro. You can upgrade from Settings → Profile title and plan.") },
+            confirmButton = { TextButton(onClick = { showShopPaywall = false }) { Text("OK") } },
+        )
     }
 
     if (state.showMediumPicker) {
@@ -215,10 +233,23 @@ fun NewArtScreen(
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Shop link
-                item(key = "shop") {
-                    ShopLinkField(state.shopLink, viewModel::onShopLinkChange)
-                    Spacer(Modifier.height(Spacing.md))
+                // Shop link (gated by role×plan) + price (only when a shop link is entered)
+                when (state.shopLinkVisibility) {
+                    ShopLinkVisibility.HIDDEN -> Unit
+                    ShopLinkVisibility.LOCKED -> item(key = "shop") {
+                        LockedShopLinkField(onTap = { showShopPaywall = true })
+                        Spacer(Modifier.height(Spacing.md))
+                    }
+                    ShopLinkVisibility.VISIBLE -> {
+                        item(key = "shop") {
+                            ShopLinkField(state.shopLink, viewModel::onShopLinkChange)
+                            Spacer(Modifier.height(Spacing.md))
+                        }
+                        if (state.shopLink.isNotBlank()) item(key = "price") {
+                            PriceField(state.price, viewModel::onPriceChange)
+                            Spacer(Modifier.height(Spacing.md))
+                        }
+                    }
                 }
 
                 // Privacy
@@ -490,6 +521,97 @@ private fun InlineTagChip(label: String, onRemove: () -> Unit) {
 }
 
 // ── Shop link — dark gradient + Premium badge at top-right corner ─────────────
+
+/** Artist-Free shop-link field: shown but locked behind the Artist Pro paywall (handout §Field gating). */
+@Composable
+private fun LockedShopLinkField(onTap: () -> Unit) {
+    val d = LocalDimens.current
+    Box(
+        modifier = Modifier
+            .padding(horizontal = Spacing.md)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .background(ShopLinkGradient)
+            .clickable { onTap() },
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = Spacing.md, end = Spacing.md, top = Spacing.xl, bottom = Spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(Spacing.lg),
+            )
+            Spacer(Modifier.width(Spacing.sm))
+            Text(
+                "Shop link",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.85f),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = Spacing.xs, end = 0.dp)
+                .clip(RoundedCornerShape(
+                    topStart = 0.dp, topEnd = d.cardCornerRadius,
+                    bottomStart = d.cardCornerRadius, bottomEnd = 0.dp,
+                ))
+                .background(BrandPrimary)
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Premium", style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/** Price input — only rendered when a shop link is present (handout §Field gating). */
+@Composable
+private fun PriceField(value: String, onChange: (String) -> Unit) {
+    val d = LocalDimens.current
+    Row(
+        modifier = Modifier
+            .padding(horizontal = Spacing.md)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = Spacing.md, vertical = Spacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Price",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(Spacing.md))
+        BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+            cursorBrush = SolidColor(BrandPrimary),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.weight(1f),
+            decorationBox = { inner ->
+                Box {
+                    if (value.isEmpty()) {
+                        Text(
+                            "e.g. 250",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        )
+                    }
+                    inner()
+                }
+            },
+        )
+    }
+}
 
 @Composable
 private fun ShopLinkField(value: String, onChange: (String) -> Unit) {

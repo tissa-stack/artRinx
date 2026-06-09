@@ -63,7 +63,7 @@ class WaitlistViewModel @Inject constructor(
                 phoneNumber = state.selectedCountry.dialCode + state.rawPhone.trim(),
                 firstName = state.firstName.trim(),
                 profileTypeId = state.profileType!!.id,
-                instagramHandle = state.instagramHandle.trim(),
+                instagramHandle = state.instagramHandle.trim().ifBlank { null },
                 acceptedTerms = state.acceptedTerms,
                 smsNotificationsOptIn = state.smsOptIn,
                 deviceType = "android",

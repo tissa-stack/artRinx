@@ -10,6 +10,8 @@ data class SubscriptionDto(
     @SerializedName("plan") val plan: String? = null,
     @SerializedName("status") val status: String? = null,
     @SerializedName("provider") val provider: String? = null,
+    // Server-driven premium flag (handout: source of truth for gating). Optional/back-compat.
+    @SerializedName(value = "is_paid", alternate = ["isPaid"]) val isPaid: Boolean? = null,
     @SerializedName("expiresAt") val expiresAt: String? = null,
     @SerializedName("renewsAt") val renewsAt: String? = null,
     @SerializedName("trialEndsAt") val trialEndsAt: String? = null,

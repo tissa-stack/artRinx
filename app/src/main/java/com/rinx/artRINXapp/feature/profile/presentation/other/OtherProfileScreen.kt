@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -155,7 +157,13 @@ fun OtherProfileScreen(
 
             else -> {
                 val profile = uiState.profile!!
+                val listState = rememberLazyListState()
+                LaunchedEffect(listState, uiState.activeTab) {
+                    snapshotFlow { listState.canScrollForward }
+                        .collect { canScroll -> if (!canScroll) viewModel.loadMore() }
+                }
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(bottom = innerPadding.calculateBottomPadding())
@@ -325,13 +333,33 @@ private fun OtherProfileHeader(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(start = Spacing.xs),
             )
-            IconButton(onClick = onMessage, modifier = Modifier.size(Spacing.huge)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_send),
-                    contentDescription = "Message",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(Spacing.xl),
+            // Message button gating (handout §Public profile "Message" button):
+            // i_blocked → hidden (Unblock pill handles it); invite_pending → "Invitation Sent" pill;
+            // they_blocked / !can_message → disabled; otherwise enabled.
+            when {
+                profile.iBlocked -> Unit
+                profile.blockReason == "invite_pending" -> Text(
+                    text = "Invitation Sent",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Spacing.sm),
                 )
+                else -> {
+                    val canMsg = profile.canMessage && !profile.theyBlocked
+                    IconButton(
+                        onClick = onMessage,
+                        enabled = canMsg,
+                        modifier = Modifier.size(Spacing.huge),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_send),
+                            contentDescription = "Message",
+                            tint = if (canMsg) MaterialTheme.colorScheme.onBackground
+                                   else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                            modifier = Modifier.size(Spacing.xl),
+                        )
+                    }
+                }
             }
             Spacer(Modifier.width(Spacing.sm))
             FollowPill(

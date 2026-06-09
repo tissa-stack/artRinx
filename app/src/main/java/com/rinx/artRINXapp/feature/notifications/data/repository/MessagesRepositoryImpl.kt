@@ -21,6 +21,7 @@ import com.google.gson.JsonObject
 import retrofit2.Response
 import java.io.IOException
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -45,6 +46,8 @@ class MessagesRepositoryImpl @Inject constructor(
                     iBlocked = dto.iBlocked ?: false,
                     theyBlocked = dto.theyBlocked ?: false,
                     remainingInvites = dto.remainingInvites,
+                    canMessage = dto.canMessage,
+                    blockReason = dto.blockReason,
                 ),
             )
         } else {
@@ -69,6 +72,9 @@ class MessagesRepositoryImpl @Inject constructor(
                     iBlocked = dto.iBlocked ?: false,
                     theyBlocked = dto.theyBlocked ?: false,
                     nextCursor = dto.nextCursor,
+                    remainingInvites = dto.remainingInvites,
+                    canMessage = dto.canMessage,
+                    blockReason = dto.blockReason,
                 ),
             )
         } else {
@@ -167,6 +173,7 @@ class MessagesRepositoryImpl @Inject constructor(
         timestamp = formatMessageStamp(createdAt),
         createdAtIso = createdAt.orEmpty(),
         createdAtEpochMs = parseIso(createdAt)?.time ?: 0L,
+        editedAtEpochMs = parseIso(editedAt)?.time ?: 0L,
         clientMessageId = clientMessageId,
         isRead = isRead ?: false,
         isEdited = isEdited ?: false,
@@ -243,10 +250,20 @@ class MessagesRepositoryImpl @Inject constructor(
         return SimpleDateFormat("EEE, MMM d 'at' h:mm a", Locale.US).format(date)
     }
 
-    /** ISO 8601 → "MMM d" (e.g. "Oct 28") for inbox previews. */
+    /** ISO 8601 → "9:34 PM" (today), "Yesterday", or "MMM d" (older) for inbox previews. */
     private fun formatPreviewStamp(iso: String?): String {
         val date = parseIso(iso) ?: return ""
-        return SimpleDateFormat("MMM d", Locale.US).format(date)
+        val now = Calendar.getInstance()
+        val then = Calendar.getInstance().apply { time = date }
+        fun sameDay(a: Calendar, b: Calendar) =
+            a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
+                a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+        val yesterday = (now.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+        return when {
+            sameDay(now, then) -> SimpleDateFormat("h:mm a", Locale.US).format(date)
+            sameDay(yesterday, then) -> "Yesterday"
+            else -> SimpleDateFormat("MMM d", Locale.US).format(date)
+        }
     }
 
     private fun parseIso(iso: String?): Date? {

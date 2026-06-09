@@ -12,6 +12,8 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.rinx.artRINXapp.core.navigation.AppNavGraph
+import com.rinx.artRINXapp.core.navigation.DeepLinkParser
+import com.rinx.artRINXapp.core.navigation.DeepLinkRouter
 import com.rinx.artRINXapp.core.push.NotificationChannels
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.push.RinxMessagingService
@@ -28,6 +30,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var pushTokenManager: PushTokenManager
     @Inject lateinit var notificationsRepository: NotificationsRepository
+    @Inject lateinit var deepLinkRouter: DeepLinkRouter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -45,14 +48,14 @@ class MainActivity : ComponentActivity() {
         // The POST_NOTIFICATIONS prompt is requested on the Home screen — i.e. after login/registration.
         NotificationChannels.ensureDefaultChannel(this)
         pushTokenManager.registerCurrentToken()
-        handlePushIntent(intent)
+        handleIntentDeepLink(intent)
 
         setContent {
             ArtRinxTheme {
                 val startDestination by mainViewModel.startDestination.collectAsState()
 
                 startDestination?.let { destination ->
-                    AppNavGraph(startDestination = destination)
+                    AppNavGraph(startDestination = destination, deepLinkRouter = deepLinkRouter)
                 }
             }
         }
@@ -61,13 +64,26 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handlePushIntent(intent)
+        handleIntentDeepLink(intent)
     }
 
-    /** When opened from a push tap, clear its in-app notification read flag (handout §Push tap). */
-    private fun handlePushIntent(intent: Intent?) {
-        val notificationId = intent?.getStringExtra(RinxMessagingService.EXTRA_NOTIFICATION_ID) ?: return
-        lifecycleScope.launch { runCatching { notificationsRepository.markRead(notificationId) } }
-        // route / url extras are available for future deep-link navigation.
+    /**
+     * On launch / push tap: fire-and-forget the notification read-clear (handout §Push tap), then
+     * resolve any deep-link target (invite link, push route/url, or gallery_enterprise_notice) and
+     * hand it to the nav graph via [DeepLinkRouter].
+     */
+    private fun handleIntentDeepLink(intent: Intent?) {
+        intent ?: return
+        intent.getStringExtra(RinxMessagingService.EXTRA_NOTIFICATION_ID)?.let { id ->
+            lifecycleScope.launch { runCatching { notificationsRepository.markRead(id) } }
+        }
+        val target = DeepLinkParser.fromViewUri(
+            intent.data.takeIf { intent.action == Intent.ACTION_VIEW },
+        ) ?: DeepLinkParser.fromPush(
+            route = intent.getStringExtra(RinxMessagingService.EXTRA_ROUTE),
+            url = intent.getStringExtra(RinxMessagingService.EXTRA_URL),
+            kind = intent.getStringExtra(RinxMessagingService.EXTRA_KIND),
+        )
+        deepLinkRouter.post(target)
     }
 }

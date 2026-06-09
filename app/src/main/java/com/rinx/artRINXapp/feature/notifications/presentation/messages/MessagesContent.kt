@@ -160,7 +160,7 @@ fun MessagesContent(
             }
         }
 
-        // ── Invitation count footer (hidden when there are no invites left) ──
+        // ── New-chats-this-month footer (hidden when none left) ──
         if (invitationCount > 0) {
             Row(
                 modifier              = Modifier
@@ -170,7 +170,7 @@ fun MessagesContent(
                 verticalAlignment     = Alignment.CenterVertically,
             ) {
                 Text(
-                    text  = "You have $invitationCount invitations left",
+                    text  = "You have $invitationCount new chats this month",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -235,8 +235,8 @@ private fun InviteInfoTooltip(onClose: () -> Unit) {
                     .padding(Spacing.lg),
             ) {
                 Text(
-                    text  = "You get a fresh allotment of invites every month, " +
-                            "starting on your initial sign-up date.",
+                    text  = "You get a fresh allotment of new chats every month, " +
+                            "starting on your initial sign-up date. Messages within your active chats are unlimited.",
                     style = MaterialTheme.typography.bodySmall,
                     color = onBubble,
                 )

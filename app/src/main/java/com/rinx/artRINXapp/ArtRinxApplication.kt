@@ -12,7 +12,13 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.rinx.artRINXapp.core.network.ChatWebSocketManager
+import com.rinx.artRINXapp.core.network.TokenRefreshCoordinator
+import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 val Context.appDataStore: DataStore<Preferences> by preferencesDataStore(name = "artrinx_prefs")
@@ -21,6 +27,10 @@ val Context.appDataStore: DataStore<Preferences> by preferencesDataStore(name = 
 class ArtRinxApplication : Application(), ImageLoaderFactory {
 
     @Inject lateinit var chatWebSocketManager: ChatWebSocketManager
+    @Inject lateinit var tokenRefreshCoordinator: TokenRefreshCoordinator
+    @Inject lateinit var session: SessionDataSource
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Drives the chat socket: connect while any activity is foregrounded, disconnect otherwise. */
     private var startedActivities = 0
@@ -29,7 +39,10 @@ class ArtRinxApplication : Application(), ImageLoaderFactory {
         super.onCreate()
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
-                if (startedActivities++ == 0) chatWebSocketManager.onAppForeground()
+                if (startedActivities++ == 0) {
+                    chatWebSocketManager.onAppForeground()
+                    refreshTokenOnForeground()
+                }
             }
 
             override fun onActivityStopped(activity: Activity) {
@@ -45,6 +58,17 @@ class ArtRinxApplication : Application(), ImageLoaderFactory {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
+    }
+
+    /**
+     * Proactive refresh on app foreground (handout §Auth): if a session exists and the access token
+     * is expired or about to expire, refresh through the single-flight coordinator (coalesced, so it
+     * won't double-fire with the request-time preflight). No-op when signed out or still fresh.
+     */
+    private fun refreshTokenOnForeground() {
+        if (!session.isSessionValid()) return
+        if (!session.isAccessTokenExpiringSoon(FOREGROUND_REFRESH_THRESHOLD_MS)) return
+        appScope.launch { tokenRefreshCoordinator.refresh() }
     }
 
     /**
@@ -70,4 +94,9 @@ class ArtRinxApplication : Application(), ImageLoaderFactory {
             .respectCacheHeaders(false)
             .crossfade(true)
             .build()
+
+    private companion object {
+        /** Refresh on foreground when the token expires within this window (handout: ~60s). */
+        const val FOREGROUND_REFRESH_THRESHOLD_MS = 60_000L
+    }
 }

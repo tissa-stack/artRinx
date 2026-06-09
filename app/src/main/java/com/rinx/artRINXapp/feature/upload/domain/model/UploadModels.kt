@@ -10,6 +10,27 @@ import com.rinx.artRINXapp.R
 enum class PrivacyOption { PUBLIC, PRIVATE }
 enum class ArtTab { UPLOADS, LIKED }
 
+/**
+ * Shop-link field gating by role×plan (handout §Field gating):
+ * Artist Free → LOCKED (paywall), Artist Pro / active Gallery → VISIBLE, Gallery inactive +
+ * Collector / Art Curious → HIDDEN.
+ */
+enum class ShopLinkVisibility {
+    VISIBLE, LOCKED, HIDDEN;
+
+    companion object {
+        fun resolve(role: String, isPaid: Boolean): ShopLinkVisibility {
+            val isArtist = role.contains("artist", ignoreCase = true)
+            val isGallery = role.contains("gallery", ignoreCase = true)
+            return when {
+                isPaid && (isArtist || isGallery) -> VISIBLE
+                isArtist -> LOCKED            // Artist Free
+                else -> HIDDEN                // Gallery inactive, Collector, Art Curious, unknown
+            }
+        }
+    }
+}
+
 /** Overlay state shown on the create screen while a PRIVATE artwork/curation is being created. */
 enum class CreationStatus { LOADING, CREATED, FAILED }
 
@@ -42,6 +63,10 @@ data class ArtFormState(
     val tagSuggestions: List<String> = emptyList(),
     val mediums: List<MediumOption> = emptyList(),
     val shopLink: String = "",
+    /** Resolved from the user's role×plan; gates the shop-link field. */
+    val shopLinkVisibility: ShopLinkVisibility = ShopLinkVisibility.HIDDEN,
+    /** Price string (raw input); only sent when [shopLink] is non-empty (handout §Field gating). */
+    val price: String = "",
     val privacy: PrivacyOption = PrivacyOption.PUBLIC,
     val showMediumPicker: Boolean = false,
     val showPrivacyPicker: Boolean = false,

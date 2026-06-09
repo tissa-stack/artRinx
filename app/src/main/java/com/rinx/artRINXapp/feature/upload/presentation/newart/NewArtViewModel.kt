@@ -14,6 +14,7 @@ import com.rinx.artRINXapp.feature.upload.domain.model.ArtistResult
 import com.rinx.artRINXapp.feature.upload.domain.model.CreationStatus
 import com.rinx.artRINXapp.feature.upload.domain.model.MediumOption
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
+import com.rinx.artRINXapp.feature.upload.domain.model.ShopLinkVisibility
 import com.rinx.artRINXapp.feature.upload.domain.model.UpdateArtworkRequest
 import com.rinx.artRINXapp.feature.upload.domain.model.UploadProgress
 import com.rinx.artRINXapp.feature.upload.domain.model.UploadRequest
@@ -47,8 +48,22 @@ class NewArtViewModel @Inject constructor(
         loadMediums()
         loadTrendingTags()
         loadSelfArtist()
+        loadShopLinkVisibility()
         observePrivateUpload()
         editTargetStore.consumeArtwork()?.let { loadForEdit(it) }
+    }
+
+    /** Resolve shop-link field gating from the user's role×plan (handout §Field gating). */
+    private fun loadShopLinkVisibility() {
+        viewModelScope.launch {
+            val result = profileRepository.getUploadQuota()
+            if (result is ApiResult.Success) {
+                val q = result.data
+                _state.update {
+                    it.copy(shopLinkVisibility = ShopLinkVisibility.resolve(q.role, q.isPaid))
+                }
+            }
+        }
     }
 
     /** Prefill the form from an existing artwork when entering edit mode. */
@@ -69,6 +84,7 @@ class NewArtViewModel @Inject constructor(
                         selectedMediumId = a.mediumId,
                         selectedMedium = a.mediumTitle,
                         shopLink = a.shopLink.orEmpty(),
+                        price = a.price?.let { p -> if (p % 1.0 == 0.0) p.toLong().toString() else p.toString() }.orEmpty(),
                         privacy = if (a.isPrivate) PrivacyOption.PRIVATE else PrivacyOption.PUBLIC,
                         selectedArtist = a.artistId?.let { artistId ->
                             ArtistResult(
@@ -163,6 +179,11 @@ class NewArtViewModel @Inject constructor(
     }
 
     fun onShopLinkChange(url: String) = _state.update { it.copy(shopLink = url) }
+
+    /** Price input; digits + a single decimal point only. Sent only when a shop link is present. */
+    fun onPriceChange(p: String) = _state.update {
+        it.copy(price = p.filter { c -> c.isDigit() || c == '.' }.take(12))
+    }
 
     // ── Artist ────────────────────────────────────────────────────────────────
 
@@ -270,7 +291,7 @@ class NewArtViewModel @Inject constructor(
                 tags = s.tags,
                 mediumId = s.selectedMediumId,
                 shopLink = s.shopLink.ifBlank { null },
-                price = null,
+                price = priceFor(s),
                 isPrivate = s.privacy == PrivacyOption.PRIVATE,
                 artistId = artist?.userId,
                 artistName = artist?.displayName,
@@ -300,7 +321,7 @@ class NewArtViewModel @Inject constructor(
                     tags = s.tags,
                     mediumId = s.selectedMediumId,
                     shopLink = s.shopLink.ifBlank { null },
-                    price = null,
+                    price = priceFor(s),
                     isPrivate = s.privacy == PrivacyOption.PRIVATE,
                     artistId = artist?.userId,
                     artistName = artist?.displayName,
@@ -316,4 +337,8 @@ class NewArtViewModel @Inject constructor(
     }
 
     fun onRetryEdit() = onSaveEdit()
+
+    /** Price is only sent when a shop link is present (handout §Field gating). */
+    private fun priceFor(s: ArtFormState): Double? =
+        if (s.shopLink.isNotBlank()) s.price.toDoubleOrNull() else null
 }

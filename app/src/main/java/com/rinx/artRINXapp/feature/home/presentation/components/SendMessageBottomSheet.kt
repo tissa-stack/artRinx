@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -37,11 +38,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
+import com.rinx.artRINXapp.feature.home.domain.model.SendMode
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
@@ -63,6 +71,8 @@ fun SendMessageBottomSheet(
     sent: Boolean,
     onSend: (String) -> Unit,
     onDismiss: () -> Unit,
+    mode: SendMode = SendMode.INVITE,
+    ready: Boolean = true,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var message by remember { mutableStateOf("") }
@@ -72,14 +82,26 @@ fun SendMessageBottomSheet(
         sheetState       = sheetState,
         containerColor   = MaterialTheme.colorScheme.surface,
     ) {
-        if (sent) {
-            InvitationSent(
-                artistName       = artistName,
-                invitationsLeft  = invitationsLeft,
-                onDismiss        = onDismiss,
+        when {
+            // Wait for the conversation state before choosing a layout — avoids an invite→message flash.
+            !ready && !sent -> Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Spacing.giant + Spacing.huge)
+                    .navigationBarsPadding(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(Spacing.xl))
+            }
+            sent -> InvitationSent(
+                isInvite        = mode == SendMode.INVITE,
+                artistName      = artistName,
+                invitationsLeft = invitationsLeft,
+                onDismiss       = onDismiss,
             )
-        } else {
-            InvitationForm(
+            !mode.canSend -> CantSend(mode = mode, artistName = artistName)
+            else -> InvitationForm(
+                mode            = mode,
                 artistName      = artistName,
                 artistRole      = artistRole,
                 artistAvatarUrl = artistAvatarUrl,
@@ -95,10 +117,46 @@ fun SendMessageBottomSheet(
     }
 }
 
+/** Disabled state shown when sending isn't allowed (pending invite / blocked / rate-limited). */
+@Composable
+private fun CantSend(mode: SendMode, artistName: String) {
+    val (title, body) = when (mode) {
+        SendMode.PENDING -> "Invitation pending" to
+            "You can send another message once $artistName responds."
+        SendMode.BLOCKED_BY_ME -> "You blocked this user" to "Unblock them to send messages."
+        SendMode.BLOCKED_BY_THEM -> "Messaging unavailable" to "You can't message this user."
+        else -> "Messaging unavailable" to "You can't message this user right now."
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xxl)
+            .navigationBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(Spacing.md))
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(Spacing.lg))
+    }
+}
+
 // ── Invitation form (state 1 + 2) ─────────────────────────────────────────────
 
 @Composable
 private fun InvitationForm(
+    mode: SendMode,
     artistName: String,
     artistRole: String,
     artistAvatarUrl: String?,
@@ -111,6 +169,7 @@ private fun InvitationForm(
     onSend: () -> Unit,
 ) {
     val d = LocalDimens.current
+    val isInvite = mode == SendMode.INVITE
 
     Column(
         modifier = Modifier
@@ -120,7 +179,7 @@ private fun InvitationForm(
     ) {
         // Title
         Text(
-            text      = "Invite $artistName to chat",
+            text      = if (isInvite) "Invite $artistName to chat" else "Message $artistName",
             style     = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
             color     = MaterialTheme.colorScheme.onBackground,
@@ -249,33 +308,35 @@ private fun InvitationForm(
 
         Spacer(Modifier.height(Spacing.lg))
 
-        // Info section
-        Row(verticalAlignment = Alignment.Top) {
-            Icon(
-                painter            = painterResource(R.drawable.ic_forward_inbox),
-                contentDescription = null,
-                tint               = MaterialTheme.colorScheme.onBackground,
-                modifier           = Modifier.size(Spacing.xl).padding(top = Spacing.xs),
-            )
-            Spacer(Modifier.width(Spacing.sm))
-            Column {
-                Text(
-                    text       = "Invite $artistName to chat",
-                    style      = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onBackground,
+        // Info section — only for a brand-new chat (the invitation). Active chats skip it.
+        if (isInvite) {
+            Row(verticalAlignment = Alignment.Top) {
+                Icon(
+                    painter            = painterResource(R.drawable.ic_forward_inbox),
+                    contentDescription = null,
+                    tint               = MaterialTheme.colorScheme.onBackground,
+                    modifier           = Modifier.size(Spacing.xl).padding(top = Spacing.xs),
                 )
-                Spacer(Modifier.height(Spacing.xs))
-                Text(
-                    text  = "This message will act as your invitation to chat for the first time " +
-                            "with this profile. You can only send one message in this invite until they accept.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Spacer(Modifier.width(Spacing.sm))
+                Column {
+                    Text(
+                        text       = "Invite $artistName to chat",
+                        style      = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(
+                        text  = "This message will act as your invitation to chat for the first time " +
+                                "with this profile. You can only send one message in this invite until they accept.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-        }
 
-        Spacer(Modifier.height(Spacing.xl))
+            Spacer(Modifier.height(Spacing.xl))
+        }
 
         // Send message button — blue when message is typed, dark/disabled when empty or sending
         val canSend = message.isNotBlank() && !isSending
@@ -298,28 +359,29 @@ private fun InvitationForm(
 
         Spacer(Modifier.height(Spacing.sm))
 
-        // Invitations count
-        Row(
-            modifier          = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-        ) {
-            Text(
-                text  = invitationsLeft?.let { "You have $it invitations left" }
-                    ?: "Invitations are limited each month",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(Spacing.xs))
-            Icon(
-                painter            = painterResource(R.drawable.ic_help),
-                contentDescription = "Info",
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier           = Modifier.size(Spacing.md),
-            )
+        // New-chats-this-month count — only for a fresh invite (active chats don't spend quota).
+        if (isInvite) {
+            Row(
+                modifier          = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+            ) {
+                Text(
+                    text  = invitationsLeft?.let { "You have $it new chats this month" }
+                        ?: "New chats are limited each month",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(Spacing.xs))
+                Icon(
+                    painter            = painterResource(R.drawable.ic_help),
+                    contentDescription = "Info",
+                    tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier           = Modifier.size(Spacing.md),
+                )
+            }
+            Spacer(Modifier.height(Spacing.lg))
         }
-
-        Spacer(Modifier.height(Spacing.lg))
     }
 }
 
@@ -327,6 +389,7 @@ private fun InvitationForm(
 
 @Composable
 private fun InvitationSent(
+    isInvite: Boolean,
     artistName: String,
     invitationsLeft: Int?,
     onDismiss: () -> Unit,
@@ -353,26 +416,37 @@ private fun InvitationSent(
             textAlign  = TextAlign.Center,
         )
         Spacer(Modifier.height(Spacing.md))
+        val context = LocalContext.current
+        // Only nudge about notifications when they're actually OFF.
+        val notifsEnabled = remember { NotificationManagerCompat.from(context).areNotificationsEnabled() }
         Text(
-            text      = "Your invitation is in $artistName's inbox" +
-                    (invitationsLeft?.let { " — you have $it invitations left this month" } ?: "") +
-                    ".\n\nGet notified when they respond by turning on notifications.",
+            text      = when {
+                !isInvite -> "Your message is on its way to $artistName."
+                else -> "Your message is on its way to $artistName" +
+                    (invitationsLeft?.let { " — you have $it new chats left this month" } ?: "") +
+                    if (notifsEnabled) "." else
+                        ".\n\nGet notified when they respond by turning on notifications."
+            },
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(Spacing.xl))
+        // Notifications already on → plain "Done"; otherwise the CTA opens system notification settings.
         Box(
             modifier         = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(50))
                 .background(BrandPrimary)
-                .clickable { onDismiss() }
+                .clickable {
+                    if (!notifsEnabled) openAppNotificationSettings(context)
+                    onDismiss()
+                }
                 .padding(vertical = Spacing.md),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text       = "Turn on notifications",
+                text       = if (notifsEnabled) "Done" else "Turn on notifications",
                 style      = MaterialTheme.typography.labelLarge,
                 color      = Color.White,
                 fontWeight = FontWeight.SemiBold,
@@ -380,4 +454,15 @@ private fun InvitationSent(
         }
         Spacer(Modifier.height(Spacing.lg))
     }
+}
+
+/** Open the system's per-app notification settings (falls back to app details on API < 26). */
+private fun openAppNotificationSettings(context: android.content.Context) {
+    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    } else {
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri())
+    }
+    runCatching { context.startActivity(intent) }
 }

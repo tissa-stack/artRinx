@@ -16,6 +16,8 @@ import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyResponse
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.RefreshTokenRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistResponse
+import com.rinx.artRINXapp.feature.auth.domain.model.InviteCodeType
+import com.rinx.artRINXapp.feature.auth.domain.model.InviteVerification
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.google.gson.Gson
 import java.io.IOException
@@ -30,11 +32,18 @@ class AuthRepositoryImpl @Inject constructor(
 
     // ── Invite / Waitlist ────────────────────────────────────────────────────
 
-    override suspend fun verifyInviteCode(code: String): ApiResult<String> {
+    override suspend fun verifyInviteCode(code: String): ApiResult<InviteVerification> {
         return try {
             val response = apiService.verifyInvite(code)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body() ?: "")
+                val data = response.body()?.data
+                ApiResult.Success(
+                    InviteVerification(
+                        code = code,
+                        codeType = InviteCodeType.fromWire(data?.codeType),
+                        remainingInvites = data?.remainingInvites,
+                    ),
+                )
             } else {
                 val rawError = response.errorBody()?.string()
                 when (response.code()) {
@@ -168,6 +177,16 @@ class AuthRepositoryImpl @Inject constructor(
             } catch (_: Exception) {
                 // Ignore network/server failure — local wipe below still happens.
             }
+        }
+        sessionDataSource.clearSession()
+    }
+
+    override suspend fun signOutEverywhere() {
+        // Best-effort server-side revoke of ALL refresh tokens; always wipe locally afterwards.
+        try {
+            apiService.signOutEverywhere()
+        } catch (_: Exception) {
+            // Ignore network/server failure — local wipe below still happens.
         }
         sessionDataSource.clearSession()
     }
@@ -311,13 +330,20 @@ class AuthRepositoryImpl @Inject constructor(
 
     private fun codeToMessage(code: String?): String? = when (code) {
         "invalid_otp" -> "The code is invalid or has expired."
-        "expired_otp" -> "Your code has expired. Please request a new one."
-        "invalid_invite_code" -> "This invite code is not valid."
-        "invalid_referral_code" -> "This referral code is not valid."
-        "account_disabled" -> "Your account has been disabled. Please contact support."
+        "expired_otp", "otp_expired" -> "Your code has expired. Please request a new one."
+        "invalid_invite_code", "invite_invalid" -> "This invite code is not valid."
+        "invalid_referral_code", "referral_invalid" -> "This referral code is not valid."
+        "invite_or_referral_required" -> "An invite or referral code is required to sign up."
+        "account_disabled", "identity_disabled" -> "Your account has been disabled. Please contact support."
         "otp_locked" -> "Too many attempts. Please wait before trying again."
-        "user_not_found" -> "No account found. Try creating an account instead."
-        "user_exists" -> "An account already exists. Try signing in instead."
+        "rate_limited" -> "Too many attempts. Please wait a moment and try again."
+        "user_not_found", "no_account_found" -> "No account found. Try creating an account instead."
+        "user_exists", "already_registered" -> "An account already exists. Try signing in instead."
+        // Security: the refresh token was invalid or reused — the session is dead; the coordinator
+        // wipes it on the 401 from /refresh. Surface a sign-in prompt if a code path reaches here.
+        "refresh_invalid", "refresh_reused", "session_expired" ->
+            "Your session has expired. Please sign in again."
+        "not_allowed_on_this_surface" -> "This action isn't available in the app."
         else -> null
     }
 

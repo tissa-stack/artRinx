@@ -148,7 +148,8 @@ fun ProfileTitleAndPlanScreen(
                         option = title,
                         selected = false,
                         expanded = true,
-                        onClick = onEditTitle,
+                        // Change Role is hidden for Gallery / paid plans (handout §Change Role).
+                        onClick = if (state.canChangeRole) onEditTitle else null,
                     )
                 }
 
@@ -197,18 +198,21 @@ fun ProfileTitleAndPlanScreen(
             ) {
                 Text("Delete my account", style = MaterialTheme.typography.labelLarge)
             }
-            Button(
-                onClick = onEdit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(dimens.authButtonHeight),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = BrandPrimary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            ) {
-                Text("Edit", style = MaterialTheme.typography.labelLarge)
+            // "Edit" leads to the Change-Role/plan editor — hidden when role changes aren't allowed.
+            if (state.canChangeRole) {
+                Button(
+                    onClick = onEdit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(dimens.authButtonHeight),
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandPrimary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    Text("Edit", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }

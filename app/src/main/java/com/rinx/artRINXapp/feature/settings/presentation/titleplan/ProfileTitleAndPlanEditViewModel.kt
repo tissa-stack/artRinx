@@ -40,7 +40,9 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(
         TitlePlanEditUiState(
-            titles = MockSettingsData.profileTitles,
+            // Change-Role picker shows Artist / Collector / Art Curious only — Gallery is web-managed
+            // and never selectable on mobile (handout §Change Role picker rule).
+            titles = MockSettingsData.profileTitles.filterNot { it.name.contains("gallery", ignoreCase = true) },
             plans = MockSettingsData.plans,
         ),
     )

@@ -11,7 +11,10 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,8 +44,11 @@ fun RinxAvatar(
     @DrawableRes fallbackRes: Int? = null,
 ) {
     val shaped = modifier.size(size).clip(CircleShape)
+    // Track a load/decode failure so a 404 / corrupt CDN image falls back to the icon, not a
+    // broken-image placeholder (handout §Chat list row → avatar).
+    var loadFailed by remember(url) { mutableStateOf(false) }
     when {
-        !url.isNullOrBlank() -> {
+        !url.isNullOrBlank() && !loadFailed -> {
             val key = remember(url) { url.substringBefore("?") }
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -54,6 +60,7 @@ fun RinxAvatar(
                     .build(),
                 contentDescription = contentDescription,
                 contentScale       = ContentScale.Crop,
+                onError            = { loadFailed = true },
                 modifier           = shaped,
             )
         }

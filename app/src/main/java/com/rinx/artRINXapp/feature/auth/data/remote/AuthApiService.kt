@@ -8,6 +8,7 @@ import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyResponse
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.RefreshTokenRequest
+import com.rinx.artRINXapp.feature.auth.data.remote.dto.VerifyInviteResponse
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistResponse
 import okhttp3.ResponseBody
@@ -24,7 +25,7 @@ interface AuthApiService {
     @POST("api/verify-invite")
     suspend fun verifyInvite(
         @Field("invitation_code") invitationCode: String,
-    ): Response<String>
+    ): Response<VerifyInviteResponse>
 
     @POST("api/waitlist")
     suspend fun joinWaitlist(
@@ -55,6 +56,10 @@ interface AuthApiService {
     suspend fun logout(
         @Body request: RefreshTokenRequest,
     ): Response<ResponseBody>
+
+    /** Revoke ALL refresh tokens for the current user (Settings → Sign out everywhere). Bearer-authed. */
+    @POST("api/auth/native/sign-out-everywhere")
+    suspend fun signOutEverywhere(): Response<ResponseBody>
 
     /** Schedule deletion of the current account (§3.10). Bearer-authed; soft-deletes after a grace window. */
     @PATCH("api/user/delete-me")

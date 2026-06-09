@@ -16,11 +16,14 @@ import com.rinx.artRINXapp.feature.profile.domain.model.ProfileDraft
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfilePlanSummary
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileType
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
+import com.rinx.artRINXapp.feature.profile.domain.model.UploadQuota
 import com.rinx.artRINXapp.feature.profile.domain.model.UserProfileData
 
 interface ProfileRepository {
     suspend fun getProfileTypes(): ApiResult<List<ProfileType>>
     suspend fun getMyProfile(): ApiResult<CurrentUser>
+    /** Role + plan + artwork-count snapshot driving the Upload-tap gate. */
+    suspend fun getUploadQuota(): ApiResult<UploadQuota>
     /** Full profile (header + counts) for the Profile screen. */
     suspend fun getProfileData(): ApiResult<UserProfileData>
     /** The current user's profile in editable form, for the Edit Profile screen. */

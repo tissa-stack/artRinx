@@ -23,11 +23,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +44,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
@@ -54,9 +63,12 @@ fun CreateScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToNewArt: (String) -> Unit = {},
     onNavigateToNewCuration: () -> Unit = {},
+    viewModel: CreateViewModel = hiltViewModel(),
 ) {
     val d       = LocalDimens.current
     val context = LocalContext.current
+    val state by viewModel.state.collectAsState()
+    var dialog by remember { mutableStateOf<CreateViewModel.UploadAction?>(null) }
 
     // ── Photo picker (PickVisualMedia handles API 33+ natively; falls back on older) ──
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -93,6 +105,54 @@ fun CreateScreen(
                 permissionLauncher.launch(perm)
             }
         }
+    }
+
+    // Upload-Art gate (handout §Upload tap handler): paid+limit → alert; Gallery → web; else → upgrade.
+    fun onUploadArtTap() {
+        when (viewModel.resolveUploadAction()) {
+            CreateViewModel.UploadAction.OPEN_PICKER,
+            CreateViewModel.UploadAction.LOADING -> launchPicker()
+            else -> dialog = viewModel.resolveUploadAction()
+        }
+    }
+
+    // ── Upload-gate dialogs ───────────────────────────────────────────────────
+    when (dialog) {
+        CreateViewModel.UploadAction.LIMIT_REACHED -> AlertDialog(
+            onDismissRequest = { dialog = null },
+            title = { Text("Upload limit reached") },
+            text = { Text("You've reached your plan's active-artwork limit. Remove an existing piece to upload a new one.") },
+            confirmButton = { TextButton(onClick = { dialog = null }) { Text("OK") } },
+        )
+        CreateViewModel.UploadAction.GALLERY_WEB -> AlertDialog(
+            onDismissRequest = { dialog = null },
+            title = { Text("Gallery plan required") },
+            text = {
+                Text(
+                    "Uploading art requires an active Gallery plan, which is managed on artrinx.com. " +
+                        "Visit our website to view or change your plan.",
+                )
+            },
+            // Anti-steering: "Open Website" carries no purchase verb; no in-app purchase/Restore.
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW, "https://artrinx.com".toUri()),
+                        )
+                    }
+                    dialog = null
+                }) { Text("Open Website") }
+            },
+            dismissButton = { TextButton(onClick = { dialog = null }) { Text("Not Now") } },
+        )
+        CreateViewModel.UploadAction.UPGRADE_REQUIRED -> AlertDialog(
+            onDismissRequest = { dialog = null },
+            title = { Text("Upgrade required") },
+            text = { Text("Uploading art requires an Artist Pro plan. You can upgrade from Settings → Profile title and plan.") },
+            confirmButton = { TextButton(onClick = { dialog = null }) { Text("OK") } },
+        )
+        else -> Unit
     }
 
     Scaffold(
@@ -137,7 +197,7 @@ fun CreateScreen(
                     title    = "Upload Art",
                     subtitle = "Share your work",
                     modifier = Modifier.weight(1f),
-                    onClick  = { launchPicker() },
+                    onClick  = { onUploadArtTap() },
                 )
                 Spacer(Modifier.width(Spacing.md))
                 CreateOptionCard(
@@ -169,7 +229,7 @@ fun CreateScreen(
                         color      = MaterialTheme.colorScheme.onBackground,
                     )
                     Text(
-                        text  = "Unlimited uploads",
+                        text  = state.uploadLimitText.ifBlank { "Uploads" },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

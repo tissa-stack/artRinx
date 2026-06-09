@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
+import com.rinx.artRINXapp.feature.home.domain.model.SendMode
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
 import com.rinx.artRINXapp.feature.notifications.domain.repository.MessagesRepository
@@ -43,6 +44,10 @@ data class ArtDetailUiState(
     val isSendingInvite: Boolean = false,
     val inviteSent: Boolean = false,
     val invitationsLeft: Int? = null,
+    /** Drives the send sheet's framing (invite vs plain message vs disabled reason). */
+    val sendMode: SendMode = SendMode.INVITE,
+    /** False until the owner conversation state is resolved — sheet shows a loader, not INVITE. */
+    val sendModeReady: Boolean = false,
 )
 
 @HiltViewModel
@@ -54,6 +59,7 @@ class ArtDetailViewModel @Inject constructor(
     private val uploadRepository: UploadRepository,
     private val editTargetStore: EditTargetStore,
     private val profileRefreshBus: ProfileRefreshBus,
+    private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
 ) : ViewModel() {
 
     private val artworkId: Int? = savedStateHandle.get<String>("postId")?.toIntOrNull()
@@ -99,17 +105,41 @@ class ArtDetailViewModel @Inject constructor(
 
             if (detailRes is ApiResult.Success) {
                 val post = detailRes.data
+                val isOwn = meId != null && post.ownerId == meId
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = false,
                         post = post,
                         moreLikeThis = (similarRes as? ApiResult.Success)?.data.orEmpty(),
-                        isOwn = meId != null && post.ownerId == meId,
+                        isOwn = isOwn,
                     )
                 }
+                // Resolve the conversation state with the owner so the send sheet shows the right
+                // framing (plain message for an active chat, not a fresh invitation).
+                if (!isOwn) post.ownerId?.let { resolveSendMode(it) }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = true) }
+            }
+        }
+    }
+
+    /** Fetch the owner's public profile to derive the [SendMode] + remaining new-chat count. */
+    private fun resolveSendMode(ownerId: Int) {
+        viewModelScope.launch {
+            val pub = (profileRepository.getPublicProfile(ownerId) as? ApiResult.Success)?.data
+            _uiState.update {
+                if (pub == null) it.copy(sendModeReady = true) // fallback: keep default INVITE
+                else it.copy(
+                    sendMode = SendMode.resolve(
+                        canMessage = pub.canMessage,
+                        chatroomId = pub.chatroomId,
+                        iBlocked = pub.iBlocked,
+                        theyBlocked = pub.theyBlocked,
+                        blockReason = pub.blockReason,
+                    ),
+                    sendModeReady = true,
+                )
             }
         }
     }
@@ -137,12 +167,16 @@ class ArtDetailViewModel @Inject constructor(
         val nowLiked = !post.isLiked
         setLiked(nowLiked)
         viewModelScope.launch {
-            val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)
-            if (result is ApiResult.Error) {
-                setLiked(!nowLiked)   // revert on failure
-            } else {
-                // Keep the Profile "Liked" tab in sync — an unliked art drops out on return.
-                profileRefreshBus.signal()
+            when (val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)) {
+                is ApiResult.Error.Network ->
+                    // Offline: keep the optimistic state and queue it to replay on reconnect.
+                    liveMutationQueue.enqueue("artwork", id, nowLiked)
+                is ApiResult.Error ->
+                    setLiked(!nowLiked) // hard failure (server rejected) → revert
+                else -> {
+                    // Keep the Profile "Liked" tab in sync — an unliked art drops out on return.
+                    profileRefreshBus.signal()
+                }
             }
         }
     }
@@ -234,8 +268,10 @@ class ArtDetailViewModel @Inject constructor(
             val cid = UUID.randomUUID().toString()
             when (messagesRepository.sendMessage(ownerId, currentUserId, text, imageId = artworkId, clientMessageId = cid)) {
                 is ApiResult.Success -> _uiState.update {
-                    it.copy(isSendingInvite = false, inviteSent = true,
-                        invitationsLeft = it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) })
+                    // Only a brand-new invite spends from the monthly new-chat quota.
+                    val left = if (it.sendMode == SendMode.INVITE)
+                        it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) } else it.invitationsLeft
+                    it.copy(isSendingInvite = false, inviteSent = true, invitationsLeft = left)
                 }
                 is ApiResult.Error.Blocked -> _uiState.update {
                     it.copy(isSendingInvite = false,

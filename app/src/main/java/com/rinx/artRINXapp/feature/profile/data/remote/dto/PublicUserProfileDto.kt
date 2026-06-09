@@ -18,5 +18,6 @@ data class PublicUserProfileDto(
     @SerializedName("i_blocked") val iBlocked: Boolean? = null,
     @SerializedName("they_blocked") val theyBlocked: Boolean? = null,
     @SerializedName("can_message") val canMessage: Boolean? = null,
+    @SerializedName("block_reason") val blockReason: String? = null,
     @SerializedName("chatroom_id") val chatroomId: String? = null,
 )

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import com.rinx.artRINXapp.core.tour.TourHost
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,9 +60,24 @@ import androidx.compose.runtime.remember
 @Composable
 fun AppNavGraph(
     startDestination: String,
+    deepLinkRouter: DeepLinkRouter,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
+    // Push-tap / universal-link routing. Invite codes are consumed by the invite screen itself;
+    // here we only act on content routes and the gallery_enterprise_notice home-only case.
+    val pendingDeepLink by deepLinkRouter.target.collectAsState()
+    LaunchedEffect(pendingDeepLink) {
+        when (val t = pendingDeepLink) {
+            is DeepLinkTarget.Route -> {
+                navController.navigate(t.navRoute); deepLinkRouter.consume()
+            }
+            DeepLinkTarget.HomeOnly -> {
+                navController.navigate(NavRoutes.HOME); deepLinkRouter.consume()
+            }
+            else -> Unit // Invite handled by InviteCodeViewModel; null = nothing pending.
+        }
+    }
     Box(
         modifier = modifier
             .fillMaxSize()

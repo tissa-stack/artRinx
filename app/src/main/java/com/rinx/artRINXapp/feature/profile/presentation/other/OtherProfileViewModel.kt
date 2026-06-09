@@ -31,6 +31,10 @@ data class OtherProfileUiState(
     val isBioExpanded: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null,
+    // pagination
+    val isLoadingMore: Boolean = false,
+    val artHasMore: Boolean = false,
+    val curationHasMore: Boolean = false,
     // actions
     val isFollowPending: Boolean = false,
     val isActioning: Boolean = false,
@@ -57,6 +61,8 @@ class OtherProfileViewModel @Inject constructor(
     val closed = _closed.receiveAsFlow()
 
     private var lastReportMessage: String = ""
+    private var artPage = 1
+    private var curationPage = 1
 
     init {
         load()
@@ -74,19 +80,68 @@ class OtherProfileViewModel @Inject constructor(
             val artJob = async { repository.getPublicArtworks(id, 1, 30) }
             val curationJob = async { repository.getPublicCurations(id, 1, 30) }
             when (val profileRes = profileJob.await()) {
-                is ApiResult.Success -> _uiState.update {
-                    it.copy(
-                        profile = profileRes.data,
-                        artItems = (artJob.await() as? ApiResult.Success)?.data.orEmpty(),
-                        curations = (curationJob.await() as? ApiResult.Success)?.data.orEmpty(),
-                        isLoading = false,
-                        error = null,
-                    )
+                is ApiResult.Success -> {
+                    val art = (artJob.await() as? ApiResult.Success)?.data.orEmpty()
+                    val cur = (curationJob.await() as? ApiResult.Success)?.data.orEmpty()
+                    artPage = 1; curationPage = 1
+                    _uiState.update {
+                        it.copy(
+                            profile = profileRes.data,
+                            artItems = art,
+                            curations = cur,
+                            artHasMore = art.size >= PAGE_SIZE,
+                            curationHasMore = cur.size >= PAGE_SIZE,
+                            isLoading = false,
+                            error = null,
+                        )
+                    }
                 }
                 is ApiResult.Error -> _uiState.update {
                     it.copy(isLoading = false, error = profileRes.toMessage())
                 }
             }
+        }
+    }
+
+    /** Infinite scroll: page the active tab (art / curations), append + dedup, stop when short. */
+    fun loadMore() {
+        val id = userId ?: return
+        val state = _uiState.value
+        if (state.isLoading || state.isLoadingMore) return
+        when (state.activeTab) {
+            ProfileTab.ART -> {
+                if (!state.artHasMore) return
+                _uiState.update { it.copy(isLoadingMore = true) }
+                viewModelScope.launch {
+                    val next = (repository.getPublicArtworks(id, artPage + 1, PAGE_SIZE) as? ApiResult.Success)?.data.orEmpty()
+                    artPage += 1
+                    _uiState.update { st ->
+                        val existing = st.artItems.associateBy { it.id }
+                        st.copy(
+                            artItems = st.artItems + next.filter { it.id !in existing },
+                            artHasMore = next.size >= PAGE_SIZE,
+                            isLoadingMore = false,
+                        )
+                    }
+                }
+            }
+            ProfileTab.CURATIONS -> {
+                if (!state.curationHasMore) return
+                _uiState.update { it.copy(isLoadingMore = true) }
+                viewModelScope.launch {
+                    val next = (repository.getPublicCurations(id, curationPage + 1, PAGE_SIZE) as? ApiResult.Success)?.data.orEmpty()
+                    curationPage += 1
+                    _uiState.update { st ->
+                        val existing = st.curations.associateBy { it.id }
+                        st.copy(
+                            curations = st.curations + next.filter { it.id !in existing },
+                            curationHasMore = next.size >= PAGE_SIZE,
+                            isLoadingMore = false,
+                        )
+                    }
+                }
+            }
+            ProfileTab.LIKED -> Unit // public profiles have no Liked tab
         }
     }
 
@@ -178,6 +233,10 @@ class OtherProfileViewModel @Inject constructor(
 
     fun onReportClosed() = _uiState.update { it.copy(isReporting = false, reportSent = false) }
     fun onActionErrorShown() = _uiState.update { it.copy(actionError = null) }
+
+    private companion object {
+        const val PAGE_SIZE = 30
+    }
 }
 
 private fun ApiResult.Error.toMessage(): String = when (this) {

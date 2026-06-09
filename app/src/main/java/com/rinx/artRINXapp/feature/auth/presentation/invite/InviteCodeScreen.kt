@@ -23,12 +23,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -39,8 +41,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.Intent
+import androidx.core.net.toUri
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,6 +69,7 @@ fun InviteCodeScreen(
     val dimens = LocalDimens.current
     val isDark = isSystemInDarkTheme()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -76,6 +82,31 @@ fun InviteCodeScreen(
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) onNavigateToSignup(uiState.inviteCode)
+    }
+
+    // Agent (Gallery) codes: Gallery signups complete on the web — no in-app OTP path.
+    // Anti-steering safe: "Open Website" carries no purchase verb.
+    if (uiState.showGalleryWebModal) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissGalleryWebModal,
+            title = { Text("Complete on web") },
+            text = {
+                Text("Gallery signups are completed on the web. Visit artrinx.com/gallery.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, "https://artrinx.com/gallery".toUri()),
+                        )
+                    }
+                    viewModel.dismissGalleryWebModal()
+                }) { Text("Open artrinx.com/gallery") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissGalleryWebModal) { Text("Cancel") }
+            },
+        )
     }
 
     Column(

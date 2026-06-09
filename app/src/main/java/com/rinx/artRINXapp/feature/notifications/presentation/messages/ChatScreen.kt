@@ -28,6 +28,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
@@ -47,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -98,14 +101,26 @@ fun ChatScreen(
     val iconColor      = if (isDark) Color.White else MaterialTheme.colorScheme.onBackground
 
     var menuTarget by remember { mutableStateOf<ChatMessage?>(null) }
-    var editTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
     LaunchedEffect(Unit) { viewModel.loadConversation() }
     LaunchedEffect(Unit) {
         viewModel.toasts.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
-    LaunchedEffect(state.messages.size) {
+    // Auto-scroll to the newest message only when a message is APPENDED (last id changes) — not
+    // when older messages are prepended by pagination.
+    val lastMessageId = state.messages.lastOrNull()?.id
+    LaunchedEffect(lastMessageId) {
         if (state.messages.isNotEmpty()) listState.scrollToItem(state.messages.size - 1)
+    }
+    // Scroll-to-top → load the next older page.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { if (it == 0) viewModel.loadEarlier() }
+    }
+    // Mark received messages read as they enter the viewport (handout §on view appear).
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? String }.toSet() }
+            .collect { viewModel.onMessagesVisible(it) }
     }
 
     // Index of the last message the current user sent — used to show "Invite sent!".
@@ -172,6 +187,13 @@ fun ChatScreen(
             state          = listState,
             contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.md),
         ) {
+            if (state.isLoadingEarlier) {
+                item(key = "load_earlier") {
+                    Box(Modifier.fillMaxWidth().padding(Spacing.md), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(Spacing.xl))
+                    }
+                }
+            }
             itemsIndexed(state.messages, key = { _, m -> m.id }) { index, msg ->
                 Text(
                     text      = msg.timestamp,
@@ -203,45 +225,21 @@ fun ChatScreen(
         } // when
         } // Box(weight)
 
-        // ── Invitation hint ────────────────────────────────────────────
-        val hintSubtitle = when (state.gate) {
-            ChatGate.FRESH_INVITE -> "You can send one message until they accept"
-            ChatGate.INVITE_RECEIVED -> "Reply to accept the invitation"
-            else -> null
-        }
-        if (hintSubtitle != null) {
-            Column(
-                modifier            = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.xl, vertical = Spacing.sm),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    imageVector        = Icons.Outlined.MailOutline,
-                    contentDescription = null,
-                    tint               = iconColor.copy(alpha = 0.6f),
-                    modifier           = Modifier.size(Spacing.xl),
-                )
-                Text(
-                    "This is an invitation",
-                    style      = MaterialTheme.typography.bodySmall,
-                    color      = iconColor.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    hintSubtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = iconColor.copy(alpha = 0.5f),
-                )
-            }
-        }
+        // ── Compose-gate info banner (handout 5-state tree) ─────────────
+        ChatGateBanner(
+            gate             = state.gate,
+            partnerName      = state.partnerName.ifBlank { "this user" },
+            remainingInvites = state.remainingInvites,
+            iconColor        = iconColor,
+        )
 
         // ── Input bar ─────────────────────────────────────────────────
-        val enabled = state.canSend
+        val editing = state.editingMessageId != null
+        val enabled = editing || state.canSend
         val placeholder = when {
-            !enabled                            -> "Messaging disabled"
-            state.gate == ChatGate.FRESH_INVITE -> "Send message"
-            else                                -> "Write your message"
+            editing  -> "Edit your message"
+            !enabled -> "Messaging disabled"
+            else     -> "Write your message"
         }
         Row(
             modifier          = Modifier
@@ -250,6 +248,18 @@ fun ChatScreen(
                 .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Edit mode: an X to the LEFT cancels the edit and clears the field.
+            if (editing) {
+                Icon(
+                    imageVector        = Icons.Default.Close,
+                    contentDescription = "Cancel edit",
+                    tint               = iconColor,
+                    modifier           = Modifier
+                        .size(Spacing.xxl)
+                        .clickable { viewModel.cancelEdit() },
+                )
+                Spacer(Modifier.width(Spacing.sm))
+            }
             Row(
                 modifier          = Modifier
                     .weight(1f)
@@ -283,14 +293,25 @@ fun ChatScreen(
                 )
                 Spacer(Modifier.width(Spacing.md))
                 val canTapSend = enabled && state.inputText.isNotBlank()
-                Icon(
-                    painter            = painterResource(R.drawable.ic_send),
-                    contentDescription = "Send",
-                    tint               = if (enabled) iconColor else iconColor.copy(alpha = 0.3f),
-                    modifier           = Modifier
-                        .size(Spacing.xxl)
-                        .clickable(enabled = canTapSend) { viewModel.onSend() },
-                )
+                if (editing) {
+                    Icon(
+                        imageVector        = Icons.Default.Check,
+                        contentDescription = "Save edit",
+                        tint               = if (canTapSend) iconColor else iconColor.copy(alpha = 0.3f),
+                        modifier           = Modifier
+                            .size(Spacing.xxl)
+                            .clickable(enabled = canTapSend) { viewModel.onSend() },
+                    )
+                } else {
+                    Icon(
+                        painter            = painterResource(R.drawable.ic_send),
+                        contentDescription = "Send",
+                        tint               = if (enabled) iconColor else iconColor.copy(alpha = 0.3f),
+                        modifier           = Modifier
+                            .size(Spacing.xxl)
+                            .clickable(enabled = canTapSend) { viewModel.onSend() },
+                    )
+                }
             }
         }
         Spacer(
@@ -311,47 +332,119 @@ fun ChatScreen(
         ) {
             Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
                 if (canEdit) {
-                    MenuRow("Edit message") { editTarget = target; menuTarget = null }
+                    // Inline edit: pre-fills the compose field with X / ✓ controls (handout §Edit mode).
+                    MenuRow("Edit message") { viewModel.beginEdit(target); menuTarget = null }
                 }
                 MenuRow("Delete message") { viewModel.onDeleteMessage(target); menuTarget = null }
                 Spacer(Modifier.height(Spacing.md))
             }
         }
     }
+}
 
-    // ── Edit dialog ─────────────────────────────────────────────────────────────
-    editTarget?.let { target ->
-        var draft by remember(target.id) { mutableStateOf(target.content) }
-        AlertDialog(
-            onDismissRequest = { editTarget = null },
-            title = { Text("Edit message") },
-            text = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(Spacing.sm))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(Spacing.md),
-                ) {
-                    BasicTextField(
-                        value         = draft,
-                        onValueChange = { draft = it },
-                        modifier      = Modifier.fillMaxWidth(),
-                        textStyle     = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onBackground),
-                        cursorBrush   = SolidColor(BrandPrimary),
-                    )
+/**
+ * The info banner above the compose field, one per [ChatGate] state (handout 5-state tree).
+ * ACTIVE renders nothing. FRESH_INVITE is a full invite card with the monthly-quota footnote;
+ * the rest are a centered icon + title + body.
+ */
+@Composable
+private fun ChatGateBanner(
+    gate: ChatGate,
+    partnerName: String,
+    remainingInvites: Int?,
+    iconColor: Color,
+) {
+    when (gate) {
+        ChatGate.ACTIVE -> Unit
+
+        ChatGate.FRESH_INVITE -> Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+                .clip(RoundedCornerShape(Spacing.md))
+                .background(iconColor.copy(alpha = 0.06f))
+                .padding(Spacing.lg),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.MailOutline,
+                    contentDescription = null,
+                    tint = iconColor.copy(alpha = 0.7f),
+                    modifier = Modifier.size(Spacing.xl),
+                )
+                Spacer(Modifier.width(Spacing.sm))
+                Text(
+                    "Invite $partnerName to chat",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = iconColor.copy(alpha = 0.9f),
+                )
+            }
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "This message will act as your invitation to chat for the first time with this " +
+                    "profile. You can only send one message in this invite until they accept.",
+                style = MaterialTheme.typography.labelSmall,
+                color = iconColor.copy(alpha = 0.6f),
+            )
+            if (remainingInvites != null) {
+                Spacer(Modifier.height(Spacing.sm))
+                Text(
+                    "You have $remainingInvites new chats this month",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = iconColor.copy(alpha = 0.5f),
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        else -> {
+            val title: String
+            val body: String
+            when (gate) {
+                ChatGate.INVITE_RECEIVED -> {
+                    title = "This is an invitation"; body = "Reply to accept the invitation"
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onEditMessage(target, draft); editTarget = null }) {
-                    Text("Save")
+                ChatGate.INVITE_SENT_WAITING -> {
+                    title = "Invitation sent"
+                    body = "You can send another message when $partnerName responds."
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { editTarget = null }) { Text("Cancel") }
-            },
-        )
+                ChatGate.BLOCKED_BY_ME -> {
+                    title = "You blocked this user"; body = "Unblock to send messages."
+                }
+                ChatGate.BLOCKED_BY_THEM -> {
+                    title = "Messaging unavailable"
+                    body = "You can't send messages to this user."
+                }
+                else -> return
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.xl, vertical = Spacing.sm),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.MailOutline,
+                    contentDescription = null,
+                    tint = iconColor.copy(alpha = 0.6f),
+                    modifier = Modifier.size(Spacing.xl),
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = iconColor.copy(alpha = 0.8f),
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    body,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = iconColor.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }
 

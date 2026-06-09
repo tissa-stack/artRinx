@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +51,8 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
+import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.PlanCard
 import com.rinx.artRINXapp.feature.profile.presentation.steps.GroundRulesDialog
 import com.rinx.artRINXapp.feature.profile.presentation.steps.MediumSelectionStep
 import com.rinx.artRINXapp.feature.profile.presentation.steps.PersonalInfoStep
@@ -98,6 +102,7 @@ fun ProfileCreationScreen(
             onNextFromProfileInfo = viewModel::onNextFromProfileInfo,
             onNextFromPersonalInfo = viewModel::onNextFromPersonalInfo,
             onSubmit = viewModel::onSubmit,
+            onExploreRinx = viewModel::onExploreRinx,
             onBack = viewModel::onBack,
             onDismissError = viewModel::onDismissError,
         )
@@ -132,16 +137,19 @@ private fun ProfileCreationContent(
     onNextFromProfileInfo: () -> Boolean,
     onNextFromPersonalInfo: () -> Boolean,
     onSubmit: (Uri?) -> Unit,
+    onExploreRinx: () -> Unit,
     onBack: () -> Unit,
     onDismissError: () -> Unit,
 ) {
     val dimens = LocalDimens.current
     val snackbarHostState = remember { SnackbarHostState() }
     val currentStep = uiState.currentStep
-    val totalSteps = 4
+    val totalSteps = 5
     val isDark = isSystemInDarkTheme()
+    // Back is only meaningful within the data-entry steps (not the post-submit plan step).
+    val canGoBack = currentStep in 1 until ProfileCreationViewModel.PLAN_STEP
 
-    BackHandler(enabled = currentStep > 0) { onBack() }
+    BackHandler(enabled = canGoBack) { onBack() }
 
     LaunchedEffect(uiState.submissionError) {
         uiState.submissionError?.let { msg ->
@@ -157,7 +165,8 @@ private fun ProfileCreationContent(
             uiState.displayName.isNotBlank()
         2 -> uiState.age.isNotBlank() && uiState.country.isNotBlank() &&
             uiState.state.isNotBlank() && uiState.city.isNotBlank()
-        3 -> uiState.selectedMediumIds.isNotEmpty()
+        3 -> uiState.selectedMediumIds.size == ProfileCreationViewModel.REQUIRED_MEDIUM_COUNT
+        4 -> true // informational plan step — always proceedable
         else -> false
     }
 
@@ -187,7 +196,7 @@ private fun ProfileCreationContent(
                     .fillMaxWidth()
                     .padding(vertical = dimens.logoPaddingVertical),
             ) {
-                if (currentStep > 0) {
+                if (canGoBack) {
                     IconButton(
                         onClick = onBack,
                         modifier = Modifier.align(Alignment.CenterStart),
@@ -281,6 +290,11 @@ private fun ProfileCreationContent(
                         onRetry = onRetryMediums,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    4 -> PlanInfoStep(
+                        roleName = uiState.profileTypes
+                            .firstOrNull { it.id == uiState.selectedProfileTypeId }?.name.orEmpty(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
 
@@ -324,6 +338,7 @@ private fun ProfileCreationContent(
                             1 -> onNextFromProfileInfo()
                             2 -> onNextFromPersonalInfo()
                             3 -> onSubmit(uiState.profilePictureUri)
+                            4 -> onExploreRinx()
                         }
                     },
                     enabled = !uiState.isSubmitting,
@@ -345,7 +360,7 @@ private fun ProfileCreationContent(
                             strokeWidth = Spacing.xs / 2,
                         )
                     } else {
-                        val label = if (currentStep == 3) "Explore RINX >" else "Continue"
+                        val label = if (currentStep == ProfileCreationViewModel.PLAN_STEP) "Explore RINX >" else "Continue"
                         Text(text = label, style = MaterialTheme.typography.labelLarge)
                     }
                 }
@@ -375,5 +390,37 @@ private fun ProfileCreationContent(
                 onContinue = onGroundRulesContinue,
             )
         }
+    }
+}
+
+/**
+ * Step 5 (informational only — no API). Confirms the profile is set up and shows the plans available
+ * for the picked role. Exit via the "Explore RINX" button (handout §Profile Setup Wizard, step 5).
+ */
+@Composable
+private fun PlanInfoStep(
+    roleName: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+    ) {
+        Spacer(Modifier.height(Spacing.sm))
+        Text(
+            text = "You're all set!",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = "Here are the plans available for your ${roleName.ifBlank { "profile" }}. " +
+                "You can change your plan anytime from Settings.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PlanCatalog.availablePlans(roleName).forEach { plan ->
+            PlanCard(plan = plan, selected = false)
+        }
+        Spacer(Modifier.height(Spacing.lg))
     }
 }

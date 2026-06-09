@@ -96,7 +96,9 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             val info = profileRepository.getInviteInfo()
             if (info is ApiResult.Success) {
-                _state.update { it.copy(invitationCount = info.data.remainingInvites ?: 0) }
+                // Messages tab = chat surface → show the new-chats counter, not peer-share invites.
+                val newChats = info.data.remainingChatInvites ?: info.data.remainingInvites ?: 0
+                _state.update { it.copy(invitationCount = newChats) }
             }
         }
     }

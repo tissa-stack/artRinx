@@ -2,6 +2,8 @@ package com.rinx.artRINXapp.core.network
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
 import com.rinx.artRINXapp.core.di.ApplicationScope
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.google.gson.Gson
@@ -66,6 +68,33 @@ class ChatWebSocketManager @Inject constructor(
 
     private var reconnectJob: Job? = null
     private var watchdogJob: Job? = null
+
+    // ── Network reachability (§12.6) ───────────────────────────────────────────────
+    // Auto-reconnect the instant the path is restored (resetting backoff), and drop the dead
+    // socket on path loss so we don't sit on a half-open connection.
+    private val connectivityManager: ConnectivityManager? =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            if (foreground) {
+                attempt = 0
+                connect()
+            }
+        }
+
+        override fun onLost(network: Network) {
+            synchronized(this@ChatWebSocketManager) {
+                webSocket?.cancel()
+                webSocket = null
+                _connectionState.value = WsConnectionState.DISCONNECTED
+            }
+        }
+    }
+
+    init {
+        runCatching { connectivityManager?.registerDefaultNetworkCallback(networkCallback) }
+    }
 
     // ── Lifecycle entry points ───────────────────────────────────────────────────
 

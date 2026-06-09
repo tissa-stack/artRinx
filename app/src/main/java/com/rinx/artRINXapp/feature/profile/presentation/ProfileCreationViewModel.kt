@@ -135,7 +135,12 @@ class ProfileCreationViewModel @Inject constructor(
             _uiState.update { it.copy(profileTypesLoading = true, profileTypesError = null) }
             when (val result = profileRepository.getProfileTypes()) {
                 is ApiResult.Success -> _uiState.update {
-                    it.copy(profileTypes = result.data, profileTypesLoading = false)
+                    // Gallery is a web-only (Stripe) acquisition role — never selectable in the
+                    // mobile signup wizard. Backend 400s on profile_type_id = Gallery from mobile.
+                    val selectable = result.data.filterNot { type ->
+                        type.name.contains("gallery", ignoreCase = true)
+                    }
+                    it.copy(profileTypes = selectable, profileTypesLoading = false)
                 }
                 else -> _uiState.update {
                     it.copy(
@@ -183,7 +188,8 @@ class ProfileCreationViewModel @Inject constructor(
         }
         viewModelScope.launch { draftDataSource.saveUsername(value) }
         usernameCheckJob?.cancel()
-        if (value.length >= 3) {
+        // Spec: debounced 500ms, fired on every keystroke once the username is >= 5 chars.
+        if (value.length >= 5) {
             usernameCheckJob = viewModelScope.launch {
                 delay(500)
                 checkUsernameAvailability(value)
@@ -276,7 +282,8 @@ class ProfileCreationViewModel @Inject constructor(
         val updated = if (current.contains(id)) {
             current - id
         } else {
-            if (current.size >= 5) current else current + id
+            // Spec: the user picks EXACTLY 3 mediums — block additional selections past 3.
+            if (current.size >= REQUIRED_MEDIUM_COUNT) current else current + id
         }
         _uiState.update { it.copy(selectedMediumIds = updated) }
         viewModelScope.launch { draftDataSource.saveMediumIds(updated) }
@@ -333,7 +340,8 @@ class ProfileCreationViewModel @Inject constructor(
 
     fun onBack() {
         val current = _uiState.value.currentStep
-        if (current > 0) goToStep(current - 1)
+        // Don't allow stepping back into the wizard from the post-submit plan step.
+        if (current in 1 until PLAN_STEP) goToStep(current - 1)
     }
 
     private fun goToStep(step: Int) {
@@ -345,7 +353,7 @@ class ProfileCreationViewModel @Inject constructor(
 
     fun onSubmit(pictureUri: Uri?) {
         val state = _uiState.value
-        if (state.selectedMediumIds.isEmpty()) return
+        if (state.selectedMediumIds.size != REQUIRED_MEDIUM_COUNT) return
         _uiState.update { it.copy(isSubmitting = true, submissionError = null) }
         viewModelScope.launch {
             val draft = ProfileDraft(
@@ -366,7 +374,9 @@ class ProfileCreationViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     authRepository.saveProfileCompleted(true)
                     draftDataSource.clearDraft()
-                    _uiState.update { it.copy(isSubmitting = false, navigateToHome = true) }
+                    // POST fires at the mediums step; advance to the informational plan step (step 5).
+                    _uiState.update { it.copy(isSubmitting = false, currentStep = PLAN_STEP) }
+                    draftDataSource.saveStep(PLAN_STEP)
                 }
                 is ApiResult.Error.Validation -> _uiState.update {
                     it.copy(isSubmitting = false, submissionError = result.message)
@@ -381,11 +391,23 @@ class ProfileCreationViewModel @Inject constructor(
         }
     }
 
+    /** Step 5 "Explore RINX" exit. Profile is already created + marked complete; just route Home. */
+    fun onExploreRinx() {
+        _uiState.update { it.copy(navigateToHome = true) }
+    }
+
     fun onNavigatedToHome() {
         _uiState.update { it.copy(navigateToHome = false) }
     }
 
     fun onDismissError() {
         _uiState.update { it.copy(submissionError = null) }
+    }
+
+    companion object {
+        /** Spec: the mediums step requires the user to pick exactly this many. */
+        const val REQUIRED_MEDIUM_COUNT = 3
+        /** Index of the informational plan step (step 5), shown after the profile POST succeeds. */
+        const val PLAN_STEP = 4
     }
 }

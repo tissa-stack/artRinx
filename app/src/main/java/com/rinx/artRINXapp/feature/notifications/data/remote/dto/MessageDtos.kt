@@ -67,6 +67,9 @@ data class ChatThreadDto(
     @SerializedName(value = "theyBlocked", alternate = ["they_blocked"]) val theyBlocked: Boolean? = null,
     @SerializedName(value = "isActive", alternate = ["is_active"]) val isActive: Boolean? = null,
     @SerializedName(value = "nextCursor", alternate = ["next_cursor"]) val nextCursor: String? = null,
+    @SerializedName(value = "canMessage", alternate = ["can_message"]) val canMessage: Boolean? = null,
+    @SerializedName(value = "blockReason", alternate = ["block_reason"]) val blockReason: String? = null,
+    @SerializedName(value = "remainingInvites", alternate = ["remaining_invites"]) val remainingInvites: Int? = null,
 )
 
 /** `POST /api/chatroom_id` → data (API §7.9 — snake_case). */
@@ -78,6 +81,8 @@ data class ChatroomResolveDto(
     @SerializedName("i_blocked") val iBlocked: Boolean? = null,
     @SerializedName("they_blocked") val theyBlocked: Boolean? = null,
     @SerializedName("remaining_invites") val remainingInvites: Int? = null,
+    @SerializedName("can_message") val canMessage: Boolean? = null,
+    @SerializedName("block_reason") val blockReason: String? = null,
 )
 
 /**

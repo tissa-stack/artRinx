@@ -32,6 +32,11 @@ class UserProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UserProfileUiState(isLoading = true))
     val uiState: StateFlow<UserProfileUiState> = _uiState.asStateFlow()
 
+    // Next page to fetch per tab (page 1 is loaded by load()).
+    private var artPage = PAGE
+    private var curationPage = PAGE
+    private var likedPage = PAGE
+
     init {
         load()
         observeUploads()
@@ -52,6 +57,8 @@ class UserProfileViewModel @Inject constructor(
             val curations = (curationsDeferred.await() as? ApiResult.Success)?.data.orEmpty()
             val likedItems = (likedDeferred.await() as? ApiResult.Success)?.data.orEmpty()
 
+            // Reset paging on a full (re)load. A full page implies there may be more.
+            artPage = PAGE; curationPage = PAGE; likedPage = PAGE
             _uiState.update { state ->
                 state.copy(
                     isLoading = false,
@@ -59,7 +66,64 @@ class UserProfileViewModel @Inject constructor(
                     artItems = artItems,
                     curations = curations,
                     likedItems = likedItems,
+                    artHasMore = artItems.size >= SIZE,
+                    curationHasMore = curations.size >= SIZE,
+                    likedHasMore = likedItems.size >= SIZE,
                 )
+            }
+        }
+    }
+
+    /** Infinite scroll: load the next page for the active tab, append (dedup by id), stop when short. */
+    fun loadMore() {
+        val state = _uiState.value
+        if (state.isLoading || state.isLoadingMore) return
+        val tab = state.activeTab
+        val hasMore = when (tab) {
+            ProfileTab.ART -> state.artHasMore
+            ProfileTab.CURATIONS -> state.curationHasMore
+            ProfileTab.LIKED -> state.likedHasMore
+        }
+        if (!hasMore) return
+        _uiState.update { it.copy(isLoadingMore = true) }
+        viewModelScope.launch {
+            when (tab) {
+                ProfileTab.ART -> {
+                    val next = (profileRepository.getMyArtworks(artPage + 1, SIZE) as? ApiResult.Success)?.data.orEmpty()
+                    artPage += 1
+                    _uiState.update { st ->
+                        val existing = st.artItems.associateBy { it.id }
+                        st.copy(
+                            artItems = st.artItems + next.filter { it.id !in existing },
+                            artHasMore = next.size >= SIZE,
+                            isLoadingMore = false,
+                        )
+                    }
+                }
+                ProfileTab.CURATIONS -> {
+                    val next = (profileRepository.getMyCurations(curationPage + 1, SIZE) as? ApiResult.Success)?.data.orEmpty()
+                    curationPage += 1
+                    _uiState.update { st ->
+                        val existing = st.curations.associateBy { it.id }
+                        st.copy(
+                            curations = st.curations + next.filter { it.id !in existing },
+                            curationHasMore = next.size >= SIZE,
+                            isLoadingMore = false,
+                        )
+                    }
+                }
+                ProfileTab.LIKED -> {
+                    val next = (profileRepository.getLikedArtworks(likedPage + 1, SIZE) as? ApiResult.Success)?.data.orEmpty()
+                    likedPage += 1
+                    _uiState.update { st ->
+                        val existing = st.likedItems.associateBy { it.id }
+                        st.copy(
+                            likedItems = st.likedItems + next.filter { it.id !in existing },
+                            likedHasMore = next.size >= SIZE,
+                            isLoadingMore = false,
+                        )
+                    }
+                }
             }
         }
     }

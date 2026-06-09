@@ -7,7 +7,7 @@ import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
-import com.rinx.artRINXapp.feature.settings.domain.model.MockSettingsData
+import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
 import com.rinx.artRINXapp.feature.settings.domain.model.PlanOption
 import com.rinx.artRINXapp.feature.settings.domain.model.ProfileTitleOption
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +22,8 @@ data class ProfileTitleAndPlanUiState(
     val title: ProfileTitleOption? = null,
     val plan: PlanOption? = null,
     val nextBillingDate: String = "",
+    /** Change-Role is hidden for Gallery (web-managed) and for any paid plan (role tied to sub). */
+    val canChangeRole: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null,
     val isDeleting: Boolean = false,
@@ -58,12 +60,14 @@ class ProfileTitleAndPlanViewModel @Inject constructor(
             when (val result = repository.getProfilePlanSummary()) {
                 is ApiResult.Success -> {
                     val summary = result.data
+                    val role = session.getUserRole().orEmpty()
                     _state.update {
                         it.copy(
                             title = currentTitleOption(session.getUserRole(), summary.profileTitle),
-                            // No paid purchase flow yet → everyone starts on the free basic plan.
-                            plan = if (summary.isPremium) MockSettingsData.premiumPlan else MockSettingsData.basicPlan,
+                            // Plan copy/limits from the single source-of-truth catalog (2026-06 revamp).
+                            plan = PlanCatalog.currentPlan(role, summary.isPremium),
                             nextBillingDate = summary.nextBillingDate,
+                            canChangeRole = !role.contains("gallery", ignoreCase = true) && !summary.isPremium,
                             isLoading = false,
                             error = null,
                         )

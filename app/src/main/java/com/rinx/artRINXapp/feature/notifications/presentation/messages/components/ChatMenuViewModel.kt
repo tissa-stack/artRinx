@@ -18,6 +18,7 @@ data class ChatMenuUiState(
     val name: String = "User",
     val role: String = "Artist",
     val handle: String = "user", // without leading "@"
+    val iBlocked: Boolean = false,
 )
 
 @HiltViewModel
@@ -42,6 +43,7 @@ class ChatMenuViewModel @Inject constructor(
                         name = p.displayName.ifBlank { "User" },
                         role = p.role.ifBlank { "Artist" },
                         handle = p.handle.removePrefix("@").ifBlank { "user" },
+                        iBlocked = p.iBlocked,
                     )
                 }
             }
@@ -49,7 +51,17 @@ class ChatMenuViewModel @Inject constructor(
     }
 
     fun blockUser() {
-        if (userId != 0) viewModelScope.launch { profileRepository.blockUser(userId) }
+        if (userId != 0) viewModelScope.launch {
+            profileRepository.blockUser(userId)
+            _state.update { it.copy(iBlocked = true) }
+        }
+    }
+
+    fun unblockUser() {
+        if (userId != 0) viewModelScope.launch {
+            profileRepository.unblockUser(userId)
+            _state.update { it.copy(iBlocked = false) }
+        }
     }
 
     fun reportUser() {

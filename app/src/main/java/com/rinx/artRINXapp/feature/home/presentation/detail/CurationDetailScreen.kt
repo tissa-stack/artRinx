@@ -283,6 +283,8 @@ private fun CurationDetailContent(
             sent            = uiState.inviteSent,
             onSend          = onSendInvite,
             onDismiss       = { showSendSheet = false; onInviteSheetClosed() },
+            mode            = uiState.sendMode,
+            ready           = uiState.sendModeReady,
         )
     }
 

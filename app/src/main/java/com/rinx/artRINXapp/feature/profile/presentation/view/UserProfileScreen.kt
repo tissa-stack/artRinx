@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,6 +66,7 @@ fun UserProfileScreen(
         onNavigateToCurationDetail = onNavigateToCurationDetail,
         onOpenFollowers = onOpenFollowers,
         onOpenFollowing = onOpenFollowing,
+        onLoadMore = viewModel::loadMore,
     )
 }
 
@@ -85,6 +89,7 @@ private fun UserProfileContent(
     onNavigateToCurationDetail: (String) -> Unit,
     onOpenFollowers: () -> Unit = {},
     onOpenFollowing: () -> Unit = {},
+    onLoadMore: () -> Unit = {},
 ) {
     Scaffold(
         bottomBar = {
@@ -110,7 +115,14 @@ private fun UserProfileContent(
                     .statusBarsPadding(),
             )
         } else if (uiState.profile != null) {
+            val listState = rememberLazyListState()
+            // Infinite scroll: when the column can't scroll further, page the active tab.
+            LaunchedEffect(listState, uiState.activeTab) {
+                snapshotFlow { listState.canScrollForward }
+                    .collect { canScroll -> if (!canScroll) onLoadMore() }
+            }
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = innerPadding.calculateBottomPadding())

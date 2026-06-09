@@ -139,11 +139,19 @@ fun ChatMenuScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
             // ── Menu options ──────────────────────────────────────────────
+            val blockRow: Triple<androidx.compose.ui.graphics.painter.Painter, String, () -> Unit> =
+                if (state.iBlocked) {
+                    Triple(painterResource(R.drawable.ic_block), "Unblock profile") { viewModel.unblockUser() }
+                } else {
+                    Triple(painterResource(R.drawable.ic_block), "Block profile") {
+                        viewModel.blockUser(); showBlockedDialog = true
+                    }
+                }
             val options = listOf(
                 Triple(painterResource(R.drawable.ic_eye),    "View profile",   { onViewProfile() }),
                 Triple(null,                                   "Delete messages", { showDeleteConfirm = true }),
                 Triple(painterResource(R.drawable.ic_report), "Report profile", { showReasonSheet = true }),
-                Triple(painterResource(R.drawable.ic_block),  "Block profile",  { viewModel.blockUser(); showBlockedDialog = true }),
+                blockRow,
             )
 
             options.forEach { (icon, label, action) ->

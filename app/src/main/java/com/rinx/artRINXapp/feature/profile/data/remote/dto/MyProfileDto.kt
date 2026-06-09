@@ -20,6 +20,11 @@ data class MyProfileDto(
     @SerializedName("invitation_code") val invitationCode: String? = null,
     @SerializedName("remaining_invites") val remainingInvites: Int? = null,
     @SerializedName("subscription") val subscription: SubscriptionDto? = null,
+    // Role name + active-artwork cap (handout Upload gate). Optional — confirm wire names w/ backend.
+    @SerializedName(value = "profile_type_name", alternate = ["profileTypeName"]) val profileTypeName: String? = null,
+    @SerializedName(value = "max_uploads", alternate = ["maxUploads"]) val maxUploads: Int? = null,
+    // New-chats-this-month counter (2026-06 semantic). Optional.
+    @SerializedName(value = "remaining_chat_invites", alternate = ["remainingChatInvites"]) val remainingChatInvites: Int? = null,
     @SerializedName("artwork_count") val artworkCount: Int? = null,
     @SerializedName("curation_count") val curationCount: Int? = null,
     @SerializedName("follower_count") val followerCount: Int? = null,

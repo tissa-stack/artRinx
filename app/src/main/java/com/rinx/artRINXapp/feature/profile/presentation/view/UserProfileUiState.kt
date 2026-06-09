@@ -22,4 +22,9 @@ data class UserProfileUiState(
     val isBioExpanded: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null,
+    // ── Pagination (per tab) ──
+    val isLoadingMore: Boolean = false,
+    val artHasMore: Boolean = false,
+    val curationHasMore: Boolean = false,
+    val likedHasMore: Boolean = false,
 )

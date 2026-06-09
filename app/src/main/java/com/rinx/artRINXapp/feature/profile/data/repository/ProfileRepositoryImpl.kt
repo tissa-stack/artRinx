@@ -27,7 +27,9 @@ import com.rinx.artRINXapp.feature.profile.domain.model.ProfileDraft
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfilePlanSummary
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileType
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
+import com.rinx.artRINXapp.feature.profile.domain.model.UploadQuota
 import com.rinx.artRINXapp.feature.profile.domain.model.UserProfileData
+import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.model.CardHeight
 import com.google.gson.Gson
@@ -47,6 +49,7 @@ class ProfileRepositoryImpl @Inject constructor(
     private val apiService: ProfileApiService,
     @ApplicationContext private val context: Context,
     private val profileRefreshBus: ProfileRefreshBus,
+    private val session: SessionDataSource,
 ) : ProfileRepository {
 
     private val gson = Gson()
@@ -89,6 +92,45 @@ class ProfileRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             ApiResult.Error.Unknown(e)
         }
+    }
+
+    override suspend fun getUploadQuota(): ApiResult<UploadQuota> {
+        return try {
+            val response = apiService.getMyProfile()
+            val dto = response.body()?.data
+            if (response.isSuccessful && dto != null) {
+                val sub = dto.subscription
+                // is_paid is the source of truth; fall back to plan+status if absent (handout §subscription).
+                val isPaid = sub?.isPaid
+                    ?: (sub?.plan == "artist_pro" && (sub.status == "active" || sub.status == "trialing"))
+                // profile_type_name preferred; fall back to the cached session role.
+                val role = dto.profileTypeName?.takeIf { it.isNotBlank() }
+                    ?: session.getUserRole().orEmpty()
+                // max_uploads preferred; else derive from the 2026-06 tier matrix (10 / 99 / 99).
+                val maxUploads = dto.maxUploads ?: tierUploadCap(role, isPaid)
+                ApiResult.Success(
+                    UploadQuota(
+                        isPaid = isPaid,
+                        role = role,
+                        artworkCount = dto.artworkCount ?: 0,
+                        maxUploads = maxUploads,
+                    ),
+                )
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    /** 2026-06 tier matrix fallback when the server omits max_uploads. Basic 10, paid (Pro/Gallery) 99. */
+    private fun tierUploadCap(role: String, isPaid: Boolean): Int = when {
+        role.contains("gallery", ignoreCase = true) -> 99
+        isPaid -> 99
+        else -> 10
     }
 
     override suspend fun getProfileData(): ApiResult<UserProfileData> {
@@ -238,7 +280,13 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getMyProfile()
             val dto = response.body()?.data
             if (response.isSuccessful && dto != null) {
-                ApiResult.Success(InviteInfo(code = dto.invitationCode, remainingInvites = dto.remainingInvites))
+                ApiResult.Success(
+                    InviteInfo(
+                        code = dto.invitationCode,
+                        remainingInvites = dto.remainingInvites,
+                        remainingChatInvites = dto.remainingChatInvites,
+                    ),
+                )
             } else {
                 profileError(response.code())
             }
@@ -380,6 +428,7 @@ class ProfileRepositoryImpl @Inject constructor(
                         iBlocked = dto.iBlocked ?: false,
                         theyBlocked = dto.theyBlocked ?: false,
                         canMessage = dto.canMessage ?: true,
+                        blockReason = dto.blockReason,
                         chatroomId = dto.chatroomId,
                     ),
                 )
@@ -655,6 +704,10 @@ class ProfileRepositoryImpl @Inject constructor(
                 } else {
                     val rawError = response.errorBody()?.string()
                     when (response.code()) {
+                        // Cold-launch recovery: if the user force-quit between a successful
+                        // POST profile and the final wizard step, re-firing returns 409
+                        // "already exists". iOS treats 409 as success and advances; do the same.
+                        409 -> ApiResult.Success(Unit)
                         422 -> ApiResult.Error.Validation(parseValidationError(rawError))
                         in 400..499 -> ApiResult.Error.Validation("Profile creation failed. Please check your details.")
                         in 500..599 -> ApiResult.Error.Server(response.code())

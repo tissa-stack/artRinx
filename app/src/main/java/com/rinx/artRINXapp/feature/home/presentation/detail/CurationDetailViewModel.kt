@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
+import com.rinx.artRINXapp.feature.home.domain.model.SendMode
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
 import com.rinx.artRINXapp.feature.notifications.domain.repository.MessagesRepository
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -44,6 +45,9 @@ data class CurationDetailUiState(
     val isSendingInvite: Boolean = false,
     val inviteSent: Boolean = false,
     val invitationsLeft: Int? = null,
+    val sendMode: SendMode = SendMode.INVITE,
+    /** False until the owner conversation state is resolved — sheet shows a loader, not INVITE. */
+    val sendModeReady: Boolean = false,
 )
 
 @HiltViewModel
@@ -55,6 +59,7 @@ class CurationDetailViewModel @Inject constructor(
     private val messagesRepository: MessagesRepository,
     private val curationRepository: CurationRepository,
     private val editTargetStore: EditTargetStore,
+    private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
 ) : ViewModel() {
 
     private val curationId: Int? = savedStateHandle.get<String>("curationId")?.toIntOrNull()
@@ -110,6 +115,7 @@ class CurationDetailViewModel @Inject constructor(
                 // Remember the previews of the "More like this" curations too, so tapping one
                 // opens it with the same first images.
                 more.forEach { curationPreviewStore.put(it.id, it.artworkUrls) }
+                val isOwn = meId != null && curation.authorId == meId
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -118,11 +124,38 @@ class CurationDetailViewModel @Inject constructor(
                         moreLikeThis = more,
                         likeCount = curation.likeCount,
                         isLiked = curation.isLiked,
-                        isOwn = meId != null && curation.authorId == meId,
+                        isOwn = isOwn,
                     )
                 }
+                // Resolve the send mode now (before the sheet can open) to avoid an invite→message flicker.
+                if (!isOwn) resolveSendMode(curation.authorId)
             } else {
                 _uiState.update { it.copy(isLoading = false, error = true) }
+            }
+        }
+    }
+
+    /** Resolve [SendMode] + remaining new-chat count from the chatroom-resolution endpoint. */
+    private fun resolveSendMode(ownerId: Int?) {
+        if (ownerId == null) {
+            _uiState.update { it.copy(sendModeReady = true) }
+            return
+        }
+        viewModelScope.launch {
+            val r = (messagesRepository.resolveChatroom(ownerId) as? ApiResult.Success)?.data
+            _uiState.update {
+                if (r == null) it.copy(sendModeReady = true) // fallback: keep default INVITE
+                else it.copy(
+                    invitationsLeft = r.remainingInvites,
+                    sendMode = SendMode.resolve(
+                        canMessage = r.canMessage ?: true,
+                        chatroomId = r.chatroomId,
+                        iBlocked = r.iBlocked,
+                        theyBlocked = r.theyBlocked,
+                        blockReason = r.blockReason,
+                    ),
+                    sendModeReady = true,
+                )
             }
         }
     }
@@ -162,8 +195,13 @@ class CurationDetailViewModel @Inject constructor(
         val nowLiked = !_uiState.value.isLiked
         setLiked(nowLiked)
         viewModelScope.launch {
-            val result = if (nowLiked) repository.likeCuration(id) else repository.unlikeCuration(id)
-            if (result is ApiResult.Error) setLiked(!nowLiked)   // revert on failure
+            when (val result = if (nowLiked) repository.likeCuration(id) else repository.unlikeCuration(id)) {
+                is ApiResult.Error.Network ->
+                    // Offline: keep optimistic state, queue to replay on reconnect.
+                    liveMutationQueue.enqueue("curation", id, nowLiked)
+                is ApiResult.Error -> setLiked(!nowLiked) // hard failure → revert
+                else -> Unit
+            }
         }
     }
 
@@ -209,13 +247,8 @@ class CurationDetailViewModel @Inject constructor(
     // ── Send-message invitation ────────────────────────────────────────────────
 
     fun onInviteSheetOpened() {
-        val ownerId = _uiState.value.curation?.authorId ?: return
-        viewModelScope.launch {
-            val res = messagesRepository.resolveChatroom(ownerId)
-            if (res is ApiResult.Success) {
-                _uiState.update { it.copy(invitationsLeft = res.data.remainingInvites) }
-            }
-        }
+        // Refresh on open (covers the case where the initial load resolution is still in flight).
+        resolveSendMode(_uiState.value.curation?.authorId)
     }
 
     /** Invitation to the curator (text-only — a curation has no artwork image_id). */
@@ -227,8 +260,9 @@ class CurationDetailViewModel @Inject constructor(
             val cid = UUID.randomUUID().toString()
             when (messagesRepository.sendMessage(ownerId, currentUserId, text, clientMessageId = cid)) {
                 is ApiResult.Success -> _uiState.update {
-                    it.copy(isSendingInvite = false, inviteSent = true,
-                        invitationsLeft = it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) })
+                    val left = if (it.sendMode == SendMode.INVITE)
+                        it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) } else it.invitationsLeft
+                    it.copy(isSendingInvite = false, inviteSent = true, invitationsLeft = left)
                 }
                 is ApiResult.Error.Blocked -> _uiState.update {
                     it.copy(isSendingInvite = false, actionError = "You can't message this profile right now.")

@@ -44,11 +44,18 @@ data class ConversationItem(
 enum class SendStatus { SENDING, SENT, FAILED }
 
 /**
- * The current "what can I do in this chat" gate, derived from message authorship + block flags
- * (see plan: the invitation booleans are ambiguous, so authorship + the send-time 403 are the
- * authoritative signals).
+ * The current "what can I do in this chat" gate. Derived from the server fields per the handout's
+ * 5-state compose decision tree (invitation_status / is_active / i_blocked / they_blocked / chatroom),
+ * NOT from local message authorship.
  */
-enum class ChatGate { FRESH_INVITE, INVITE_SENT_WAITING, INVITE_RECEIVED, ACTIVE, BLOCKED }
+enum class ChatGate {
+    FRESH_INVITE,        // no chat yet — this message is the invitation
+    INVITE_SENT_WAITING, // I invited; waiting for them to respond (field disabled)
+    INVITE_RECEIVED,     // they invited me; replying accepts
+    ACTIVE,              // both active — normal chat
+    BLOCKED_BY_ME,       // I blocked them — offer Unblock
+    BLOCKED_BY_THEM,     // they blocked me
+}
 
 @Immutable
 data class ChatMessage(
@@ -58,6 +65,7 @@ data class ChatMessage(
     val timestamp: String,             // display string ("Mon, Oct 28 at 4:43 PM")
     val createdAtIso: String = "",     // raw ISO — used for sorting
     val createdAtEpochMs: Long = 0L,   // parsed epoch — used for the 15-min edit window
+    val editedAtEpochMs: Long = 0L,    // parsed epoch of last edit — monotonic guard for chat_edit
     val clientMessageId: String? = null,
     val isRead: Boolean = false,
     val isEdited: Boolean = false,
@@ -83,6 +91,10 @@ data class ChatThread(
     val iBlocked: Boolean,
     val theyBlocked: Boolean,
     val nextCursor: String?,
+    val remainingInvites: Int? = null,
+    // Forward-compat fields (decoded as optional; legacy flags above still drive the UI).
+    val canMessage: Boolean? = null,
+    val blockReason: String? = null,
 )
 
 @Immutable
@@ -94,6 +106,8 @@ data class ChatroomResolution(
     val iBlocked: Boolean,
     val theyBlocked: Boolean,
     val remainingInvites: Int?,
+    val canMessage: Boolean? = null,
+    val blockReason: String? = null,
 )
 
 @Immutable

@@ -1,10 +1,13 @@
 package com.rinx.artRINXapp.core.push
 
+import android.content.Context
+import android.provider.Settings
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
 import com.rinx.artRINXapp.core.di.ApplicationScope
 import com.rinx.artRINXapp.core.push.dto.FcmTokenRequest
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -20,8 +23,17 @@ import javax.inject.Singleton
 class PushTokenManager @Inject constructor(
     private val pushApiService: PushApiService,
     private val session: SessionDataSource,
+    @ApplicationContext private val context: Context,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
+    /** Stable per-install device identifier (Settings.Secure.ANDROID_ID). */
+    @Suppress("HardwareIds")
+    private val deviceId: String? by lazy {
+        runCatching {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        }.getOrNull()
+    }
+
     /** Fetch the current FCM token and register it (no-op if signed out). */
     fun registerCurrentToken() {
         if (!session.isSessionValid()) return
@@ -43,7 +55,7 @@ class PushTokenManager @Inject constructor(
 
     private suspend fun post(token: String) {
         try {
-            pushApiService.registerToken(FcmTokenRequest(token))
+            pushApiService.registerToken(FcmTokenRequest(token = token, deviceId = deviceId))
         } catch (_: Exception) {
             // Best-effort; the token re-registers on next launch / refresh.
         }

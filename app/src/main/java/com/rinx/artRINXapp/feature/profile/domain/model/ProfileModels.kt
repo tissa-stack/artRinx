@@ -47,11 +47,30 @@ data class ProfilePlanSummary(
     val nextBillingDate: String,
 )
 
-/** The current user's invite code + remaining monthly invites, for the Invite Friends screen. */
+/**
+ * Invite counters from /profile. The 2026-06 revamp splits two distinct caps:
+ * [remainingInvites] = peer-share codes you give friends (5/5/25, Invite Friends screen);
+ * [remainingChatInvites] = new chats you can start this month (15/25/25, chat surfaces).
+ */
 data class InviteInfo(
     val code: String?,
     val remainingInvites: Int?,
+    val remainingChatInvites: Int? = null,
 )
+
+/**
+ * Upload-eligibility snapshot for the Create screen's role×plan gate (handout Upload).
+ * [maxUploads] is the server value when present, else the tier fallback.
+ */
+data class UploadQuota(
+    val isPaid: Boolean,
+    val role: String,
+    val artworkCount: Int,
+    val maxUploads: Int,
+) {
+    val isGallery: Boolean get() = role.contains("gallery", ignoreCase = true)
+    val limitReached: Boolean get() = artworkCount >= maxUploads
+}
 
 /** Another user's public profile, for the Other-Profile screen. */
 data class PublicProfile(
@@ -70,6 +89,7 @@ data class PublicProfile(
     val iBlocked: Boolean,
     val theyBlocked: Boolean,
     val canMessage: Boolean,
+    val blockReason: String? = null,
     val chatroomId: String?,
 )
 
