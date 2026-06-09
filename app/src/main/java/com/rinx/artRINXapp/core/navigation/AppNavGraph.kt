@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import com.rinx.artRINXapp.core.tour.TourHost
+import com.rinx.artRINXapp.core.util.LegalLinks
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -383,6 +385,7 @@ fun AppNavGraph(
         // ── Settings flow ──────────────────────────────────────────────────────
 
         composable(NavRoutes.SETTINGS) {
+            val uriHandler = LocalUriHandler.current
             SettingsScreen(
                 onBack                = { navController.popBackStack() },
                 onEditProfile         = { navController.navigate(NavRoutes.EDIT_PROFILE) },
@@ -390,10 +393,10 @@ fun AppNavGraph(
                 onProfileTitleAndPlan = { navController.navigate(NavRoutes.PROFILE_TITLE_PLAN) },
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
-                onTermsAndConditions  = { /* TODO */ },
+                onTermsAndConditions  = { runCatching { uriHandler.openUri(LegalLinks.TERMS_OF_USE) } },
                 onFaqs                = { /* TODO */ },
-                onAboutUs             = { /* TODO */ },
-                onPrivacyPolicy       = { /* TODO */ },
+                onAboutUs             = { runCatching { uriHandler.openUri(LegalLinks.ABOUT_US) } },
+                onPrivacyPolicy       = { runCatching { uriHandler.openUri(LegalLinks.PRIVACY_POLICY) } },
                 onLogout              = {
                     navController.navigate(NavRoutes.AUTH) {
                         popUpTo(0) { inclusive = true }

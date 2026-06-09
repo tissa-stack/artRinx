@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.location.LocationRepository
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.tour.TourManager
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
 import com.rinx.artRINXapp.feature.profile.domain.model.Medium
@@ -88,6 +89,7 @@ class ProfileCreationViewModel @Inject constructor(
     private val draftDataSource: ProfileDraftDataSource,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
+    private val tourManager: TourManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileCreationUiState())
@@ -387,6 +389,9 @@ class ProfileCreationViewModel @Inject constructor(
             when (val result = profileRepository.createProfile(draft, pictureUri)) {
                 is ApiResult.Success -> {
                     authRepository.saveProfileCompleted(true)
+                    // Brand-new account → re-arm the first-launch tour (the completed flag is
+                    // device-global, so a 2nd account on the same device otherwise never sees it).
+                    tourManager.prepareForNewUser()
                     draftDataSource.clearDraft()
                     // POST fires at the mediums step; advance to the informational plan step (step 5).
                     _uiState.update { it.copy(isSubmitting = false, currentStep = PLAN_STEP) }

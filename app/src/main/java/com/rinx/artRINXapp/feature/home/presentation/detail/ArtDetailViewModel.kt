@@ -88,8 +88,8 @@ class ArtDetailViewModel @Inject constructor(
     private val _deleted = Channel<Unit>(Channel.BUFFERED)
     val deleted = _deleted.receiveAsFlow()
 
-    /** One-shot: emitted after a successful block so the screen can close the sheet and pop back. */
-    private val _blocked = Channel<Unit>(Channel.BUFFERED)
+    /** One-shot: emits the success toast text after a block so the screen toasts, closes the sheet & pops. */
+    private val _blocked = Channel<String>(Channel.BUFFERED)
     val blocked = _blocked.receiveAsFlow()
 
     /** Reasons chosen on the report step, reused as the message when blocking the art. */
@@ -249,7 +249,7 @@ class ArtDetailViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
-                    _blocked.send(Unit)
+                    _blocked.send("Art blocked")
                 }
                 is ApiResult.Error -> _uiState.update {
                     it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this art. Please try again."))
@@ -267,7 +267,7 @@ class ArtDetailViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
-                    _blocked.send(Unit)
+                    _blocked.send("Blocked ${_uiState.value.post?.artistName ?: "user"}")
                 }
                 is ApiResult.Error -> _uiState.update {
                     it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this user. Please try again."))

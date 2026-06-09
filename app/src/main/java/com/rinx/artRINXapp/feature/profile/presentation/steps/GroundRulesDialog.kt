@@ -28,9 +28,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.util.LegalLinks
+import com.rinx.artRINXapp.core.util.appendLegalLink
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -116,18 +117,13 @@ fun GroundRulesDialog(
                 )
                 Text(
                     text = buildAnnotatedString {
+                        val linkStyle = SpanStyle(color = BrandPrimary, fontWeight = FontWeight.Medium)
                         append("By continuing, I agree to the ")
-                        withStyle(SpanStyle(color = BrandPrimary, fontWeight = FontWeight.Medium)) {
-                            append("Terms and Conditions")
-                        }
+                        appendLegalLink("Terms and Conditions", LegalLinks.TERMS_OF_USE, linkStyle)
                         append(", ")
-                        withStyle(SpanStyle(color = BrandPrimary, fontWeight = FontWeight.Medium)) {
-                            append("Privacy Policy")
-                        }
+                        appendLegalLink("Privacy Policy", LegalLinks.PRIVACY_POLICY, linkStyle)
                         append(" and ")
-                        withStyle(SpanStyle(color = BrandPrimary, fontWeight = FontWeight.Medium)) {
-                            append("Community Guidelines")
-                        }
+                        appendLegalLink("Community Guidelines", LegalLinks.COMMUNITY_GUIDELINES, linkStyle)
                         append(".")
                     },
                     style = MaterialTheme.typography.bodySmall,

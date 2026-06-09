@@ -133,6 +133,7 @@ fun ChatScreen(
     LaunchedEffect(menuState.blockedSuccess) {
         // Blocked → leave the chat for a safe screen (you can no longer message this user).
         if (menuState.blockedSuccess) {
+            Toast.makeText(context, "Blocked ${menuState.name}", Toast.LENGTH_SHORT).show()
             blockConfirm = false
             menuViewModel.onBlockedHandled()
             onBlocked()
@@ -141,6 +142,7 @@ fun ChatScreen(
     LaunchedEffect(menuState.unblockedSuccess) {
         // Unblocked → close the confirm; the menu's full option set returns.
         if (menuState.unblockedSuccess) {
+            Toast.makeText(context, "Unblocked ${menuState.name}", Toast.LENGTH_SHORT).show()
             unblockConfirm = false
             menuViewModel.onUnblockedHandled()
             // Refresh the chat so the gate flips back to ACTIVE — footer + menu return to normal.

@@ -20,6 +20,8 @@ data class BlockedAccountsUiState(
     val isUnblocking: Boolean = false,
     val error: String? = null,
     val unblockError: String? = null,
+    /** One-shot: name of the just-unblocked account so the screen can toast a success message. */
+    val unblockedName: String? = null,
 )
 
 @HiltViewModel
@@ -79,6 +81,7 @@ class BlockedAccountsViewModel @Inject constructor(
                         accounts = s.accounts.filterNot { it.id == target.id },
                         pendingUnblock = null,
                         isUnblocking = false,
+                        unblockedName = target.name,
                     )
                 }
                 is ApiResult.Error -> _state.update {
@@ -93,6 +96,7 @@ class BlockedAccountsViewModel @Inject constructor(
     }
 
     fun onUnblockErrorShown() = _state.update { it.copy(unblockError = null) }
+    fun onUnblockMessageShown() = _state.update { it.copy(unblockedName = null) }
 }
 
 private fun ApiResult.Error.toMessage(): String = when (this) {

@@ -94,9 +94,10 @@ fun CurationDetailScreen(
         viewModel.deleted.collect { onBack() }
     }
 
-    // Close the sheet and pop back once the curation's author is blocked.
+    // Close the sheet and pop back once the curation's author is blocked (toast survives the pop).
     LaunchedEffect(Unit) {
-        viewModel.blocked.collect {
+        viewModel.blocked.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             showReportSheet = false
             onBack()
         }

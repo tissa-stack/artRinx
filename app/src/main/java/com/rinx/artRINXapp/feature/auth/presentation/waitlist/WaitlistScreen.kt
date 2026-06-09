@@ -53,10 +53,11 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
+import com.rinx.artRINXapp.core.util.LegalLinks
+import com.rinx.artRINXapp.core.util.appendLegalLink
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
@@ -231,14 +232,11 @@ private fun WaitlistFormContent(
                 checked = uiState.acceptedTerms,
                 onCheckedChange = viewModel::onAcceptedTermsChange,
                 text = buildAnnotatedString {
+                    val linkStyle = SpanStyle(color = BrandPrimary)
                     append("I accept the ")
-                    withStyle(style = SpanStyle(color = BrandPrimary)) {
-                        append("Terms and Conditions")
-                    }
+                    appendLegalLink("Terms and Conditions", LegalLinks.TERMS_OF_USE, linkStyle)
                     append(" & ")
-                    withStyle(style = SpanStyle(color = BrandPrimary)) {
-                        append("Privacy Policy")
-                    }
+                    appendLegalLink("Privacy Policy", LegalLinks.PRIVACY_POLICY, linkStyle)
                 },
             )
 

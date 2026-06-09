@@ -25,6 +25,11 @@ class TourPreferences @Inject constructor(
         dataStore.edit { it[KEY] = true }
     }
 
+    /** Clear the flag so the tour shows again — used when a brand-new account is created. */
+    suspend fun reset() {
+        dataStore.edit { it[KEY] = false }
+    }
+
     private companion object {
         val KEY = booleanPreferencesKey("home_tour_completed")
     }

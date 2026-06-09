@@ -66,6 +66,13 @@ fun BlockedAccountsScreen(
         }
     }
 
+    LaunchedEffect(state.unblockedName) {
+        state.unblockedName?.let {
+            Toast.makeText(context, "Unblocked $it", Toast.LENGTH_SHORT).show()
+            viewModel.onUnblockMessageShown()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

@@ -43,6 +43,8 @@ data class OtherProfileUiState(
     // report sheet
     val isReporting: Boolean = false,
     val reportSent: Boolean = false,
+    // one-shot: set after a successful unblock so the screen can toast a success message
+    val unblockedSuccess: Boolean = false,
 )
 
 @HiltViewModel
@@ -208,7 +210,7 @@ class OtherProfileViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = repository.unblockUser(id)) {
                 is ApiResult.Success -> _uiState.update { s ->
-                    s.copy(isActioning = false, profile = s.profile?.copy(iBlocked = false))
+                    s.copy(isActioning = false, profile = s.profile?.copy(iBlocked = false), unblockedSuccess = true)
                 }
                 is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = r.userMessage("Couldn't unblock. Please try again.")) }
             }
@@ -234,6 +236,7 @@ class OtherProfileViewModel @Inject constructor(
 
     fun onReportClosed() = _uiState.update { it.copy(isReporting = false, reportSent = false) }
     fun onActionErrorShown() = _uiState.update { it.copy(actionError = null) }
+    fun onUnblockedShown() = _uiState.update { it.copy(unblockedSuccess = false) }
 
     private companion object {
         const val PAGE_SIZE = 30

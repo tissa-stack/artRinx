@@ -50,9 +50,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.withStyle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
+import com.rinx.artRINXapp.core.util.LegalLinks
+import com.rinx.artRINXapp.core.util.appendLegalLink
 import com.rinx.artRINXapp.core.navigation.OtpArgs
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.BrandPrimary
@@ -203,12 +204,13 @@ private fun SignupContent(
                 checked = uiState.acceptedTerms,
                 onCheckedChange = onTermsChange,
                 text = buildAnnotatedString {
+                    val linkStyle = SpanStyle(color = BrandPrimary)
                     append("By continuing, I agree to the Opt-in, ")
-                    withStyle(style = SpanStyle(color = BrandPrimary)) { append("Terms and Conditions") }
+                    appendLegalLink("Terms and Conditions", LegalLinks.TERMS_OF_USE, linkStyle)
                     append(", ")
-                    withStyle(style = SpanStyle(color = BrandPrimary)) { append("Privacy Policy") }
+                    appendLegalLink("Privacy Policy", LegalLinks.PRIVACY_POLICY, linkStyle)
                     append(", and ")
-                    withStyle(style = SpanStyle(color = BrandPrimary)) { append("Community Guidelines") }
+                    appendLegalLink("Community Guidelines", LegalLinks.COMMUNITY_GUIDELINES, linkStyle)
                     append(".")
                 },
             )

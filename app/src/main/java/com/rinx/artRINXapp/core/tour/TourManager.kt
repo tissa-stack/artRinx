@@ -31,6 +31,20 @@ class TourManager @Inject constructor(
 
     @Volatile private var started = false
 
+    /**
+     * Re-arms the first-launch tour for a freshly-created account. The completed flag is
+     * device-global (not per-user), so without this a second account created on the same device
+     * would never see the tour. Called right after a successful profile creation: it clears the
+     * persisted flag and the in-process "already started" guard so the tour fires when Home is next
+     * reached. Suspends until the flag is persisted, so the subsequent Home → [startIfFirstTime]
+     * reliably reads the reset value.
+     */
+    suspend fun prepareForNewUser() {
+        started = false
+        _state.value = TourState()
+        prefs.reset()
+    }
+
     /** Starts the tour the first time Home is reached, unless it was already completed. */
     fun startIfFirstTime() {
         if (started) return

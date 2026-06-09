@@ -97,9 +97,10 @@ fun ArtDetailScreen(
         viewModel.deleted.collect { onBack() }
     }
 
-    // Close the sheet and pop back once the art/user is blocked.
+    // Close the sheet and pop back once the art/user is blocked (toast survives the pop).
     LaunchedEffect(Unit) {
-        viewModel.blocked.collect {
+        viewModel.blocked.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             showReportSheet = false
             onBack()
         }

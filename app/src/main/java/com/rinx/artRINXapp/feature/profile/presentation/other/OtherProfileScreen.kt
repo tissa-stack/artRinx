@@ -100,13 +100,25 @@ fun OtherProfileScreen(
     var showReport by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<ConfirmKind?>(null) }
 
-    // Pop back after a successful block.
-    LaunchedEffect(Unit) { viewModel.closed.collect { onBack() } }
+    // Pop back after a successful block (toast survives the pop — it's app-context level).
+    LaunchedEffect(Unit) {
+        viewModel.closed.collect {
+            Toast.makeText(context, "Blocked ${uiState.profile?.displayName ?: "user"}", Toast.LENGTH_SHORT).show()
+            onBack()
+        }
+    }
 
     LaunchedEffect(uiState.actionError) {
         uiState.actionError?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.onActionErrorShown()
+        }
+    }
+
+    LaunchedEffect(uiState.unblockedSuccess) {
+        if (uiState.unblockedSuccess) {
+            Toast.makeText(context, "Unblocked ${uiState.profile?.displayName ?: "user"}", Toast.LENGTH_SHORT).show()
+            viewModel.onUnblockedShown()
         }
     }
 

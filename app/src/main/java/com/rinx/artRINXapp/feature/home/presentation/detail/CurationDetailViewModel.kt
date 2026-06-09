@@ -94,8 +94,8 @@ class CurationDetailViewModel @Inject constructor(
     private val _deleted = Channel<Unit>(Channel.BUFFERED)
     val deleted = _deleted.receiveAsFlow()
 
-    /** One-shot: emitted after a successful block so the screen can close the sheet and pop back. */
-    private val _blocked = Channel<Unit>(Channel.BUFFERED)
+    /** One-shot: emits the success toast text after a block so the screen toasts, closes the sheet & pops. */
+    private val _blocked = Channel<String>(Channel.BUFFERED)
     val blocked = _blocked.receiveAsFlow()
 
     init {
@@ -276,7 +276,7 @@ class CurationDetailViewModel @Inject constructor(
             when (val r = profileRepository.blockUser(ownerId)) {
                 is ApiResult.Success -> {
                     curationId?.let { detailCache.evictCuration(it) }
-                    _blocked.send(Unit)
+                    _blocked.send("Blocked ${_uiState.value.curation?.curatorName ?: "user"}")
                 }
                 is ApiResult.Error -> _uiState.update {
                     it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this user. Please try again."))
