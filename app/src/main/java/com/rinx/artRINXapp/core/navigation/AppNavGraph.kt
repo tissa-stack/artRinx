@@ -42,7 +42,6 @@ import com.rinx.artRINXapp.feature.create.presentation.CreateScreen
 import com.rinx.artRINXapp.feature.notifications.presentation.NotificationsScreen
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.ChatScreen
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.NewMessageScreen
-import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ChatMenuScreen
 import com.rinx.artRINXapp.feature.search.presentation.SearchScreen
 import com.rinx.artRINXapp.feature.settings.presentation.SettingsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedAccountsScreen
@@ -245,9 +244,10 @@ fun AppNavGraph(
         ) { entry ->
             val userId = entry.arguments?.getString("userId") ?: ""
             ChatScreen(
-                userId              = userId,
-                onBack              = { navController.popBackStack() },
-                onNavigateToChatMenu = { uid -> navController.navigate(NavRoutes.chatMenu(uid)) },
+                userId        = userId,
+                onBack        = { navController.popBackStack() },
+                onViewProfile = { navController.navigate(NavRoutes.userProfile(userId, NavRoutes.NOTIFICATIONS)) },
+                onChatDeleted = { navController.popBackStack() },
             )
         }
 
@@ -258,24 +258,6 @@ fun AppNavGraph(
             )
         }
 
-        composable(
-            route     = NavRoutes.CHAT_MENU,
-            arguments = listOf(navArgument("userId") { type = NavType.StringType }),
-        ) { entry ->
-            val userId = entry.arguments?.getString("userId") ?: ""
-            ChatMenuScreen(
-                onBack        = { navController.popBackStack() },
-                // Navigate to the chat partner's public profile.
-                onViewProfile = {
-                    navController.navigate(NavRoutes.userProfile(userId, NavRoutes.NOTIFICATIONS))
-                },
-                // Chat deleted: leave the menu and the now-empty chat.
-                onChatDeleted = {
-                    navController.popBackStack()
-                    navController.popBackStack()
-                },
-            )
-        }
 
         composable(NavRoutes.CREATE) {
             CreateScreen(

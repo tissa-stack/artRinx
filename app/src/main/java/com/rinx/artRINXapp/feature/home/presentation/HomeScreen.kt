@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.home.presentation
 
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.core.push.NotificationPermissionEffect
@@ -82,6 +84,15 @@ fun HomeScreen(
     onOpenProfile: (Int) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // One-shot success toast (e.g. after a public art/curation upload).
+    val context = LocalContext.current
+    LaunchedEffect(uiState.toastMessage) {
+        uiState.toastMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onToastShown()
+        }
+    }
 
     // First-launch tour (global overlay lives above the NavHost; here we just start it, mirror the
     // active flag for bounds-reporting, and keep the Home segment in sync with the tour step).

@@ -39,4 +39,6 @@ data class HomeUiState(
     /** True while a pull-to-refresh is running (lightweight spinner, not the full-screen shimmer). */
     val isRefreshing: Boolean = false,
     val error: HomeError? = null,
+    /** One-shot success message (e.g. after a public upload/curation), shown as a toast then cleared. */
+    val toastMessage: String? = null,
 )

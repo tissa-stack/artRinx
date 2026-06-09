@@ -51,8 +51,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.core.util.shareCuration
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
@@ -82,6 +84,7 @@ fun CurationDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showReportSheet by remember { mutableStateOf(false) }
+    var showBlockConfirm by remember { mutableStateOf(false) }
     var showAddToCuration by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -116,11 +119,24 @@ fun CurationDetailScreen(
             isBlocking = uiState.isBlocking,
             onSubmitReport = viewModel::submitReport,
             onBlockArt = null, // no curation-block API; only the curator can be blocked
-            onBlockUser = viewModel::blockUser,
+            onBlockUser = { showBlockConfirm = true },
             onDismiss = {
                 showReportSheet = false
                 viewModel.onReportSheetClosed()
             },
+        )
+    }
+
+    // Always confirm before blocking the curator (whether direct or after a report).
+    if (showBlockConfirm) {
+        ConfirmActionDialog(
+            title = "Are you sure want\nto block \"${uiState.curation?.curatorName.orEmpty()}\"?",
+            confirmLabel = "Block",
+            confirmColor = DangerRed,
+            iconRes = R.drawable.ic_block,
+            isLoading = uiState.isBlocking,
+            onConfirm = { viewModel.blockUser() },
+            onDismiss = { showBlockConfirm = false },
         )
     }
 

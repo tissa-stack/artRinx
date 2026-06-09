@@ -68,6 +68,7 @@ class HomeViewModel @Inject constructor(
                         state.copy(
                             feedItems = listOf(newPost) + state.feedItems.filterNot { it.id == newPost.id },
                             uploadProgress = null,
+                            toastMessage = "Your artwork is now live.",
                         )
                     }
                     uploadManager.dismiss()
@@ -101,7 +102,7 @@ class HomeViewModel @Inject constructor(
                 // Per product: a public curation surfaces in "Popular Curations" only on the next
                 // feed refresh — we don't optimistically prepend. Just clear the row on success.
                 if (forHome is CurationProgress.Success) {
-                    _uiState.update { it.copy(curationProgress = null) }
+                    _uiState.update { it.copy(curationProgress = null, toastMessage = "Your curation is now live.") }
                     curationManager.dismiss()
                 }
             }
@@ -187,6 +188,9 @@ class HomeViewModel @Inject constructor(
     fun onTabSelected(tab: HomeTab) {
         _uiState.update { it.copy(activeTab = tab) }
     }
+
+    /** Clear the one-shot success toast after the screen has shown it. */
+    fun onToastShown() = _uiState.update { it.copy(toastMessage = null) }
 
     fun onRetry() {
         load()

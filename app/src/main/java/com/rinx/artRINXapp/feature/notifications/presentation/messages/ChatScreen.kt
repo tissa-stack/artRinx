@@ -34,6 +34,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,7 +71,12 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ChatMenuViewModel
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ConfirmDialog
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ReportReasonSheet
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ReportSentSheet
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
+import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatGate
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatMessage
 import com.rinx.artRINXapp.feature.notifications.domain.model.SendStatus
@@ -81,8 +88,10 @@ private const val EDIT_WINDOW_MS = 15 * 60 * 1000L
 fun ChatScreen(
     userId: String,
     onBack: () -> Unit,
-    onNavigateToChatMenu: (String) -> Unit,
+    onViewProfile: () -> Unit,
+    onChatDeleted: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel(),
+    menuViewModel: ChatMenuViewModel = hiltViewModel(),
 ) {
     val state     by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
@@ -101,6 +110,72 @@ fun ChatScreen(
     val iconColor      = if (isDark) Color.White else MaterialTheme.colorScheme.onBackground
 
     var menuTarget by remember { mutableStateOf<ChatMessage?>(null) }
+
+    // ── Side options menu (anchored dropdown, hosted here — no separate screen) ──
+    val menuState by menuViewModel.state.collectAsState()
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showReasonSheet by remember { mutableStateOf(false) }
+    var showReportSent by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var blockConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(menuState.actionError) {
+        menuState.actionError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            menuViewModel.onActionErrorShown()
+        }
+    }
+    LaunchedEffect(menuState.blockedSuccess) {
+        // Block done → just close the confirm; the menu item now reads "Unblock". No report prompt.
+        if (menuState.blockedSuccess) {
+            blockConfirm = false
+            menuViewModel.onBlockedHandled()
+        }
+    }
+
+    if (blockConfirm) {
+        ConfirmActionDialog(
+            title = "Are you sure want\nto block \"${menuState.name}\"?",
+            confirmLabel = "Block",
+            confirmColor = com.rinx.artRINXapp.core.theme.DangerRed,
+            iconRes = R.drawable.ic_block,
+            isLoading = menuState.isActioning,
+            onConfirm = { menuViewModel.blockUser() },
+            onDismiss = { blockConfirm = false },
+        )
+    }
+    if (showDeleteConfirm) {
+        ConfirmDialog(
+            title = "Delete messages?",
+            message = "This will delete all messages with ${menuState.name}. " +
+                "They'll stay in your inbox, but the conversation can't be recovered.",
+            confirmLabel = "Delete",
+            onConfirm = {
+                showDeleteConfirm = false
+                menuViewModel.deleteChat()
+                onChatDeleted()
+            },
+            onDismiss = { showDeleteConfirm = false },
+        )
+    }
+    if (showReasonSheet) {
+        ReportReasonSheet(
+            onDismiss = { showReasonSheet = false },
+            onSubmit = {
+                menuViewModel.reportUser()
+                showReasonSheet = false
+                showReportSent = true
+            },
+        )
+    }
+    if (showReportSent) {
+        ReportSentSheet(
+            userName = menuState.name,
+            onDismiss = { showReportSent = false },
+            onBlock = { showReportSent = false; blockConfirm = true },
+            onUnfollow = { menuViewModel.unfollowUser(); showReportSent = false },
+        )
+    }
 
     LaunchedEffect(Unit) { viewModel.loadConversation() }
     LaunchedEffect(Unit) {
@@ -153,8 +228,37 @@ fun ChatScreen(
                 modifier   = Modifier.weight(1f),
                 textAlign  = TextAlign.Center,
             )
-            IconButton(onClick = { onNavigateToChatMenu(userId) }) {
-                Icon(Icons.Default.MoreVert, "More", tint = iconColor)
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, "More", tint = iconColor)
+                }
+                // Side-anchored, wrap-content dropdown (replaces the old full-screen menu).
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("View profile") },
+                        onClick = { menuExpanded = false; onViewProfile() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete messages") },
+                        onClick = { menuExpanded = false; showDeleteConfirm = true },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Report profile") },
+                        onClick = { menuExpanded = false; showReasonSheet = true },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (menuState.iBlocked) "Unblock profile" else "Block profile") },
+                        onClick = {
+                            menuExpanded = false
+                            // Block asks confirmation; unblock is immediate. Either way the item text
+                            // flips as soon as iBlocked updates.
+                            if (menuState.iBlocked) menuViewModel.unblockUser() else blockConfirm = true
+                        },
+                    )
+                }
             }
         }
 

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.feature.notifications.domain.repository.MessagesRepository
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +20,10 @@ data class ChatMenuUiState(
     val role: String = "Artist",
     val handle: String = "user", // without leading "@"
     val iBlocked: Boolean = false,
+    val isActioning: Boolean = false,
+    val actionError: String? = null,
+    /** One-shot: set true after a successful block so the screen can show the blocked dialog. */
+    val blockedSuccess: Boolean = false,
 )
 
 @HiltViewModel
@@ -51,28 +56,49 @@ class ChatMenuViewModel @Inject constructor(
     }
 
     fun blockUser() {
-        if (userId != 0) viewModelScope.launch {
-            profileRepository.blockUser(userId)
-            _state.update { it.copy(iBlocked = true) }
+        if (userId == 0 || _state.value.isActioning) return
+        _state.update { it.copy(isActioning = true, actionError = null) }
+        viewModelScope.launch {
+            when (val r = profileRepository.blockUser(userId)) {
+                is ApiResult.Success -> _state.update {
+                    it.copy(isActioning = false, iBlocked = true, blockedSuccess = true)
+                }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isActioning = false, actionError = r.userMessage("Couldn't block. Please try again."))
+                }
+            }
         }
     }
 
     fun unblockUser() {
-        if (userId != 0) viewModelScope.launch {
-            profileRepository.unblockUser(userId)
-            _state.update { it.copy(iBlocked = false) }
+        if (userId == 0 || _state.value.isActioning) return
+        _state.update { it.copy(isActioning = true, actionError = null) }
+        viewModelScope.launch {
+            when (val r = profileRepository.unblockUser(userId)) {
+                is ApiResult.Success -> _state.update { it.copy(isActioning = false, iBlocked = false) }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isActioning = false, actionError = r.userMessage("Couldn't unblock. Please try again."))
+                }
+            }
         }
     }
 
     fun reportUser() {
-        if (userId != 0) viewModelScope.launch {
-            profileRepository.reportUser(userId, "Reported from chat")
+        if (userId == 0) return
+        viewModelScope.launch {
+            val r = profileRepository.reportUser(userId, "Reported from chat")
+            if (r is ApiResult.Error) {
+                _state.update { it.copy(actionError = r.userMessage("Couldn't send the report. Please try again.")) }
+            }
         }
     }
 
     fun unfollowUser() {
         if (userId != 0) viewModelScope.launch { profileRepository.unfollowUser(userId) }
     }
+
+    fun onActionErrorShown() = _state.update { it.copy(actionError = null) }
+    fun onBlockedHandled() = _state.update { it.copy(blockedSuccess = false) }
 
     /** Delete all messages with this user (§7.10). */
     fun deleteChat() {

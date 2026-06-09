@@ -375,6 +375,9 @@ internal fun InfoTooltip(
     text: String,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    // When true the tail sits below the card pointing DOWN — use when the tooltip is shown ABOVE its
+    // anchor (e.g. an anchor near the bottom of the screen).
+    tailAtBottom: Boolean = false,
 ) {
     val cardColor = MaterialTheme.colorScheme.inverseSurface
     val textColor = MaterialTheme.colorScheme.inverseOnSurface
@@ -384,17 +387,13 @@ internal fun InfoTooltip(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = Spacing.xs),
+            .padding(vertical = Spacing.xs),
     ) {
         // Card is ~70% of available width, right-aligned
         val cardWidth = maxWidth * 0.70f
 
-        Column(
-            modifier = Modifier
-                .width(cardWidth)
-                .align(Alignment.TopEnd),
-        ) {
-            // Triangle tail — top-right, pointing up toward the (?) icon
+        @Composable
+        fun Tail(pointDown: Boolean) {
             Row(
                 modifier = Modifier.width(cardWidth),
                 horizontalArrangement = Arrangement.End,
@@ -405,14 +404,28 @@ internal fun InfoTooltip(
                         .size(triW, triH),
                 ) {
                     val path = Path().apply {
-                        moveTo(size.width / 2f, 0f)
-                        lineTo(size.width, size.height)
-                        lineTo(0f, size.height)
+                        if (pointDown) {
+                            moveTo(size.width / 2f, size.height)
+                            lineTo(size.width, 0f)
+                            lineTo(0f, 0f)
+                        } else {
+                            moveTo(size.width / 2f, 0f)
+                            lineTo(size.width, size.height)
+                            lineTo(0f, size.height)
+                        }
                         close()
                     }
                     drawPath(path, cardColor)
                 }
             }
+        }
+
+        Column(
+            modifier = Modifier
+                .width(cardWidth)
+                .align(Alignment.TopEnd),
+        ) {
+            if (!tailAtBottom) Tail(pointDown = false)
 
             // Card body — same color as triangle so they merge seamlessly
             Box(
@@ -447,6 +460,8 @@ internal fun InfoTooltip(
                     }
                 }
             }
+
+            if (tailAtBottom) Tail(pointDown = true)
         }
     }
 }

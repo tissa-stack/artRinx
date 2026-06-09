@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
@@ -227,13 +228,13 @@ class ArtDetailViewModel @Inject constructor(
         if (_uiState.value.isReporting) return
         _uiState.update { it.copy(isReporting = true, actionError = null) }
         viewModelScope.launch {
-            when (profileRepository.reportArtwork(id, message)) {
+            when (val r = profileRepository.reportArtwork(id, message)) {
                 is ApiResult.Success -> {
                     lastReportMessage = message
                     _uiState.update { it.copy(isReporting = false, reportSent = true) }
                 }
                 is ApiResult.Error -> _uiState.update {
-                    it.copy(isReporting = false, actionError = "Couldn't send the report. Please try again.")
+                    it.copy(isReporting = false, actionError = r.userMessage("Couldn't send the report. Please try again."))
                 }
             }
         }
@@ -244,14 +245,14 @@ class ArtDetailViewModel @Inject constructor(
         if (_uiState.value.isBlocking) return
         _uiState.update { it.copy(isBlocking = true, actionError = null) }
         viewModelScope.launch {
-            when (profileRepository.blockArtwork(id, lastReportMessage.ifBlank { "Reported from app" })) {
+            when (val r = profileRepository.blockArtwork(id, lastReportMessage.ifBlank { "Reported from app" })) {
                 is ApiResult.Success -> {
                     artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
                     _blocked.send(Unit)
                 }
                 is ApiResult.Error -> _uiState.update {
-                    it.copy(isBlocking = false, actionError = "Couldn't block this art. Please try again.")
+                    it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this art. Please try again."))
                 }
             }
         }
@@ -262,14 +263,14 @@ class ArtDetailViewModel @Inject constructor(
         if (_uiState.value.isBlocking) return
         _uiState.update { it.copy(isBlocking = true, actionError = null) }
         viewModelScope.launch {
-            when (profileRepository.blockUser(ownerId)) {
+            when (val r = profileRepository.blockUser(ownerId)) {
                 is ApiResult.Success -> {
                     artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
                     _blocked.send(Unit)
                 }
                 is ApiResult.Error -> _uiState.update {
-                    it.copy(isBlocking = false, actionError = "Couldn't block this user. Please try again.")
+                    it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this user. Please try again."))
                 }
             }
         }

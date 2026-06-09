@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
@@ -190,12 +191,12 @@ class OtherProfileViewModel @Inject constructor(
         if (_uiState.value.isActioning) return
         _uiState.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
-            when (repository.blockUser(id)) {
+            when (val r = repository.blockUser(id)) {
                 is ApiResult.Success -> {
                     profileRefreshBus.signal()
                     _closed.send(Unit)
                 }
-                is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = "Couldn't block. Please try again.") }
+                is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = r.userMessage("Couldn't block. Please try again.")) }
             }
         }
     }
@@ -205,11 +206,11 @@ class OtherProfileViewModel @Inject constructor(
         if (_uiState.value.isActioning) return
         _uiState.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
-            when (repository.unblockUser(id)) {
+            when (val r = repository.unblockUser(id)) {
                 is ApiResult.Success -> _uiState.update { s ->
                     s.copy(isActioning = false, profile = s.profile?.copy(iBlocked = false))
                 }
-                is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = "Couldn't unblock. Please try again.") }
+                is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = r.userMessage("Couldn't unblock. Please try again.")) }
             }
         }
     }
@@ -219,13 +220,13 @@ class OtherProfileViewModel @Inject constructor(
         if (_uiState.value.isReporting) return
         _uiState.update { it.copy(isReporting = true, actionError = null) }
         viewModelScope.launch {
-            when (repository.reportUser(id, message)) {
+            when (val r = repository.reportUser(id, message)) {
                 is ApiResult.Success -> {
                     lastReportMessage = message
                     _uiState.update { it.copy(isReporting = false, reportSent = true) }
                 }
                 is ApiResult.Error -> _uiState.update {
-                    it.copy(isReporting = false, actionError = "Couldn't send the report. Please try again.")
+                    it.copy(isReporting = false, actionError = r.userMessage("Couldn't send the report. Please try again."))
                 }
             }
         }

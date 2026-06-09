@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,7 @@ import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
 import com.rinx.artRINXapp.feature.upload.domain.model.ArtTab
 
 @Composable
@@ -118,7 +121,18 @@ fun AddArtToCurationScreen(
             }
         }
 
-        // ── 3-column art grid ─────────────────────────────────────────────
+        // ── 3-column art grid (or empty state) ────────────────────────────
+        if (state.displayedArts.isEmpty()) {
+            val isLiked = state.activeArtTab == ArtTab.LIKED
+            EmptyView(
+                icon = if (isLiked) Icons.Outlined.FavoriteBorder else Icons.Outlined.Image,
+                title = if (isLiked) "No liked art yet" else "No uploads yet",
+                subtitle = if (isLiked) "Art you like will appear here."
+                           else "Artworks you upload will appear here.",
+                modifier = Modifier.fillMaxSize(),
+            )
+            return@Column
+        }
         LazyVerticalGrid(
             columns               = GridCells.Fixed(3),
             modifier              = Modifier.fillMaxSize(),

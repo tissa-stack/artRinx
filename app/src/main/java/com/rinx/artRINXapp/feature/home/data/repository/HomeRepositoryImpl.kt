@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.home.data.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.toApiError
 import com.rinx.artRINXapp.feature.home.data.remote.HomeApiService
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.BannerDto
@@ -134,11 +135,8 @@ class HomeRepositoryImpl @Inject constructor(
         ApiResult.Error.Unknown(e)
     }
 
-    private fun errorFor(response: Response<*>): ApiResult.Error = when (response.code()) {
-        in 400..499 -> ApiResult.Error.Validation("Request failed (${response.code()})")
-        in 500..599 -> ApiResult.Error.Server(response.code())
-        else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
-    }
+    // Prefer the server's message (e.g. block/report reasons) over a generic fallback.
+    private fun errorFor(response: Response<*>): ApiResult.Error = response.toApiError()
 
     // ── DTO → domain mappers ────────────────────────────────────────────────────
 

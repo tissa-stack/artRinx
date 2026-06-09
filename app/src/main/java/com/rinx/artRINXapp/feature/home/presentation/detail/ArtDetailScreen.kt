@@ -52,8 +52,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.core.util.shareArtwork
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
@@ -85,6 +87,8 @@ fun ArtDetailScreen(
     var showReportSheet by remember { mutableStateOf(false) }
     var showAddToCuration by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    // "art" or "user" while a block confirmation dialog is up (asked before any block).
+    var blockConfirm by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
 
@@ -116,12 +120,26 @@ fun ArtDetailScreen(
             reportSent = uiState.reportSent,
             isBlocking = uiState.isBlocking,
             onSubmitReport = viewModel::submitReport,
-            onBlockArt = viewModel::blockArt,
-            onBlockUser = viewModel::blockUser,
+            onBlockArt = { blockConfirm = "art" },
+            onBlockUser = { blockConfirm = "user" },
             onDismiss = {
                 showReportSheet = false
                 viewModel.onReportSheetClosed()
             },
+        )
+    }
+
+    // Always confirm before blocking (whether reached directly or after a report).
+    blockConfirm?.let { kind ->
+        ConfirmActionDialog(
+            title = if (kind == "art") "Are you sure want\nto block this art?"
+                    else "Are you sure want\nto block \"${uiState.post?.artistName.orEmpty()}\"?",
+            confirmLabel = "Block",
+            confirmColor = DangerRed,
+            iconRes = R.drawable.ic_block,
+            isLoading = uiState.isBlocking,
+            onConfirm = { if (kind == "art") viewModel.blockArt() else viewModel.blockUser() },
+            onDismiss = { blockConfirm = null },
         )
     }
 

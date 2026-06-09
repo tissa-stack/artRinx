@@ -1,7 +1,12 @@
 package com.rinx.artRINXapp.feature.profile.presentation.steps
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -161,6 +166,20 @@ fun MediumSelectionStep(
 
         Spacer(Modifier.height(Spacing.xl))
 
+        // Tooltip is shown ABOVE the link (it sits near the bottom of the screen) so it's visible
+        // without scrolling — tail points down toward the (?) icon. Themed via InfoTooltip.
+        AnimatedVisibility(
+            visible = showTooltip,
+            enter = expandVertically(tween(220)) + fadeIn(tween(220)),
+            exit = shrinkVertically(tween(180)) + fadeOut(tween(180)),
+        ) {
+            InfoTooltip(
+                text = "As our community expands, we'll be adding more. Let us know what you'd like to see: info@rinx.com",
+                onClose = onTooltipToggle,
+                tailAtBottom = true,
+            )
+        }
+
         // ── Info link ─────────────────────────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -183,13 +202,6 @@ fun MediumSelectionStep(
                     modifier = Modifier.size(Spacing.lg),
                 )
             }
-        }
-
-        if (showTooltip) {
-            TooltipBox(
-                text = "As our community expands, we'll be adding more. Let us know what you'd like to see: info@rinx.com",
-                onClose = onTooltipToggle,
-            )
         }
 
         Spacer(Modifier.height(Spacing.xxxl))
