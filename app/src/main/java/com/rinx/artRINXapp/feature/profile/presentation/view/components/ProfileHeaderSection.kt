@@ -61,7 +61,7 @@ fun ProfileHeaderSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = profile.handle,
+                text = profile.handle.removePrefix("@"),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -138,14 +138,16 @@ fun ProfileHeaderSection(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            text = profile.role,
-            style = MaterialTheme.typography.bodyMedium,
-            fontStyle = FontStyle.Italic,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (profile.role.isNotBlank()) {
+            Text(
+                text = profile.role,
+                style = MaterialTheme.typography.bodyMedium,
+                fontStyle = FontStyle.Italic,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         // ── Website + bio (collapsible) ───────────────────────────────────
         if (profile.website.isNotEmpty() || profile.bio.isNotEmpty()) {

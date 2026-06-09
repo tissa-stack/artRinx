@@ -142,7 +142,9 @@ class ProfileRepositoryImpl @Inject constructor(
                     UserProfileData(
                         handle = dto.username?.let { "@$it" } ?: "",
                         displayName = dto.displayName ?: dto.fullName ?: dto.username.orEmpty(),
-                        role = dto.profileTitle.orEmpty(),
+                        // Role name lives in profile_type_name (e.g. "Collector"), matching every
+                        // other mapping; profile_title is a legacy fallback.
+                        role = dto.profileTypeName?.takeIf { it.isNotBlank() } ?: dto.profileTitle.orEmpty(),
                         bio = dto.bio.orEmpty(),
                         website = dto.profileLink.orEmpty(),
                         avatarUrl = dto.profilePictureUrl,

@@ -33,8 +33,10 @@ fun ProfileShimmer(modifier: Modifier = Modifier) {
             .padding(horizontal = d.screenPaddingHorizontal),
     ) {
         // ── Username + settings row shimmer ───────────────────────────────
+        // Fixed height matches the real header's IconButton-driven row (Spacing.huge) so the
+        // avatar/stats below line up exactly between skeleton and loaded content.
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(Spacing.huge),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -117,6 +119,9 @@ fun ProfileShimmer(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(Spacing.lg))
 
         // ── Tab bar shimmer ───────────────────────────────────────────────
+        // Mirror ProfileTabBar's own vertical padding (Spacing.sm top & bottom) so the pill sits
+        // at the same Y as the real sticky tab bar.
+        Spacer(Modifier.height(Spacing.sm))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -124,7 +129,9 @@ fun ProfileShimmer(modifier: Modifier = Modifier) {
                 .clip(RoundedCornerShape(50))
                 .background(shimmer),
         )
+        Spacer(Modifier.height(Spacing.sm))
 
+        // Matches the LazyColumn content item's top padding (Spacing.md).
         Spacer(Modifier.height(Spacing.md))
 
         // ── Masonry content shimmer ───────────────────────────────────────
