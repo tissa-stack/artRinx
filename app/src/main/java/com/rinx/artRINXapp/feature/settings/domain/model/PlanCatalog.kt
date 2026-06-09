@@ -10,6 +10,9 @@ package com.rinx.artRINXapp.feature.settings.domain.model
  */
 enum class PlanType { BASIC, ARTIST_PRO, GALLERY }
 
+/** Per-card call-to-action on the plan screen (handout §Plan card CTA behavior). */
+enum class PlanCardCta { NONE, CURRENT_PLAN, UPGRADE, MANAGED_ON_WEB }
+
 object PlanCatalog {
 
     val basic = PlanOption(
@@ -61,6 +64,12 @@ object PlanCatalog {
         ),
     )
 
+    /**
+     * Currently unused — Gallery is hidden in-app for now, so every plan surface role-gates via
+     * [availablePlans]. Kept so re-enabling the full three-plan paywall later is a one-liner.
+     */
+    val all: List<PlanOption> = listOf(basic, artistPro, gallery)
+
     /** Plans shown for a picked signup role (Gallery is never offered in-app). */
     fun availablePlans(role: String): List<PlanOption> = when {
         role.contains("artist", ignoreCase = true) -> listOf(basic, artistPro)
@@ -72,5 +81,14 @@ object PlanCatalog {
         role.contains("gallery", ignoreCase = true) -> gallery
         isPaid -> artistPro
         else -> basic
+    }
+
+    /** CTA for a given plan card (handout matrix): current → pill, Artist-Free's Pro → Upgrade,
+     *  Gallery → "Managed on artrinx.com", else none. */
+    fun ctaFor(planId: String, currentPlanId: String, role: String, isPaid: Boolean): PlanCardCta = when {
+        planId == gallery.id -> PlanCardCta.MANAGED_ON_WEB
+        planId == currentPlanId -> PlanCardCta.CURRENT_PLAN
+        planId == artistPro.id && !isPaid && role.contains("artist", ignoreCase = true) -> PlanCardCta.UPGRADE
+        else -> PlanCardCta.NONE
     }
 }

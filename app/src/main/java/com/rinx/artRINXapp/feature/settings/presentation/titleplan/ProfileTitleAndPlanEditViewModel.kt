@@ -7,6 +7,7 @@ import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.settings.domain.model.MockSettingsData
+import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
 import com.rinx.artRINXapp.feature.settings.domain.model.PlanOption
 import com.rinx.artRINXapp.feature.settings.domain.model.ProfileTitleOption
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,10 @@ data class TitlePlanEditUiState(
     val plans: List<PlanOption> = emptyList(),
     val selectedTitleId: Int? = null,
     val selectedPlanId: String? = null,
+    // For the plan-card CTA state machine.
+    val role: String = "",
+    val isPaid: Boolean = false,
+    val currentPlanId: String = "basic",
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val saveError: String? = null,
@@ -43,7 +48,7 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
             // Change-Role picker shows Artist / Collector / Art Curious only — Gallery is web-managed
             // and never selectable on mobile (handout §Change Role picker rule).
             titles = MockSettingsData.profileTitles.filterNot { it.name.contains("gallery", ignoreCase = true) },
-            plans = MockSettingsData.plans,
+            // Plans are resolved from PlanCatalog in load() once the role is known.
         ),
     )
     val state: StateFlow<TitlePlanEditUiState> = _state.asStateFlow()
@@ -59,21 +64,46 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
         _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             val role = session.getUserRole()
+            val roleStr = role.orEmpty()
             // Default to the user's live title; fall back to the onboarding role if the fetch fails.
             val result = repository.getProfilePlanSummary()
+            // Fetch the real roles (authoritative id + name); descriptions/badges come from local copy.
+            val typesResult = repository.getProfileTypes()
             val current = when (result) {
                 is ApiResult.Success -> currentTitleOption(role, result.data.profileTitle)
                 is ApiResult.Error -> currentTitleOption(role, "")
             }
-            val planId = when (result) {
-                is ApiResult.Success -> if (result.data.isPremium) MockSettingsData.premiumPlan.id else MockSettingsData.basicPlan.id
-                is ApiResult.Error -> MockSettingsData.basicPlan.id
+            val isPaid = (result as? ApiResult.Success)?.data?.isPremium ?: false
+            val fetchedTypes = (typesResult as? ApiResult.Success)?.data
+            val titles = if (!fetchedTypes.isNullOrEmpty()) {
+                fetchedTypes
+                    .filterNot { it.name.contains("gallery", ignoreCase = true) } // web-managed
+                    .map { type ->
+                        val copy = MockSettingsData.profileTitles.firstOrNull { it.id == type.id }
+                        ProfileTitleOption(
+                            id = type.id,
+                            name = type.name,
+                            description = copy?.description.orEmpty(),
+                            badge = copy?.badge,
+                        )
+                    }
+            } else {
+                // Fallback so the screen is never empty if the fetch fails.
+                MockSettingsData.profileTitles.filterNot { it.name.contains("gallery", ignoreCase = true) }
             }
+            // Role-gate the plan list and hide Gallery in-app for now: Artist sees Basic + Artist
+            // Pro, Collector / Art Curious see Basic only. Per-card CTA reflects the user's state.
+            val currentPlanId = PlanCatalog.currentPlan(roleStr, isPaid).id
             originalTitleId = current.id.takeIf { it != 0 }
             _state.update {
                 it.copy(
+                    titles = titles,
                     selectedTitleId = current.id.takeIf { id -> id != 0 } ?: it.selectedTitleId,
-                    selectedPlanId = planId,
+                    plans = PlanCatalog.availablePlans(roleStr),
+                    role = roleStr,
+                    isPaid = isPaid,
+                    currentPlanId = currentPlanId,
+                    selectedPlanId = currentPlanId,
                     isLoading = false,
                 )
             }

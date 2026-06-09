@@ -31,17 +31,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.PlanCard
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.ProfileTitleCard
 
@@ -54,6 +61,7 @@ fun ProfileTitleAndPlanEditScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val dimens = LocalDimens.current
+    val context = LocalContext.current
 
     LaunchedEffect(initialStep) { viewModel.setInitialStep(initialStep) }
 
@@ -141,9 +149,41 @@ fun ProfileTitleAndPlanEditScreen(
                     state.plans.forEach { plan ->
                         PlanCard(
                             plan = plan,
-                            selected = plan.id == state.selectedPlanId,
-                            onClick = { viewModel.onPlanSelected(plan.id) },
+                            // Not a radio group — CTAs drive actions (handout SelectPlanView).
+                            selected = false,
+                            cta = PlanCatalog.ctaFor(plan.id, state.currentPlanId, state.role, state.isPaid),
+                            // Stub until Play Billing lands (Play Console products + verify-google).
+                            onCta = {
+                                Toast.makeText(context, "Subscriptions are coming soon.", Toast.LENGTH_SHORT).show()
+                            },
                         )
+                    }
+                }
+
+                // Paywall footer (handout visibility matrix): artists only — Restore always,
+                // Manage when subscribed. Collector / Art Curious / Gallery show nothing.
+                if (state.role.contains("artist", ignoreCase = true)) {
+                    Spacer(Modifier.height(Spacing.lg))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        PaywallAction("Restore Purchases") {
+                            Toast.makeText(context, "No purchases to restore.", Toast.LENGTH_SHORT).show()
+                        }
+                        if (state.isPaid) {
+                            Spacer(Modifier.width(Spacing.xl))
+                            PaywallAction("Manage Subscription") {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            "https://play.google.com/store/account/subscriptions".toUri(),
+                                        ),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -214,6 +254,19 @@ fun ProfileTitleAndPlanEditScreen(
             }
         }
     }
+}
+
+@Composable
+private fun PaywallAction(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = BrandPrimary,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = Spacing.xs),
+    )
 }
 
 @Composable

@@ -5,7 +5,12 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import com.rinx.artRINXapp.core.tour.TourHost
 import androidx.compose.runtime.Composable
@@ -86,7 +91,12 @@ fun AppNavGraph(
     NavHost(
         navController    = navController,
         startDestination = startDestination,
-        modifier         = Modifier.fillMaxSize(),
+        // Edge-to-edge is on, and no screen pads left/right. In landscape the display cutout and
+        // 3-button nav bar move to the sides, so inset all content horizontally here (the full-bleed
+        // background behind the bars stays via the Box above). Top/bottom stay per-screen.
+        modifier         = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
         enterTransition    = { EnterTransition.None },
         exitTransition     = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },

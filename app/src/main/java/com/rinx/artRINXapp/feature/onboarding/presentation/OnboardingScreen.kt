@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +26,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.res.Configuration
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -42,6 +46,9 @@ fun OnboardingScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(pageCount = { uiState.pages.size.coerceAtLeast(1) })
     val dimens = LocalDimens.current
+    // Portrait centers content with flexible weights; landscape is short, so make each page scroll
+    // with fixed spacing instead — otherwise the grid + headline get clipped with no way to reach them.
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page -> viewModel.setPage(page) }
@@ -91,8 +98,15 @@ fun OnboardingScreen(
                     .weight(1f),
             ) { pageIndex ->
                 val page = uiState.pages[pageIndex]
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Spacer(modifier = Modifier.weight(0.3f))
+                Column(
+                    modifier = if (isLandscape) {
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    } else {
+                        Modifier.fillMaxSize()
+                    },
+                ) {
+                    if (isLandscape) Spacer(Modifier.height(Spacing.lg))
+                    else Spacer(modifier = Modifier.weight(0.3f))
 
                     ArtMosaicGrid(
                         images = page.imageRes,
@@ -105,7 +119,8 @@ fun OnboardingScreen(
                             .padding(horizontal = dimens.gridPaddingHorizontal),
                     )
 
-                    Spacer(modifier = Modifier.weight(0.5f))
+                    if (isLandscape) Spacer(Modifier.height(Spacing.xl))
+                    else Spacer(modifier = Modifier.weight(0.5f))
 
                     Column(
                         modifier = Modifier
@@ -129,7 +144,8 @@ fun OnboardingScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.weight(0.2f))
+                    if (isLandscape) Spacer(Modifier.height(Spacing.lg))
+                    else Spacer(modifier = Modifier.weight(0.2f))
                 }
             }
         }
