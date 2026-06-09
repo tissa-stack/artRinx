@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.settings.presentation.editprofile
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rinx.artRINXapp.core.location.LocationRepository
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.profile.domain.model.EditableProfile
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
@@ -29,6 +30,8 @@ data class EditProfileUiState(
     val country: String = "",
     val state: String = "",
     val city: String = "",
+    val countryOptions: List<String> = emptyList(),
+    val stateOptions: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val loadError: String? = null,
     val isSaving: Boolean = false,
@@ -47,6 +50,7 @@ data class EditProfileUiState(
 @HiltViewModel
 class EditProfileViewModel @Inject constructor(
     private val repository: ProfileRepository,
+    private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(EditProfileUiState())
@@ -76,6 +80,8 @@ class EditProfileViewModel @Inject constructor(
                             country = p.country,
                             state = p.state,
                             city = p.city,
+                            countryOptions = locationRepository.countryNames(),
+                            stateOptions = locationRepository.statesOf(p.country),
                             pictureUrl = p.profilePictureUrl,
                             isLoading = false,
                             loadError = null,
@@ -159,7 +165,10 @@ class EditProfileViewModel @Inject constructor(
     fun onBioChange(v: String) = _state.update { it.copy(bio = v) }
     fun onDisplayNameChange(v: String) = _state.update { it.copy(displayName = v) }
     fun onAgeChange(v: String) = _state.update { it.copy(age = v) }
-    fun onCountryChange(v: String) = _state.update { it.copy(country = v) }
+    fun onCountryChange(v: String) = _state.update {
+        // Country changed → refresh state options and clear the previously-picked state.
+        it.copy(country = v, state = "", stateOptions = locationRepository.statesOf(v))
+    }
     fun onStateChange(v: String) = _state.update { it.copy(state = v) }
     fun onCityChange(v: String) = _state.update { it.copy(city = v) }
     fun onPictureSelected(uri: Uri?) = _state.update { it.copy(pictureUri = uri) }

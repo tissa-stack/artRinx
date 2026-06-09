@@ -83,14 +83,14 @@ fun ProfileTitleAndPlanEditScreen(
             .statusBarsPadding(),
     ) {
         // ── Header ────────────────────────────────────────────────────────────
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
                 onClick = { if (state.step == 1) viewModel.goToTitleStep() else onBack() },
-                modifier = Modifier.align(Alignment.CenterStart),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
@@ -103,7 +103,6 @@ fun ProfileTitleAndPlanEditScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.align(Alignment.Center),
             )
         }
 

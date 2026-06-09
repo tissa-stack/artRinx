@@ -15,7 +15,7 @@
     </item>
     <item
         android:drawable="@drawable/artrinx_logo_light_theme"
-        android:width="144dp"
-        android:height="24dp"
+        android:width="108dp"
+        android:height="18dp"
         android:gravity="center" />
 </layer-list>

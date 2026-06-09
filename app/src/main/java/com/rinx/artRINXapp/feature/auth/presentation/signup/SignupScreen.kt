@@ -194,17 +194,8 @@ private fun SignupContent(
                 )
             }
 
-            Spacer(modifier = Modifier.height(Spacing.sm))
-
-            Text(
-                text = if (uiState.contactType == ContactType.EMAIL) "Sign up with phone" else "Sign up with email",
-                style = MaterialTheme.typography.bodySmall,
-                color = BrandPrimary,
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .clickable { onContactTypeToggle() }
-                    .padding(vertical = Spacing.xs),
-            )
+            // Phone signup is temporarily disabled — only email signup is offered for now, so the
+            // "Sign up with phone" toggle is hidden. contactType stays EMAIL (the default).
 
             Spacer(modifier = Modifier.height(Spacing.lg))
 
@@ -272,7 +263,7 @@ private fun SignupContent(
 
             OutlinedButton(
                 onClick = {
-                    Toast.makeText(context, "Google Sign In coming soon", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -288,9 +279,10 @@ private fun SignupContent(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "G",
-                        style = MaterialTheme.typography.labelLarge.copy(color = BrandPrimary),
+                    Image(
+                        painter = painterResource(R.drawable.ic_google_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(Spacing.xl),
                     )
                     Text(
                         text = "Continue with Google",

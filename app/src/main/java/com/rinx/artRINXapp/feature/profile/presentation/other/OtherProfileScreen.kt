@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -317,7 +318,7 @@ private fun OtherProfileHeader(
             modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(Spacing.huge)) {
+            IconButton(onClick = onBack, modifier = Modifier.offset(x = -Spacing.sm).size(Spacing.huge)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Back",
@@ -331,7 +332,7 @@ private fun OtherProfileHeader(
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(start = Spacing.xs),
+                modifier = Modifier.weight(1f).offset(x = -Spacing.sm),
             )
             // Message button gating (handout §Public profile "Message" button):
             // i_blocked → hidden (Unblock pill handles it); invite_pending → "Invitation Sent" pill;

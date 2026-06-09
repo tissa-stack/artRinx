@@ -204,7 +204,9 @@ class ProfileRepositoryImpl @Inject constructor(
                     sub.status in setOf("active", "trialing")
                 ApiResult.Success(
                     ProfilePlanSummary(
-                        profileTitle = dto.profileTitle.orEmpty(),
+                        // Role name lives in profile_type_name (e.g. "Art Curious"); profile_title is
+                        // a legacy fallback and is empty for new users.
+                        profileTitle = dto.profileTypeName?.takeIf { it.isNotBlank() } ?: dto.profileTitle.orEmpty(),
                         isPremium = isPremium,
                         nextBillingDate = if (isPremium) formatBillingDate(sub?.renewsAt ?: sub?.expiresAt) else "",
                     ),

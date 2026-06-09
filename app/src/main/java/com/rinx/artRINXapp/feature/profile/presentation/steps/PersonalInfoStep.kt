@@ -45,6 +45,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.SearchableDropdownField
 import com.rinx.artRINXapp.feature.profile.presentation.components.ProfileTextField
 
 private val AGE_RANGES = listOf("Under 18", "18-25", "26-35", "36-45", "46-55", "56-65", "65+")
@@ -66,6 +67,8 @@ fun PersonalInfoStep(
     onStateChange: (String) -> Unit,
     onCityChange: (String) -> Unit,
     onTooltipToggle: () -> Unit,
+    countryOptions: List<String>,
+    stateOptions: List<String>,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
@@ -177,9 +180,26 @@ fun PersonalInfoStep(
 
         Spacer(Modifier.height(Spacing.md))
 
-        FieldWithError(value = country, onValueChange = onCountryChange, label = "Country", hasError = countryError)
+        DropdownWithError(
+            value = country,
+            options = countryOptions,
+            onValueChange = onCountryChange,
+            label = "Country",
+            hasError = countryError,
+        )
         Spacer(Modifier.height(Spacing.md))
-        FieldWithError(value = state, onValueChange = onStateChange, label = "State", hasError = stateError)
+        // State is a dropdown when the chosen country has bundled states; otherwise free text.
+        if (stateOptions.isNotEmpty()) {
+            DropdownWithError(
+                value = state,
+                options = stateOptions,
+                onValueChange = onStateChange,
+                label = "State",
+                hasError = stateError,
+            )
+        } else {
+            FieldWithError(value = state, onValueChange = onStateChange, label = "State", hasError = stateError)
+        }
         Spacer(Modifier.height(Spacing.md))
         FieldWithError(value = city, onValueChange = onCityChange, label = "City", hasError = cityError)
 
@@ -219,6 +239,34 @@ fun PersonalInfoStep(
         }
 
         Spacer(Modifier.height(Spacing.xxxl))
+    }
+}
+
+@Composable
+private fun DropdownWithError(
+    value: String,
+    options: List<String>,
+    onValueChange: (String) -> Unit,
+    label: String,
+    hasError: Boolean,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SearchableDropdownField(
+            label = label,
+            value = value,
+            options = options,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            isError = hasError,
+        )
+        if (hasError) {
+            Text(
+                text = "This field should not be empty",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
+            )
+        }
     }
 }
 

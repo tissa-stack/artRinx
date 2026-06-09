@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.profile.presentation
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rinx.artRINXapp.core.location.LocationRepository
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
@@ -64,6 +65,9 @@ data class ProfileCreationUiState(
     val stateError: Boolean = false,
     val cityError: Boolean = false,
     val showPersonalInfoTooltip: Boolean = false,
+    // Location pickers (from bundled assets/locations.json).
+    val countryOptions: List<String> = emptyList(),
+    val stateOptions: List<String> = emptyList(),
 
     // Step 3 – Mediums
     val mediums: List<Medium> = emptyList(),
@@ -83,6 +87,7 @@ class ProfileCreationViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val draftDataSource: ProfileDraftDataSource,
     private val authRepository: AuthRepository,
+    private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileCreationUiState())
@@ -107,6 +112,8 @@ class ProfileCreationViewModel @Inject constructor(
                     country = draft.country,
                     state = draft.state,
                     city = draft.city,
+                    countryOptions = locationRepository.countryNames(),
+                    stateOptions = locationRepository.statesOf(draft.country),
                     selectedMediumIds = draft.mediumIds,
                 )
             }
@@ -238,8 +245,15 @@ class ProfileCreationViewModel @Inject constructor(
     }
 
     fun onCountryChange(value: String) {
-        _uiState.update { it.copy(country = value, countryError = false) }
-        viewModelScope.launch { draftDataSource.saveCountry(value) }
+        // Country changed → refresh the state options and clear any previously-picked state.
+        val states = locationRepository.statesOf(value)
+        _uiState.update {
+            it.copy(country = value, countryError = false, stateOptions = states, state = "", stateError = false)
+        }
+        viewModelScope.launch {
+            draftDataSource.saveCountry(value)
+            draftDataSource.saveState("")
+        }
     }
 
     fun onStateChange(value: String) {

@@ -252,7 +252,7 @@ private fun LoginContent(
 
             OutlinedButton(
                 onClick = {
-                    Toast.makeText(context, "Google Sign In coming soon", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -270,9 +270,10 @@ private fun LoginContent(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "G",
-                        style = MaterialTheme.typography.labelLarge.copy(color = BrandPrimary),
+                    Image(
+                        painter = painterResource(R.drawable.ic_google_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(Spacing.xl),
                     )
                     Text(
                         text = "Continue with Google",

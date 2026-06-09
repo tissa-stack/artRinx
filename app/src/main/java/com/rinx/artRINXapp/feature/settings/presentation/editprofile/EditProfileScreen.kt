@@ -62,6 +62,7 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.ShopLinkGradientEnd
 import com.rinx.artRINXapp.core.theme.ShopLinkGradientStart
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.SearchableDropdownField
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
 
@@ -328,9 +329,24 @@ private fun ColumnScope.EditProfileContent(
             )
             Spacer(Modifier.height(Spacing.md))
 
-            LabeledTextField(label = "Country", value = state.country, onValueChange = viewModel::onCountryChange)
+            SearchableDropdownField(
+                label = "Country",
+                value = state.country,
+                options = state.countryOptions,
+                onValueChange = viewModel::onCountryChange,
+            )
             Spacer(Modifier.height(Spacing.md))
-            LabeledTextField(label = "State", value = state.state, onValueChange = viewModel::onStateChange)
+            // State is a dropdown when the chosen country has bundled states; otherwise free text.
+            if (state.stateOptions.isNotEmpty()) {
+                SearchableDropdownField(
+                    label = "State",
+                    value = state.state,
+                    options = state.stateOptions,
+                    onValueChange = viewModel::onStateChange,
+                )
+            } else {
+                LabeledTextField(label = "State", value = state.state, onValueChange = viewModel::onStateChange)
+            }
             Spacer(Modifier.height(Spacing.md))
             LabeledTextField(label = "City", value = state.city, onValueChange = viewModel::onCityChange)
 

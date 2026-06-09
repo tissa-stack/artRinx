@@ -33,15 +33,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -63,6 +67,18 @@ fun MediumSelectionStep(
 ) {
     val dimens = LocalDimens.current
     val selectedCount = selectedMediumIds.size
+
+    // Warm Coil's disk/memory cache for every medium image as soon as the list arrives, so the
+    // circles are already decoded by the time the user scrolls — removes the visible load delay.
+    val context = LocalContext.current
+    LaunchedEffect(mediums) {
+        val loader = context.imageLoader
+        mediums.forEach { m ->
+            if (m.pictureUrl.isNotBlank()) {
+                loader.enqueue(ImageRequest.Builder(context).data(m.pictureUrl).build())
+            }
+        }
+    }
 
     Column(
         modifier = modifier

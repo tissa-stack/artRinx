@@ -8,11 +8,11 @@ import com.rinx.artRINXapp.feature.settings.domain.model.ProfileTitleOption
  * backend `profile_type_id`s (see feature/auth/domain/model/ProfileType.kt):
  * 1 = Artist, 2 = Collector, 3 = Art Curious (role "curious"), 4 = Gallery.
  */
-internal fun titleIdForRole(role: String?): Int? = when (role?.lowercase()) {
+internal fun titleIdForRole(role: String?): Int? = when (role?.trim()?.lowercase()) {
     "artist" -> 1
     "collector" -> 2
-    "curious" -> 3
-    "gallery" -> 4
+    "curious", "art curious", "art_curious", "artcurious" -> 3
+    "gallery", "gallery - enterprise" -> 4
     else -> null
 }
 

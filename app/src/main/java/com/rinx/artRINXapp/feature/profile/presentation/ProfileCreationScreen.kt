@@ -277,6 +277,8 @@ private fun ProfileCreationContent(
                         onStateChange = onStateChange,
                         onCityChange = onCityChange,
                         onTooltipToggle = onPersonalInfoTooltipToggle,
+                        countryOptions = uiState.countryOptions,
+                        stateOptions = uiState.stateOptions,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     3 -> MediumSelectionStep(
