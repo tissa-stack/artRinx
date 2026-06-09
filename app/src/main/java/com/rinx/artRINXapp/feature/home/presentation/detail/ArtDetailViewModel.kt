@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
+import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
 import com.rinx.artRINXapp.feature.home.domain.model.SendMode
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
@@ -60,6 +61,7 @@ class ArtDetailViewModel @Inject constructor(
     private val editTargetStore: EditTargetStore,
     private val profileRefreshBus: ProfileRefreshBus,
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
+    private val detailCache: DetailCache,
 ) : ViewModel() {
 
     private val artworkId: Int? = savedStateHandle.get<String>("postId")?.toIntOrNull()
@@ -68,8 +70,18 @@ class ArtDetailViewModel @Inject constructor(
 
     private var currentUserId: Int = 0
 
-    private val _uiState = MutableStateFlow(ArtDetailUiState())
+    /** Non-null while the user has a like toggle outstanding — keeps a stale refresh from clobbering it. */
+    private var pendingLike: Boolean? = null
+
+    // Seed synchronously from cache so a re-open renders instantly with no shimmer (SWR).
+    private val _uiState = MutableStateFlow(seedFromCache())
     val uiState: StateFlow<ArtDetailUiState> = _uiState.asStateFlow()
+
+    private fun seedFromCache(): ArtDetailUiState {
+        val id = artworkId ?: return ArtDetailUiState(isLoading = true)
+        val cached = detailCache.peekArtwork(id) ?: return ArtDetailUiState(isLoading = true)
+        return ArtDetailUiState(post = cached.post, moreLikeThis = cached.similar, isLoading = false)
+    }
 
     /** One-shot: emitted after a successful delete so the screen can pop back. */
     private val _deleted = Channel<Unit>(Channel.BUFFERED)
@@ -92,8 +104,10 @@ class ArtDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, error = true) }
             return
         }
+        val hasCache = _uiState.value.post != null
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = false) }
+            // Cache hit → already rendered; revalidate silently (don't flip isLoading/shimmer).
+            if (!hasCache) _uiState.update { it.copy(isLoading = true, error = false) }
             val detailJob = async { repository.getArtworkDetail(id) }
             // Opened from Profile → no "More like this" (it should read like a clean preview).
             val similarJob = if (isFromProfile) null else async { repository.getSimilarArtworks(id) }
@@ -104,23 +118,25 @@ class ArtDetailViewModel @Inject constructor(
             currentUserId = meId ?: 0
 
             if (detailRes is ApiResult.Success) {
-                val post = detailRes.data
+                var post = detailRes.data
+                // Never let a stale server read overwrite the user's just-made like.
+                pendingLike?.let { liked ->
+                    post = post.copy(isLiked = liked, likeCount = _uiState.value.post?.likeCount ?: post.likeCount)
+                }
+                // Keep prior similar list if this refresh's similar call failed/absent.
+                val similar = (similarRes as? ApiResult.Success)?.data ?: _uiState.value.moreLikeThis
                 val isOwn = meId != null && post.ownerId == meId
+                detailCache.putArtwork(id, post, similar)
                 _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = false,
-                        post = post,
-                        moreLikeThis = (similarRes as? ApiResult.Success)?.data.orEmpty(),
-                        isOwn = isOwn,
-                    )
+                    it.copy(isLoading = false, error = false, post = post, moreLikeThis = similar, isOwn = isOwn)
                 }
                 // Resolve the conversation state with the owner so the send sheet shows the right
                 // framing (plain message for an active chat, not a fresh invitation).
                 if (!isOwn) post.ownerId?.let { resolveSendMode(it) }
-            } else {
+            } else if (!hasCache) {
                 _uiState.update { it.copy(isLoading = false, error = true) }
             }
+            // else: refresh failed but a cache is showing → keep it silently (no error/spinner).
         }
     }
 
@@ -155,7 +171,10 @@ class ArtDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isDeleting = true) }
         viewModelScope.launch {
             when (uploadRepository.deleteArtwork(id)) {
-                is ApiResult.Success -> _deleted.send(Unit)
+                is ApiResult.Success -> {
+                    detailCache.evictArtwork(id)
+                    _deleted.send(Unit)
+                }
                 is ApiResult.Error -> _uiState.update { it.copy(isDeleting = false) }
             }
         }
@@ -165,15 +184,23 @@ class ArtDetailViewModel @Inject constructor(
         val id = artworkId ?: return
         val post = _uiState.value.post ?: return
         val nowLiked = !post.isLiked
+        pendingLike = nowLiked
         setLiked(nowLiked)
+        // Write-through so a reopen before the network returns is already correct.
+        detailCache.updateArtworkLike(id, nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
         viewModelScope.launch {
-            when (val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)) {
+            when (if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)) {
                 is ApiResult.Error.Network ->
-                    // Offline: keep the optimistic state and queue it to replay on reconnect.
+                    // Offline: keep the optimistic state (pendingLike stays) and queue for replay.
                     liveMutationQueue.enqueue("artwork", id, nowLiked)
-                is ApiResult.Error ->
-                    setLiked(!nowLiked) // hard failure (server rejected) → revert
+                is ApiResult.Error -> {
+                    // Hard failure (server rejected) → revert; local and server now agree.
+                    pendingLike = null
+                    setLiked(!nowLiked)
+                    detailCache.updateArtworkLike(id, !nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
+                }
                 else -> {
+                    pendingLike = null // server confirmed
                     // Keep the Profile "Liked" tab in sync — an unliked art drops out on return.
                     profileRefreshBus.signal()
                 }
@@ -219,6 +246,7 @@ class ArtDetailViewModel @Inject constructor(
         viewModelScope.launch {
             when (profileRepository.blockArtwork(id, lastReportMessage.ifBlank { "Reported from app" })) {
                 is ApiResult.Success -> {
+                    artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
                     _blocked.send(Unit)
                 }
@@ -236,6 +264,7 @@ class ArtDetailViewModel @Inject constructor(
         viewModelScope.launch {
             when (profileRepository.blockUser(ownerId)) {
                 is ApiResult.Success -> {
+                    artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
                     _blocked.send(Unit)
                 }

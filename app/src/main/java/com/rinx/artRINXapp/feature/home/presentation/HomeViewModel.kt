@@ -29,8 +29,23 @@ class HomeViewModel @Inject constructor(
     private val curationManager: CurationManager,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
+    // Seed synchronously from cache so returning to the tab renders instantly with no shimmer (SWR).
+    private val _uiState = MutableStateFlow(seedFromCache())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private fun seedFromCache(): HomeUiState {
+        val feed = repository.cachedFeed() ?: return HomeUiState(isLoading = true)
+        return HomeUiState(
+            isLoading = false,
+            bannerItems = feed.banners,
+            newArtItems = feed.newArt,
+            popularCurations = feed.curations,
+            feedItems = feed.posts,
+            shoppableItems = repository.cachedShop().orEmpty(),
+            forYouItems = buildForYou(feed.posts, feed.banners),
+            recentlyViewed = feed.recentlyViewed,
+        )
+    }
 
     init {
         load()
@@ -97,10 +112,15 @@ class HomeViewModel @Inject constructor(
     fun onDismissCuration() = curationManager.dismiss()
 
     private fun load(isRefresh: Boolean = false) {
+        // Cached data already on screen → revalidate silently (no shimmer, no refresh spinner).
+        val hasCache = repository.cachedFeed() != null
         viewModelScope.launch {
             _uiState.update {
-                if (isRefresh) it.copy(isRefreshing = true, error = null)
-                else it.copy(isLoading = true, error = null)
+                when {
+                    isRefresh -> it.copy(isRefreshing = true, error = null) // explicit pull-to-refresh
+                    hasCache -> it                                          // silent background refresh
+                    else -> it.copy(isLoading = true, error = null)         // first load → shimmer
+                }
             }
 
             // Discover tab comes from one call; shop feed from another. Run concurrently.
@@ -112,13 +132,15 @@ class HomeViewModel @Inject constructor(
             // The discover feed is the primary content — fail the screen only if it errored.
             if (feedRes is ApiResult.Error) {
                 _uiState.update {
-                    // On pull-to-refresh keep the existing content; just stop the spinner.
-                    if (isRefresh) it.copy(isRefreshing = false)
-                    else it.copy(
-                        isLoading = false,
-                        error = if (feedRes is ApiResult.Error.Network) HomeError.NoInternet
-                        else HomeError.Generic(),
-                    )
+                    when {
+                        isRefresh -> it.copy(isRefreshing = false) // keep content; stop the spinner
+                        hasCache -> it                             // silent refresh failed → keep cache
+                        else -> it.copy(
+                            isLoading = false,
+                            error = if (feedRes is ApiResult.Error.Network) HomeError.NoInternet
+                            else HomeError.Generic(),
+                        )
+                    }
                 }
                 return@launch
             }

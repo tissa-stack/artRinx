@@ -10,6 +10,15 @@ interface HomeRepository {
     /** Discover tab — banners, new art, and popular curations in a single request. */
     suspend fun getDiscoverFeed(): ApiResult<HomeFeed>
     suspend fun getShopArtworks(page: Int, size: Int): ApiResult<List<ShoppablePost>>
+
+    // ── In-memory SWR cache (survives navigation; cleared on logout/delete) ───
+    /** Last successful discover feed, or null if never loaded this session. */
+    fun cachedFeed(): HomeFeed?
+    /** Last successful shop page, or null. */
+    fun cachedShop(): List<ShoppablePost>?
+    /** Drop the cached feed/shop. */
+    fun clearCache()
+
     suspend fun likeArtwork(artworkId: Int): ApiResult<Unit>
     suspend fun unlikeArtwork(artworkId: Int): ApiResult<Unit>
 

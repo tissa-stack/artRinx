@@ -84,6 +84,12 @@ class LiveMutationQueue @Inject constructor(
         save(remaining)
     }
 
+    /** Drop all queued mutations (this key only — leaves other DataStore prefs intact). Logout/delete. */
+    suspend fun clear() = mutex.withLock {
+        dataStore.edit { it.remove(key) }
+        Unit
+    }
+
     private suspend fun load(): List<LikeMutation> {
         val json = dataStore.data.first()[key] ?: return emptyList()
         return runCatching {

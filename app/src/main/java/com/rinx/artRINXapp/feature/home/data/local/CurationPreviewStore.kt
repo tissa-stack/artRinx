@@ -25,4 +25,7 @@ class CurationPreviewStore @Inject constructor() {
     }
 
     fun orderFor(curationId: String): List<String> = previewOrder[curationId].orEmpty()
+
+    /** Drop all cached preview orders — call on logout / account deletion. */
+    fun clear() = previewOrder.clear()
 }

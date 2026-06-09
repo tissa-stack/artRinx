@@ -67,4 +67,11 @@ interface ProfileRepository {
     suspend fun getMyCurations(page: Int, size: Int): ApiResult<List<ProfileCurationItem>>
     suspend fun getLikedArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>>
     suspend fun createProfile(draft: ProfileDraft, pictureUri: Uri?): ApiResult<Unit>
+
+    // ── In-memory SWR cache for the Profile tab (first page only; cleared on logout/delete) ───
+    fun cachedProfileData(): UserProfileData?
+    fun cachedMyArtworks(): List<ProfileArtItem>?
+    fun cachedMyCurations(): List<ProfileCurationItem>?
+    fun cachedLikedArtworks(): List<ProfileArtItem>?
+    fun clearCache()
 }

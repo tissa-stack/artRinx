@@ -20,6 +20,17 @@ class SearchRepositoryImpl @Inject constructor(
     private val apiService: SearchApiService,
 ) : SearchRepository {
 
+    // SWR cache for the idle screen — survives navigation (@Singleton); cleared on logout/delete.
+    @Volatile private var trendingCache: List<String>? = null
+    @Volatile private var recommendedCache: List<SearchResultItem>? = null
+
+    override fun cachedTrendingTags(): List<String>? = trendingCache
+    override fun cachedRecommended(): List<SearchResultItem>? = recommendedCache
+    override fun clearCache() {
+        trendingCache = null
+        recommendedCache = null
+    }
+
     override suspend fun searchArtworks(
         query: String,
         mediumIds: List<Int>,
@@ -77,7 +88,9 @@ class SearchRepositoryImpl @Inject constructor(
     override suspend fun getTrendingTags(): ApiResult<List<String>> = safeCall {
         val response = apiService.getTrendingTags()
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data.orEmpty())
+            val tags = response.body()?.data.orEmpty()
+            trendingCache = tags
+            ApiResult.Success(tags)
         } else {
             errorFor(response)
         }
@@ -86,7 +99,9 @@ class SearchRepositoryImpl @Inject constructor(
     override suspend fun getRecommended(): ApiResult<List<SearchResultItem>> = safeCall {
         val response = apiService.getRecommended(page = PAGE, size = SIZE)
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toResultItem() })
+            val items = response.body()?.data?.items.orEmpty().map { it.toResultItem() }
+            recommendedCache = items
+            ApiResult.Success(items)
         } else {
             errorFor(response)
         }

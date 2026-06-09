@@ -25,4 +25,9 @@ interface SearchRepository {
     suspend fun getTrendingTags(): ApiResult<List<String>>
 
     suspend fun getRecommended(): ApiResult<List<SearchResultItem>>
+
+    // ── In-memory SWR cache for the idle screen (cleared on logout/delete) ───
+    fun cachedTrendingTags(): List<String>?
+    fun cachedRecommended(): List<SearchResultItem>?
+    fun clearCache()
 }

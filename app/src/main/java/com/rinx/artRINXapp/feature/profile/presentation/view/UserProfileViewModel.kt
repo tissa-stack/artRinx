@@ -29,13 +29,31 @@ class UserProfileViewModel @Inject constructor(
     private val profileRefreshBus: ProfileRefreshBus,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(UserProfileUiState(isLoading = true))
+    // Seed synchronously from cache so returning to the Profile tab renders instantly (SWR).
+    private val _uiState = MutableStateFlow(seedFromCache())
     val uiState: StateFlow<UserProfileUiState> = _uiState.asStateFlow()
 
     // Next page to fetch per tab (page 1 is loaded by load()).
     private var artPage = PAGE
     private var curationPage = PAGE
     private var likedPage = PAGE
+
+    private fun seedFromCache(): UserProfileUiState {
+        val profile = profileRepository.cachedProfileData() ?: return UserProfileUiState(isLoading = true)
+        val art = profileRepository.cachedMyArtworks().orEmpty()
+        val curations = profileRepository.cachedMyCurations().orEmpty()
+        val liked = profileRepository.cachedLikedArtworks().orEmpty()
+        return UserProfileUiState(
+            isLoading = false,
+            profile = profile,
+            artItems = art,
+            curations = curations,
+            likedItems = liked,
+            artHasMore = art.size >= SIZE,
+            curationHasMore = curations.size >= SIZE,
+            likedHasMore = liked.size >= SIZE,
+        )
+    }
 
     init {
         load()
@@ -45,6 +63,7 @@ class UserProfileViewModel @Inject constructor(
     }
 
     private fun load() {
+        // Cache already on screen → this is a silent revalidate (isLoading stays false, no shimmer).
         viewModelScope.launch {
             // Fetch header, art, curations and liked concurrently.
             val profileDeferred = async { profileRepository.getProfileData() }
@@ -53,22 +72,26 @@ class UserProfileViewModel @Inject constructor(
             val likedDeferred = async { profileRepository.getLikedArtworks(PAGE, SIZE) }
 
             val profile = (profileDeferred.await() as? ApiResult.Success)?.data
-            val artItems = (artworksDeferred.await() as? ApiResult.Success)?.data.orEmpty()
-            val curations = (curationsDeferred.await() as? ApiResult.Success)?.data.orEmpty()
-            val likedItems = (likedDeferred.await() as? ApiResult.Success)?.data.orEmpty()
+            val artRes = artworksDeferred.await() as? ApiResult.Success
+            val curationRes = curationsDeferred.await() as? ApiResult.Success
+            val likedRes = likedDeferred.await() as? ApiResult.Success
 
             // Reset paging on a full (re)load. A full page implies there may be more.
             artPage = PAGE; curationPage = PAGE; likedPage = PAGE
             _uiState.update { state ->
+                // Keep existing (cached) items if a sub-fetch failed — never blank good data.
+                val artItems = artRes?.data ?: state.artItems
+                val curations = curationRes?.data ?: state.curations
+                val likedItems = likedRes?.data ?: state.likedItems
                 state.copy(
                     isLoading = false,
                     profile = profile ?: state.profile,
                     artItems = artItems,
                     curations = curations,
                     likedItems = likedItems,
-                    artHasMore = artItems.size >= SIZE,
-                    curationHasMore = curations.size >= SIZE,
-                    likedHasMore = likedItems.size >= SIZE,
+                    artHasMore = if (artRes != null) artItems.size >= SIZE else state.artHasMore,
+                    curationHasMore = if (curationRes != null) curations.size >= SIZE else state.curationHasMore,
+                    likedHasMore = if (likedRes != null) likedItems.size >= SIZE else state.likedHasMore,
                 )
             }
         }

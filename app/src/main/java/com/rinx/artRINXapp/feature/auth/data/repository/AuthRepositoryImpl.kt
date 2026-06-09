@@ -19,6 +19,7 @@ import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistResponse
 import com.rinx.artRINXapp.feature.auth.domain.model.InviteCodeType
 import com.rinx.artRINXapp.feature.auth.domain.model.InviteVerification
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
+import com.rinx.artRINXapp.core.auth.LocalDataCleaner
 import com.google.gson.Gson
 import java.io.IOException
 import javax.inject.Inject
@@ -26,6 +27,7 @@ import javax.inject.Inject
 class AuthRepositoryImpl @Inject constructor(
     private val apiService: AuthApiService,
     private val sessionDataSource: SessionDataSource,
+    private val localDataCleaner: LocalDataCleaner,
 ) : AuthRepository {
 
     private val gson = Gson()
@@ -152,8 +154,12 @@ class AuthRepositoryImpl @Inject constructor(
 
     // ── Session ──────────────────────────────────────────────────────────────
 
-    override suspend fun saveSession(response: OtpVerifyResponse) =
+    override suspend fun saveSession(response: OtpVerifyResponse) {
         sessionDataSource.saveSession(response)
+        // New sign-in → drop any previous user's in-memory caches (keeps the just-saved session),
+        // covering reactive sign-outs that only cleared the session.
+        localDataCleaner.clearCaches()
+    }
 
     override fun getRefreshToken(): String? = sessionDataSource.getRefreshToken()
 
@@ -178,7 +184,7 @@ class AuthRepositoryImpl @Inject constructor(
                 // Ignore network/server failure — local wipe below still happens.
             }
         }
-        sessionDataSource.clearSession()
+        localDataCleaner.clearAll()
     }
 
     override suspend fun signOutEverywhere() {
@@ -188,7 +194,7 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (_: Exception) {
             // Ignore network/server failure — local wipe below still happens.
         }
-        sessionDataSource.clearSession()
+        localDataCleaner.clearAll()
     }
 
     // ── Change email (contact change, §1.8) ───────────────────────────────────
@@ -282,7 +288,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.deleteMe()
             if (response.isSuccessful) {
-                sessionDataSource.clearSession() // sign out only after the server accepts
+                localDataCleaner.clearAll() // sign out + wipe all local data after the server accepts
                 ApiResult.Success(Unit)
             } else {
                 when (response.code()) {

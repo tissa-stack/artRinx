@@ -25,10 +25,16 @@ class SearchViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SearchUiState())
+    // Seed idle content synchronously from cache so re-entering the tab shows it instantly (SWR).
+    private val _uiState = MutableStateFlow(seedFromCache())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+
+    private fun seedFromCache(): SearchUiState = SearchUiState(
+        trendingTags = searchRepository.cachedTrendingTags().orEmpty(),
+        recommended = searchRepository.cachedRecommended().orEmpty(),
+    )
 
     init {
         loadIdleContent()
@@ -38,15 +44,18 @@ class SearchViewModel @Inject constructor(
     // ── Idle / empty screen ────────────────────────────────────────────────
 
     private fun loadIdleContent() {
+        // Cached idle content already shown → revalidate silently (no shimmer).
+        val hasCache = searchRepository.cachedTrendingTags() != null || searchRepository.cachedRecommended() != null
         viewModelScope.launch {
-            _uiState.update { it.copy(isIdleLoading = true) }
+            if (!hasCache) _uiState.update { it.copy(isIdleLoading = true) }
             val tags = searchRepository.getTrendingTags()
             val recommended = searchRepository.getRecommended()
             _uiState.update {
                 it.copy(
                     isIdleLoading = false,
-                    trendingTags = (tags as? ApiResult.Success)?.data.orEmpty(),
-                    recommended = (recommended as? ApiResult.Success)?.data.orEmpty(),
+                    // Keep prior values if a call failed, so a flaky refresh never blanks the screen.
+                    trendingTags = (tags as? ApiResult.Success)?.data ?: it.trendingTags,
+                    recommended = (recommended as? ApiResult.Success)?.data ?: it.recommended,
                 )
             }
         }

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
+import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 import com.rinx.artRINXapp.feature.home.domain.model.SendMode
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
@@ -60,6 +61,7 @@ class CurationDetailViewModel @Inject constructor(
     private val curationRepository: CurationRepository,
     private val editTargetStore: EditTargetStore,
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
+    private val detailCache: DetailCache,
 ) : ViewModel() {
 
     private val curationId: Int? = savedStateHandle.get<String>("curationId")?.toIntOrNull()
@@ -68,8 +70,24 @@ class CurationDetailViewModel @Inject constructor(
 
     private var currentUserId: Int = 0
 
-    private val _uiState = MutableStateFlow(CurationDetailUiState())
+    /** Non-null while the user has a like toggle outstanding — keeps a stale refresh from clobbering it. */
+    private var pendingLike: Boolean? = null
+
+    // Seed synchronously from cache so a re-open renders instantly with no shimmer (SWR).
+    private val _uiState = MutableStateFlow(seedFromCache())
     val uiState: StateFlow<CurationDetailUiState> = _uiState.asStateFlow()
+
+    private fun seedFromCache(): CurationDetailUiState {
+        val id = curationId ?: return CurationDetailUiState(isLoading = true)
+        val cached = detailCache.peekCuration(id) ?: return CurationDetailUiState(isLoading = true)
+        return CurationDetailUiState(
+            curation = cached.curation,
+            moreLikeThis = cached.more,
+            likeCount = cached.curation.likeCount,
+            isLiked = cached.curation.isLiked,
+            isLoading = false,
+        )
+    }
 
     /** One-shot: emitted after a successful delete so the screen can pop back. */
     private val _deleted = Channel<Unit>(Channel.BUFFERED)
@@ -89,8 +107,10 @@ class CurationDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, error = true) }
             return
         }
+        val hasCache = _uiState.value.curation != null
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = false) }
+            // Cache hit → already rendered; revalidate silently (don't flip isLoading/shimmer).
+            if (!hasCache) _uiState.update { it.copy(isLoading = true, error = false) }
             val detailJob = async { repository.getCurationDetail(id) }
             // Opened from Profile → no "More like this" (clean preview).
             val moreJob = if (isFromProfile) null else async { repository.getMoreCurations() }
@@ -104,34 +124,40 @@ class CurationDetailViewModel @Inject constructor(
                 val fetched = detailRes.data
                 // Open with the SAME first images as the home preview deck (matched by URL),
                 // then the curation's remaining artworks in their own order.
-                val curation = fetched.copy(
+                val reordered = fetched.copy(
                     artworkUrls = reorderByPreview(
                         detailUrls = fetched.artworkUrls,
                         previewUrls = curationPreviewStore.orderFor(fetched.id),
                     ),
                 )
-                val more = (moreRes as? ApiResult.Success)?.data.orEmpty()
+                // Never let a stale server read overwrite the user's just-made like.
+                val isLiked = pendingLike ?: reordered.isLiked
+                val likeCount = if (pendingLike != null) _uiState.value.likeCount else reordered.likeCount
+                val curation = reordered.copy(isLiked = isLiked, likeCount = likeCount)
+                val more = ((moreRes as? ApiResult.Success)?.data ?: _uiState.value.moreLikeThis)
                     .filter { it.id != curation.id }
                 // Remember the previews of the "More like this" curations too, so tapping one
                 // opens it with the same first images.
                 more.forEach { curationPreviewStore.put(it.id, it.artworkUrls) }
                 val isOwn = meId != null && curation.authorId == meId
+                detailCache.putCuration(id, curation, more)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = false,
                         curation = curation,
                         moreLikeThis = more,
-                        likeCount = curation.likeCount,
-                        isLiked = curation.isLiked,
+                        likeCount = likeCount,
+                        isLiked = isLiked,
                         isOwn = isOwn,
                     )
                 }
                 // Resolve the send mode now (before the sheet can open) to avoid an invite→message flicker.
                 if (!isOwn) resolveSendMode(curation.authorId)
-            } else {
+            } else if (!hasCache) {
                 _uiState.update { it.copy(isLoading = false, error = true) }
             }
+            // else: refresh failed but a cache is showing → keep it silently (no error/spinner).
         }
     }
 
@@ -171,7 +197,10 @@ class CurationDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isDeleting = true) }
         viewModelScope.launch {
             when (curationRepository.deleteCuration(id)) {
-                is ApiResult.Success -> _deleted.send(Unit)
+                is ApiResult.Success -> {
+                    detailCache.evictCuration(id)
+                    _deleted.send(Unit)
+                }
                 is ApiResult.Error -> _uiState.update { it.copy(isDeleting = false) }
             }
         }
@@ -193,14 +222,22 @@ class CurationDetailViewModel @Inject constructor(
     fun onLikeToggled() {
         val id = curationId ?: return
         val nowLiked = !_uiState.value.isLiked
+        pendingLike = nowLiked
         setLiked(nowLiked)
+        // Write-through so a reopen before the network returns is already correct.
+        detailCache.updateCurationLike(id, nowLiked, _uiState.value.likeCount)
         viewModelScope.launch {
-            when (val result = if (nowLiked) repository.likeCuration(id) else repository.unlikeCuration(id)) {
+            when (if (nowLiked) repository.likeCuration(id) else repository.unlikeCuration(id)) {
                 is ApiResult.Error.Network ->
-                    // Offline: keep optimistic state, queue to replay on reconnect.
+                    // Offline: keep optimistic state (pendingLike stays), queue to replay on reconnect.
                     liveMutationQueue.enqueue("curation", id, nowLiked)
-                is ApiResult.Error -> setLiked(!nowLiked) // hard failure → revert
-                else -> Unit
+                is ApiResult.Error -> {
+                    // Hard failure → revert; local and server now agree.
+                    pendingLike = null
+                    setLiked(!nowLiked)
+                    detailCache.updateCurationLike(id, !nowLiked, _uiState.value.likeCount)
+                }
+                else -> pendingLike = null // server confirmed
             }
         }
     }
@@ -236,7 +273,10 @@ class CurationDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isBlocking = true, actionError = null) }
         viewModelScope.launch {
             when (profileRepository.blockUser(ownerId)) {
-                is ApiResult.Success -> _blocked.send(Unit)
+                is ApiResult.Success -> {
+                    curationId?.let { detailCache.evictCuration(it) }
+                    _blocked.send(Unit)
+                }
                 is ApiResult.Error -> _uiState.update {
                     it.copy(isBlocking = false, actionError = "Couldn't block this user. Please try again.")
                 }

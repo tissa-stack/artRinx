@@ -52,6 +52,24 @@ class ProfileRepositoryImpl @Inject constructor(
     private val session: SessionDataSource,
 ) : ProfileRepository {
 
+    // SWR cache for the Profile tab (first page only) — survives navigation (@Singleton);
+    // cleared on logout/delete.
+    @Volatile private var profileDataCache: UserProfileData? = null
+    @Volatile private var myArtworksCache: List<ProfileArtItem>? = null
+    @Volatile private var myCurationsCache: List<ProfileCurationItem>? = null
+    @Volatile private var likedArtworksCache: List<ProfileArtItem>? = null
+
+    override fun cachedProfileData(): UserProfileData? = profileDataCache
+    override fun cachedMyArtworks(): List<ProfileArtItem>? = myArtworksCache
+    override fun cachedMyCurations(): List<ProfileCurationItem>? = myCurationsCache
+    override fun cachedLikedArtworks(): List<ProfileArtItem>? = likedArtworksCache
+    override fun clearCache() {
+        profileDataCache = null
+        myArtworksCache = null
+        myCurationsCache = null
+        likedArtworksCache = null
+    }
+
     private val gson = Gson()
     private val textPlain = "text/plain; charset=utf-8".toMediaType()
 
@@ -138,22 +156,22 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getMyProfile()
             val dto = response.body()?.data
             if (response.isSuccessful && dto != null) {
-                ApiResult.Success(
-                    UserProfileData(
-                        handle = dto.username?.let { "@$it" } ?: "",
-                        displayName = dto.displayName ?: dto.fullName ?: dto.username.orEmpty(),
-                        // Role name lives in profile_type_name (e.g. "Collector"), matching every
-                        // other mapping; profile_title is a legacy fallback.
-                        role = dto.profileTypeName?.takeIf { it.isNotBlank() } ?: dto.profileTitle.orEmpty(),
-                        bio = dto.bio.orEmpty(),
-                        website = dto.profileLink.orEmpty(),
-                        avatarUrl = dto.profilePictureUrl,
-                        artCount = dto.artworkCount ?: 0,
-                        curationCount = dto.curationCount ?: 0,
-                        followerCount = dto.followerCount ?: 0,
-                        followingCount = dto.followingCount ?: 0,
-                    ),
+                val data = UserProfileData(
+                    handle = dto.username?.let { "@$it" } ?: "",
+                    displayName = dto.displayName ?: dto.fullName ?: dto.username.orEmpty(),
+                    // Role name lives in profile_type_name (e.g. "Collector"), matching every
+                    // other mapping; profile_title is a legacy fallback.
+                    role = dto.profileTypeName?.takeIf { it.isNotBlank() } ?: dto.profileTitle.orEmpty(),
+                    bio = dto.bio.orEmpty(),
+                    website = dto.profileLink.orEmpty(),
+                    avatarUrl = dto.profilePictureUrl,
+                    artCount = dto.artworkCount ?: 0,
+                    curationCount = dto.curationCount ?: 0,
+                    followerCount = dto.followerCount ?: 0,
+                    followingCount = dto.followingCount ?: 0,
                 )
+                profileDataCache = data
+                ApiResult.Success(data)
             } else {
                 profileError(response.code())
             }
@@ -600,6 +618,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getMyArtworks(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
+                if (page == 1) myArtworksCache = items
                 ApiResult.Success(items)
             } else {
                 profileError(response.code())
@@ -616,6 +635,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getMyCurations(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileCurationItem() }
+                if (page == 1) myCurationsCache = items
                 ApiResult.Success(items)
             } else {
                 profileError(response.code())
@@ -632,6 +652,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getLikedArtworks(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
+                if (page == 1) likedArtworksCache = items
                 ApiResult.Success(items)
             } else {
                 profileError(response.code())

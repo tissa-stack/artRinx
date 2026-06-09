@@ -22,21 +22,32 @@ class HomeRepositoryImpl @Inject constructor(
     private val apiService: HomeApiService,
 ) : HomeRepository {
 
+    // SWR cache — survives navigation (this is @Singleton); cleared on logout/delete.
+    @Volatile private var feedCache: HomeFeed? = null
+    @Volatile private var shopCache: List<ShoppablePost>? = null
+
+    override fun cachedFeed(): HomeFeed? = feedCache
+    override fun cachedShop(): List<ShoppablePost>? = shopCache
+    override fun clearCache() {
+        feedCache = null
+        shopCache = null
+    }
+
     override suspend fun getDiscoverFeed(): ApiResult<HomeFeed> = safeCall {
         val response = apiService.getDiscoverFeed()
         if (response.isSuccessful) {
             val data = response.body()?.data
             val newArt = data?.newArt.orEmpty()
-            ApiResult.Success(
-                HomeFeed(
-                    banners = data?.sponsored.orEmpty().map { it.toBannerItem() },
-                    newArt = newArt.map { it.toArtworkItem() },
-                    curations = data?.popularCurations.orEmpty().map { it.toCurationItem() },
-                    posts = newArt.map { it.toFeedPost() },
-                    // Render in the exact order the backend returns recently_viewed.
-                    recentlyViewed = data?.recentlyViewed.orEmpty().map { it.toArtworkItem() },
-                ),
+            val feed = HomeFeed(
+                banners = data?.sponsored.orEmpty().map { it.toBannerItem() },
+                newArt = newArt.map { it.toArtworkItem() },
+                curations = data?.popularCurations.orEmpty().map { it.toCurationItem() },
+                posts = newArt.map { it.toFeedPost() },
+                // Render in the exact order the backend returns recently_viewed.
+                recentlyViewed = data?.recentlyViewed.orEmpty().map { it.toArtworkItem() },
             )
+            feedCache = feed
+            ApiResult.Success(feed)
         } else {
             errorFor(response)
         }
@@ -45,7 +56,9 @@ class HomeRepositoryImpl @Inject constructor(
     override suspend fun getShopArtworks(page: Int, size: Int): ApiResult<List<ShoppablePost>> = safeCall {
         val response = apiService.getShopArtworks(page, size)
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toShoppablePost() })
+            val items = response.body()?.data?.items.orEmpty().map { it.toShoppablePost() }
+            if (page == PAGE) shopCache = items // cache only the first page (what the tab seeds from)
+            ApiResult.Success(items)
         } else {
             errorFor(response)
         }
