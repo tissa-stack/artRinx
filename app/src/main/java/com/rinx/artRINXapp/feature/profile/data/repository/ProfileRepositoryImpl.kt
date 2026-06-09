@@ -51,6 +51,7 @@ class ProfileRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val profileRefreshBus: ProfileRefreshBus,
     private val session: SessionDataSource,
+    private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
 ) : ProfileRepository {
 
     // SWR cache for the Profile tab (first page only) — survives navigation (@Singleton);
@@ -370,6 +371,7 @@ class ProfileRepositoryImpl @Inject constructor(
                         avatarUrl = dto.profilePictureUrl,
                     )
                 }
+                blockedUsersStore.seed(items.map { it.userId }) // keep the local record in sync
                 ApiResult.Success(items)
             } else {
                 profileError(response.code())
@@ -385,6 +387,7 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.unblockUser(userId)
             if (response.isSuccessful) {
+                blockedUsersStore.markUnblocked(userId)
                 ApiResult.Success(Unit)
             } else {
                 profileError(response.code())
@@ -573,7 +576,12 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun blockUser(userId: Int): ApiResult<Unit> {
         return try {
             val response = apiService.block(BlockRequest(userId = userId))
-            if (response.isSuccessful) ApiResult.Success(Unit) else response.toApiError()
+            if (response.isSuccessful) {
+                blockedUsersStore.markBlocked(userId) // authoritative local record (survives profile 500s)
+                ApiResult.Success(Unit)
+            } else {
+                response.toApiError()
+            }
         } catch (e: IOException) {
             ApiResult.Error.Network(e)
         } catch (e: Exception) {

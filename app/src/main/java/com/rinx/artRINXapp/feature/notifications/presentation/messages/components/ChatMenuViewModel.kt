@@ -22,8 +22,10 @@ data class ChatMenuUiState(
     val iBlocked: Boolean = false,
     val isActioning: Boolean = false,
     val actionError: String? = null,
-    /** One-shot: set true after a successful block so the screen can show the blocked dialog. */
+    /** One-shot: set true after a successful block so the screen can exit to a safe screen. */
     val blockedSuccess: Boolean = false,
+    /** One-shot: set true after a successful unblock so the screen can close the confirm dialog. */
+    val unblockedSuccess: Boolean = false,
 )
 
 @HiltViewModel
@@ -75,7 +77,9 @@ class ChatMenuViewModel @Inject constructor(
         _state.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
             when (val r = profileRepository.unblockUser(userId)) {
-                is ApiResult.Success -> _state.update { it.copy(isActioning = false, iBlocked = false) }
+                is ApiResult.Success -> _state.update {
+                    it.copy(isActioning = false, iBlocked = false, unblockedSuccess = true)
+                }
                 is ApiResult.Error -> _state.update {
                     it.copy(isActioning = false, actionError = r.userMessage("Couldn't unblock. Please try again."))
                 }
@@ -99,6 +103,7 @@ class ChatMenuViewModel @Inject constructor(
 
     fun onActionErrorShown() = _state.update { it.copy(actionError = null) }
     fun onBlockedHandled() = _state.update { it.copy(blockedSuccess = false) }
+    fun onUnblockedHandled() = _state.update { it.copy(unblockedSuccess = false) }
 
     /** Delete all messages with this user (§7.10). */
     fun deleteChat() {

@@ -248,6 +248,7 @@ fun AppNavGraph(
                 onBack        = { navController.popBackStack() },
                 onViewProfile = { navController.navigate(NavRoutes.userProfile(userId, NavRoutes.NOTIFICATIONS)) },
                 onChatDeleted = { navController.popBackStack() },
+                onBlocked     = { navController.popBackStack() },
             )
         }
 

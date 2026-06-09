@@ -39,6 +39,8 @@ data class ChatUiState(
     /** profile.remaining_chat_invites — drives the "You have N new chats this month" footnote. */
     val remainingInvites: Int? = null,
     val isLoading: Boolean = true,
+    /** Pull-to-refresh in flight — a lightweight indicator, not the full-screen shimmer. */
+    val isRefreshing: Boolean = false,
     val error: Boolean = false,
     /** Pagination: more older messages exist + a load is in flight. */
     val canLoadEarlier: Boolean = false,
@@ -55,6 +57,8 @@ class ChatViewModel @Inject constructor(
     private val messagesRepository: MessagesRepository,
     private val profileRepository: ProfileRepository,
     private val webSocket: ChatWebSocketManager,
+    private val chatCache: com.rinx.artRINXapp.feature.notifications.data.local.ChatCache,
+    private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -69,9 +73,59 @@ class ChatViewModel @Inject constructor(
     private var isActive: Boolean = true
     private var iBlocked: Boolean = false
     private var theyBlocked: Boolean = false
+    private var canMessage: Boolean? = null
+    private var blockReason: String? = null
 
-    private val _state = MutableStateFlow(ChatUiState())
+    // Seed synchronously from cache so reopening a chat renders instantly with no shimmer (SWR).
+    private val _state = MutableStateFlow(seedFromCache())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
+
+    private fun seedFromCache(): ChatUiState {
+        val snap = chatCache.get(partnerUserId) ?: return ChatUiState(isLoading = true)
+        // Restore the gate inputs so deriveGate + sending behave correctly before the silent refresh.
+        invitationStatus = snap.invitationStatus
+        isActive = snap.isActive
+        // If I've blocked this user, that always wins (even over a stale cached gate / failed endpoints).
+        iBlocked = snap.iBlocked || blockedUsersStore.isBlocked(partnerUserId)
+        theyBlocked = snap.theyBlocked
+        blockReason = snap.blockReason
+        canMessage = snap.canMessage
+        chatroomId = snap.chatroomId
+        nextCursor = snap.nextCursor
+        return ChatUiState(
+            partnerName = snap.partnerName,
+            partnerRole = snap.partnerRole,
+            partnerAvatarUrl = snap.partnerAvatarUrl,
+            messages = snap.messages,
+            gate = if (iBlocked) ChatGate.BLOCKED_BY_ME else snap.gate,
+            remainingInvites = snap.remainingInvites,
+            isLoading = false,
+            canLoadEarlier = snap.nextCursor != null,
+        )
+    }
+
+    private fun cacheSnapshot(st: ChatUiState) {
+        if (partnerUserId == 0) return
+        chatCache.put(
+            partnerUserId,
+            com.rinx.artRINXapp.feature.notifications.data.local.ChatSnapshot(
+                messages = st.messages,
+                partnerName = st.partnerName,
+                partnerRole = st.partnerRole,
+                partnerAvatarUrl = st.partnerAvatarUrl,
+                gate = st.gate,
+                remainingInvites = st.remainingInvites,
+                invitationStatus = invitationStatus,
+                isActive = isActive,
+                iBlocked = iBlocked,
+                theyBlocked = theyBlocked,
+                blockReason = blockReason,
+                canMessage = canMessage,
+                chatroomId = chatroomId,
+                nextCursor = nextCursor,
+            ),
+        )
+    }
 
     private val _toasts = Channel<String>(Channel.BUFFERED)
     val toasts = _toasts.receiveAsFlow()
@@ -97,17 +151,29 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun loadConversation() {
+    /** Pull-to-refresh: reload without the full-screen shimmer (lightweight pull indicator). */
+    fun refresh() = loadConversation(isRefresh = true)
+
+    fun loadConversation(isRefresh: Boolean = false) {
         if (partnerUserId == 0) {
-            _state.update { it.copy(isLoading = false, error = true) }
+            _state.update { it.copy(isLoading = false, isRefreshing = false, error = true) }
             return
         }
-        _state.update { it.copy(isLoading = true, error = false) }
+        // First load shows the shimmer; a refresh shows the pull indicator; a cache-seeded reopen
+        // revalidates silently (no shimmer/spinner — content is already on screen).
+        val hasContent = _state.value.messages.isNotEmpty() || _state.value.partnerName.isNotBlank()
+        _state.update {
+            when {
+                isRefresh -> it.copy(isRefreshing = true)
+                hasContent -> it
+                else -> it.copy(isLoading = true, error = false)
+            }
+        }
         viewModelScope.launch {
             val meResult = profileRepository.getMyProfile()
             val me = (meResult as? ApiResult.Success)?.data
             if (me == null) {
-                _state.update { it.copy(isLoading = false, error = true) }
+                _state.update { it.copy(isLoading = false, isRefreshing = false, error = !isRefresh && !hasContent) }
                 return@launch
             }
             currentUserId = me.id
@@ -124,18 +190,38 @@ class ChatViewModel @Inject constructor(
             chatroomId = res?.chatroomId ?: pub?.chatroomId
 
             val threadData = (thread as? ApiResult.Success)?.data
-            if (threadData == null && pub == null) {
-                _state.update { it.copy(isLoading = false, error = true) }
+            // Only a true total failure errors out — resolveChatroom (res) alone is enough to render
+            // (its iBlocked/theyBlocked/blockReason drive the gate below).
+            if (threadData == null && pub == null && res == null) {
+                // Could be a mutual block (their profile/thread 500). Check MY blocked list — works
+                // regardless — to show the correct BLOCKED_BY_ME state instead of "Couldn't load".
+                val iBlockedThem = blockedUsersStore.isBlocked(partnerUserId) ||
+                    (profileRepository.getBlockedUsers(1, 200) as? ApiResult.Success)
+                        ?.data?.any { it.userId == partnerUserId } == true
+                if (iBlockedThem) {
+                    iBlocked = true
+                    _state.update {
+                        it.copy(isLoading = false, isRefreshing = false, error = false, gate = ChatGate.BLOCKED_BY_ME)
+                    }
+                } else {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, error = !isRefresh && !hasContent) }
+                }
                 return@launch
             }
 
             val messages = threadData?.messages.orEmpty().sortedBy { it.createdAtEpochMs }
             // Server fields drive the gate (handout tree). Prefer the thread, fall back to the
             // chatroom-resolution / public-profile payloads, then to safe defaults.
-            iBlocked = threadData?.iBlocked ?: res?.iBlocked ?: pub?.iBlocked ?: false
+            // I-blocked-them is authoritative locally too — covers profile/thread 500s on a mutual block.
+            iBlocked = (threadData?.iBlocked ?: res?.iBlocked ?: pub?.iBlocked ?: false) ||
+                blockedUsersStore.isBlocked(partnerUserId)
             theyBlocked = threadData?.theyBlocked ?: res?.theyBlocked ?: pub?.theyBlocked ?: false
             invitationStatus = threadData?.invitationStatus ?: res?.invitationStatus ?: false
             isActive = threadData?.isActive ?: res?.isActive ?: true
+            // Server-authoritative invite/relationship reason — survives even when messages are
+            // deleted, so the gate can still show the pending-invite state.
+            blockReason = threadData?.blockReason ?: res?.blockReason
+            canMessage = threadData?.canMessage ?: res?.canMessage
             val remaining = res?.remainingInvites ?: threadData?.remainingInvites
             nextCursor = threadData?.nextCursor
 
@@ -148,10 +234,12 @@ class ChatViewModel @Inject constructor(
                     gate = deriveGate(messages),
                     remainingInvites = remaining ?: it.remainingInvites,
                     isLoading = false,
+                    isRefreshing = false,
                     error = false,
                     canLoadEarlier = nextCursor != null,
                 )
             }
+            cacheSnapshot(_state.value) // SWR write-through for instant reopen
             hasLoadedOnce = true
         }
     }
@@ -177,8 +265,10 @@ class ChatViewModel @Inject constructor(
             val server = res.data
             invitationStatus = server.invitationStatus
             isActive = server.isActive
-            iBlocked = server.iBlocked
+            iBlocked = server.iBlocked || blockedUsersStore.isBlocked(partnerUserId)
             theyBlocked = server.theyBlocked
+            blockReason = server.blockReason
+            canMessage = server.canMessage
             if (server.nextCursor != null) nextCursor = server.nextCursor
             _state.update { st ->
                 val merged = mergeById(st.messages, server.messages)
@@ -189,6 +279,7 @@ class ChatViewModel @Inject constructor(
                     canLoadEarlier = nextCursor != null,
                 )
             }
+            cacheSnapshot(_state.value) // keep the SWR cache fresh after a reconnect backfill
             // Visible messages get marked read by onMessagesVisible after the list recomposes.
         }
     }
@@ -308,13 +399,15 @@ class ChatViewModel @Inject constructor(
                     }
                 }
                 is ApiResult.Error.Blocked -> {
-                    // 403: waiting-for-accept / block / invite-limit. Drop the optimistic bubble and
-                    // reflect the "invitation pending" gate (input disabled). Never sign out.
+                    // 403 (block / waiting-for-accept / invite-limit). Drop the optimistic bubble,
+                    // show the server's actual reason (e.g. "Cannot message blocked user"), and refetch
+                    // so the gate reflects the true state (BLOCKED_BY_THEM, INVITE_SENT_WAITING, …).
+                    // Never sign out.
                     _state.update { st ->
-                        val msgs = st.messages.filterNot { it.clientMessageId == cid }
-                        st.copy(messages = msgs, gate = ChatGate.INVITE_SENT_WAITING)
+                        st.copy(messages = st.messages.filterNot { it.clientMessageId == cid })
                     }
-                    _toasts.trySend("Your invitation is pending — you can message again once they respond.")
+                    _toasts.trySend(res.message)
+                    backfill()
                 }
                 else -> {
                     _state.update { st ->
@@ -407,9 +500,18 @@ class ChatViewModel @Inject constructor(
         // The socket payload doesn't carry invitation_status/is_active. A received message means
         // the partner is participating; if I've also sent one, the invite is accepted and the chat
         // is active. Reconcile the gate inputs so the field unlocks without waiting for a refetch.
-        if (!msg.isSent && _state.value.messages.any { it.isSent && it.sendStatus != SendStatus.FAILED }) {
+        // A received message means the partner replied. If I had a pending sent invite — either a
+        // local sent message, OR the server-tracked pending invite (block_reason == "invite_pending",
+        // e.g. after block→delete→unblock left no local messages) — that reply accepts it → activate.
+        val iHadPendingInvite = blockReason == "invite_pending" ||
+            _state.value.messages.any { it.isSent && it.sendStatus != SendStatus.FAILED }
+        if (!msg.isSent && iHadPendingInvite) {
             invitationStatus = true
             isActive = true
+            // Clear the stale pending-invite lock so the gate unlocks (otherwise
+            // block_reason == "invite_pending" keeps the field disabled).
+            blockReason = null
+            canMessage = true
         }
         _state.update { st ->
             // Dedup: reconcile our own optimistic/echoed message, skip duplicates by id.
@@ -443,6 +545,9 @@ class ChatViewModel @Inject constructor(
         return when {
             iBlocked -> ChatGate.BLOCKED_BY_ME
             theyBlocked -> ChatGate.BLOCKED_BY_THEM
+            // A sent invite still pending server-side (block_reason authoritative) → keep the field
+            // disabled even if the messages were deleted (block → delete → unblock leaves none).
+            blockReason == "invite_pending" -> ChatGate.INVITE_SENT_WAITING
             // No chat yet — this first message is the invitation.
             real.isEmpty() && chatroomId.isNullOrEmpty() -> ChatGate.FRESH_INVITE
             // They invited me; I haven't replied yet → replying accepts.

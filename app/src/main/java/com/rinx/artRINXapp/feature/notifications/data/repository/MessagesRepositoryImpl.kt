@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.notifications.data.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.serverMessageOrNull
 import com.rinx.artRINXapp.feature.notifications.data.remote.MessagesApiService
 import com.rinx.artRINXapp.feature.notifications.data.remote.dto.ChatroomPreviewDto
 import com.rinx.artRINXapp.feature.notifications.data.remote.dto.EditMessageRequest
@@ -129,7 +130,7 @@ class MessagesRepositoryImpl @Inject constructor(
             if (response.code() == 400 && raw?.contains("Edit window expired", ignoreCase = true) == true) {
                 ApiResult.Error.Validation("Edit window expired")
             } else {
-                errorFor(response)
+                errorFor(response, raw) // pass the already-read body (errorBody can only be read once)
             }
         }
     }
@@ -290,11 +291,18 @@ class MessagesRepositoryImpl @Inject constructor(
         ApiResult.Error.Unknown(e)
     }
 
-    /** 403 is an action-denied (block / waiting-for-accept / invite-limit) — NOT a sign-out (§7.2). */
-    private fun errorFor(response: Response<*>): ApiResult.Error = when (response.code()) {
-        403 -> ApiResult.Error.Blocked(response.errorBody()?.string()?.take(300) ?: "Action not allowed")
-        404 -> ApiResult.Error.NotFound("Not found")
-        in 400..499 -> ApiResult.Error.Validation("Request failed (${response.code()})")
+    /**
+     * 403 is an action-denied (block / waiting-for-accept / invite-limit) — NOT a sign-out (§7.2).
+     * Carries the server's real message (e.g. "Cannot message blocked user") so the UI can show it.
+     * [body] lets callers that already read errorBody pass it (avoids a double-read that returns null).
+     */
+    private fun errorFor(
+        response: Response<*>,
+        body: String? = response.errorBody()?.string(),
+    ): ApiResult.Error = when (response.code()) {
+        403 -> ApiResult.Error.Blocked(serverMessageOrNull(body) ?: "Action not allowed")
+        404 -> ApiResult.Error.NotFound(serverMessageOrNull(body) ?: "Not found")
+        in 400..499 -> ApiResult.Error.Validation(serverMessageOrNull(body) ?: "Request failed (${response.code()})")
         in 500..599 -> ApiResult.Error.Server(response.code())
         else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
     }

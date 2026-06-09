@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -41,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -75,6 +77,7 @@ import com.rinx.artRINXapp.feature.notifications.presentation.messages.component
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ConfirmDialog
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ReportReasonSheet
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ReportSentSheet
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatGate
@@ -90,6 +93,7 @@ fun ChatScreen(
     onBack: () -> Unit,
     onViewProfile: () -> Unit,
     onChatDeleted: () -> Unit,
+    onBlocked: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel(),
     menuViewModel: ChatMenuViewModel = hiltViewModel(),
 ) {
@@ -118,6 +122,7 @@ fun ChatScreen(
     var showReportSent by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var blockConfirm by remember { mutableStateOf(false) }
+    var unblockConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(menuState.actionError) {
         menuState.actionError?.let {
@@ -126,10 +131,20 @@ fun ChatScreen(
         }
     }
     LaunchedEffect(menuState.blockedSuccess) {
-        // Block done → just close the confirm; the menu item now reads "Unblock". No report prompt.
+        // Blocked → leave the chat for a safe screen (you can no longer message this user).
         if (menuState.blockedSuccess) {
             blockConfirm = false
             menuViewModel.onBlockedHandled()
+            onBlocked()
+        }
+    }
+    LaunchedEffect(menuState.unblockedSuccess) {
+        // Unblocked → close the confirm; the menu's full option set returns.
+        if (menuState.unblockedSuccess) {
+            unblockConfirm = false
+            menuViewModel.onUnblockedHandled()
+            // Refresh the chat so the gate flips back to ACTIVE — footer + menu return to normal.
+            viewModel.loadConversation()
         }
     }
 
@@ -142,6 +157,16 @@ fun ChatScreen(
             isLoading = menuState.isActioning,
             onConfirm = { menuViewModel.blockUser() },
             onDismiss = { blockConfirm = false },
+        )
+    }
+    if (unblockConfirm) {
+        ConfirmActionDialog(
+            title = "Are you sure want\nto unblock \"${menuState.name}\"?",
+            confirmLabel = "Unblock",
+            iconRes = R.drawable.ic_block,
+            isLoading = menuState.isActioning,
+            onConfirm = { menuViewModel.unblockUser() },
+            onDismiss = { unblockConfirm = false },
         )
     }
     if (showDeleteConfirm) {
@@ -228,7 +253,9 @@ fun ChatScreen(
                 modifier   = Modifier.weight(1f),
                 textAlign  = TextAlign.Center,
             )
-            Box {
+            // Hidden while the chat genuinely couldn't load — its actions would only error out.
+            // (A blocked chat resolves with error=false, so its Unblock/Delete menu still shows.)
+            if (!state.error) Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Default.MoreVert, "More", tint = iconColor)
                 }
@@ -237,33 +264,63 @@ fun ChatScreen(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("View profile") },
-                        onClick = { menuExpanded = false; onViewProfile() },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete messages") },
-                        onClick = { menuExpanded = false; showDeleteConfirm = true },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Report profile") },
-                        onClick = { menuExpanded = false; showReasonSheet = true },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(if (menuState.iBlocked) "Unblock profile" else "Block profile") },
-                        onClick = {
-                            menuExpanded = false
-                            // Block asks confirmation; unblock is immediate. Either way the item text
-                            // flips as soon as iBlocked updates.
-                            if (menuState.iBlocked) menuViewModel.unblockUser() else blockConfirm = true
-                        },
-                    )
+                    when (state.gate) {
+                        // I blocked them → only Unblock + Delete; their profile is inaccessible.
+                        ChatGate.BLOCKED_BY_ME -> {
+                            DropdownMenuItem(
+                                text = { Text("Unblock profile") },
+                                onClick = { menuExpanded = false; unblockConfirm = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete messages") },
+                                onClick = { menuExpanded = false; showDeleteConfirm = true },
+                            )
+                        }
+                        // They blocked me → their profile is inaccessible (would 500), so no
+                        // "View profile"; I can still delete, report, or block them back.
+                        ChatGate.BLOCKED_BY_THEM -> {
+                            DropdownMenuItem(
+                                text = { Text("Delete messages") },
+                                onClick = { menuExpanded = false; showDeleteConfirm = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Report profile") },
+                                onClick = { menuExpanded = false; showReasonSheet = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Block profile") },
+                                onClick = { menuExpanded = false; blockConfirm = true },
+                            )
+                        }
+                        else -> {
+                            DropdownMenuItem(
+                                text = { Text("View profile") },
+                                onClick = { menuExpanded = false; onViewProfile() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete messages") },
+                                onClick = { menuExpanded = false; showDeleteConfirm = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Report profile") },
+                                onClick = { menuExpanded = false; showReasonSheet = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Block profile") },
+                                onClick = { menuExpanded = false; blockConfirm = true },
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        // ── Messages ──────────────────────────────────────────────────
-        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+        // ── Messages (pull down to refresh) ───────────────────────────
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxWidth().weight(1f),
+        ) {
         when {
             state.isLoading -> CircularProgressIndicator(
                 color    = BrandPrimary,
@@ -338,8 +395,21 @@ fun ChatScreen(
         )
 
         // ── Input bar ─────────────────────────────────────────────────
+        // While the conversation/gate is still loading, show a shimmer placeholder and keep texting
+        // disabled — we don't yet know whether sending is allowed.
+        if (state.isLoading) {
+            ChatInputShimmer(bg = chatBg)
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(chatBg)
+                    .navigationBarsPadding(),
+            )
+            return@Column
+        }
         val editing = state.editingMessageId != null
-        val enabled = editing || state.canSend
+        // A genuine load error leaves no valid relationship data → keep the field disabled.
+        val enabled = !state.error && (editing || state.canSend)
         val placeholder = when {
             editing  -> "Edit your message"
             !enabled -> "Messaging disabled"
@@ -443,6 +513,27 @@ fun ChatScreen(
                 Spacer(Modifier.height(Spacing.md))
             }
         }
+    }
+}
+
+/** One shimmer bar standing in for the whole compose row while loading (texting disabled). */
+@Composable
+private fun ChatInputShimmer(bg: Color) {
+    val d = LocalDimens.current
+    val shimmer = rememberShimmerBrush()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bg)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(d.authButtonHeight)
+                .clip(RoundedCornerShape(Spacing.lg))
+                .background(shimmer),
+        )
     }
 }
 

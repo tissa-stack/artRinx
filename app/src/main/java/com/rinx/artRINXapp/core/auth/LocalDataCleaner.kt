@@ -1,9 +1,11 @@
 package com.rinx.artRINXapp.core.auth
 
 import com.rinx.artRINXapp.core.offline.LiveMutationQueue
+import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
+import com.rinx.artRINXapp.feature.notifications.data.local.ChatCache
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
 import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -35,6 +37,8 @@ class LocalDataCleaner @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val detailCache: DetailCache,
     private val curationPreviewStore: CurationPreviewStore,
+    private val chatCache: ChatCache,
+    private val blockedUsersStore: BlockedUsersStore,
 ) {
     /** Wipe in-memory caches + transient upload/curation state. Keeps the session. */
     fun clearCaches() {
@@ -45,6 +49,8 @@ class LocalDataCleaner @Inject constructor(
         profileRepository.clearCache()
         detailCache.clear()
         curationPreviewStore.clear()
+        chatCache.clear()
+        blockedUsersStore.clear()
     }
 
     /** Wipe ALL user-scoped local state — tokens, draft, offline queue, and caches. Logout/delete. */

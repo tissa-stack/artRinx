@@ -23,6 +23,9 @@ fun Response<*>.toApiError(): ApiResult.Error {
     }
 }
 
+/** Public access to the server's human-readable message from a raw error body (null if none). */
+fun serverMessageOrNull(body: String?): String? = parseServerMessage(body)
+
 private fun parseServerMessage(body: String?): String? {
     if (body.isNullOrBlank()) return null
     return runCatching {
