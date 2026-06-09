@@ -65,7 +65,7 @@ fun TopTabs(
             contentAlignment = Alignment.Center,
         ) {
             AsyncImage(
-                model = if (isDarkTheme) R.drawable.ic_white_logo else R.drawable.ic_black_logo,
+                model = if (isDarkTheme) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
                 contentDescription = "ArtRinx",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.height(d.logoHeight),

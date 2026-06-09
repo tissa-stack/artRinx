@@ -210,7 +210,7 @@ private fun ProfileCreationContent(
                 }
                 Image(
                     painter = painterResource(
-                        if (isDark) R.drawable.ic_white_logo else R.drawable.ic_black_logo,
+                        if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
                     ),
                     contentDescription = "RiNX logo",
                     modifier = Modifier

@@ -6,7 +6,8 @@
     <style name="Theme.ArtRinx.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
+        <!-- No icon background color: it forced the icon into a ~160dp circle that clipped the wide
+             6:1 wordmark. The plate was invisible anyway (same color as the splash background). -->
         <item name="postSplashScreenTheme">@style/Theme.ArtRinx</item>
     </style>
 

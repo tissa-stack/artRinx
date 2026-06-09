@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Dark-theme splash icon. Same square-footprint + explicit-size approach as the light variant;
+    uses the white-on-dark wordmark. See drawable/ic_splash_logo.xml for the sizing rationale.
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:top="88dp"
-        android:bottom="88dp"
-        android:left="40dp"
-        android:right="40dp">
-        <bitmap
-            android:src="@drawable/ic_white_logo"
-            android:gravity="center"/>
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="240dp" android:height="240dp" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
     </item>
+    <item
+        android:drawable="@drawable/artrinx_logo_dark_theme"
+        android:width="144dp"
+        android:height="24dp"
+        android:gravity="center" />
 </layer-list>

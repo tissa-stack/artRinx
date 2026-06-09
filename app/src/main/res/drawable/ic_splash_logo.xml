@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Wraps ic_black_logo.png with insets so it renders at a smaller size within
-    the Android 12+ splash icon container (240×240dp). Insets give the logo
-    roughly 160dp wide × 64dp tall in the centre of the icon area.
+    Light-theme splash icon (Android 12+ windowSplashScreenAnimatedIcon).
+    The transparent 240x240 layer forces a square footprint so the splash system doesn't shrink the
+    icon to the wordmark's ~6:1 aspect. The logo is then drawn at an explicit 144x24dp, centred — it
+    keeps the wordmark's true 6:1 ratio and stays inside the ~160dp circular safe area (no clipping).
+    A wide wordmark can only render small here; use a square/stacked mark if you want it larger.
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:top="88dp"
-        android:bottom="88dp"
-        android:left="40dp"
-        android:right="40dp">
-        <bitmap
-            android:src="@drawable/ic_black_logo"
-            android:gravity="center"/>
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="240dp" android:height="240dp" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
     </item>
+    <item
+        android:drawable="@drawable/artrinx_logo_light_theme"
+        android:width="144dp"
+        android:height="24dp"
+        android:gravity="center" />
 </layer-list>
