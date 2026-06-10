@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -90,6 +91,9 @@ fun NewCurationScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
+                // Keep content (incl. the bottom Create/Save button) clear of the system 3-button
+                // nav bar. Consumed here so the inner imePadding doesn't double-count it.
+                .navigationBarsPadding()
                 // Dismiss keyboard on tap outside interactive elements
                 .pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } },
         ) {

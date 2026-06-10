@@ -394,7 +394,7 @@ fun AppNavGraph(
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
                 onTermsAndConditions  = { runCatching { uriHandler.openUri(LegalLinks.TERMS_OF_USE) } },
-                onFaqs                = { /* TODO */ },
+                onCommunityGuidelines = { runCatching { uriHandler.openUri(LegalLinks.COMMUNITY_GUIDELINES) } },
                 onAboutUs             = { runCatching { uriHandler.openUri(LegalLinks.ABOUT_US) } },
                 onPrivacyPolicy       = { runCatching { uriHandler.openUri(LegalLinks.PRIVACY_POLICY) } },
                 onLogout              = {

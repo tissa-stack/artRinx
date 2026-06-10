@@ -6,8 +6,12 @@ import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Cached artwork-detail payload: the post plus its "more like this" list. */
-data class ArtDetailEntry(val post: ShoppablePost, val similar: List<ArtworkItem>)
+/**
+ * Cached artwork-detail payload: the post, its "more like this" list, and whether the current user
+ * owns it. [isOwn] is cached so a re-open renders the correct top-bar action (Edit/Delete vs Report)
+ * immediately, with no Report→Edit flash while ownership re-resolves over the network.
+ */
+data class ArtDetailEntry(val post: ShoppablePost, val similar: List<ArtworkItem>, val isOwn: Boolean = false)
 
 /** Cached curation-detail payload: the (post-reorder) curation plus its "more like this" list. */
 data class CurationDetailEntry(val curation: CurationItem, val more: List<CurationItem>)
@@ -30,8 +34,8 @@ class DetailCache @Inject constructor() {
     // ── Artwork ──────────────────────────────────────────────────────────────
     fun peekArtwork(id: Int): ArtDetailEntry? = synchronized(art) { art[id] }
 
-    fun putArtwork(id: Int, post: ShoppablePost, similar: List<ArtworkItem>) =
-        synchronized(art) { art[id] = ArtDetailEntry(post, similar) }
+    fun putArtwork(id: Int, post: ShoppablePost, similar: List<ArtworkItem>, isOwn: Boolean) =
+        synchronized(art) { art[id] = ArtDetailEntry(post, similar, isOwn) }
 
     /** Write-through a like toggle onto the cached post (no-op if not cached). */
     fun updateArtworkLike(id: Int, isLiked: Boolean, likeCount: Int) = synchronized(art) {

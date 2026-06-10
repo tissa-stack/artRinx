@@ -13,10 +13,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -29,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rinx.artRINXapp.core.theme.BrandPrimary
@@ -106,7 +104,7 @@ fun MediumPickerSheet(
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         modifier   = Modifier.weight(1f),
                     )
-                    MediumCheckbox(checked = isSelected)
+                    MediumRadioButton(selected = isSelected)
                 }
             }
             Spacer(Modifier.height(Spacing.lg))
@@ -114,26 +112,26 @@ fun MediumPickerSheet(
     }
 }
 
+/** Single-select indicator: only one medium can be chosen, so use a radio dot, not a checkbox. */
 @Composable
-private fun MediumCheckbox(checked: Boolean) {
+private fun MediumRadioButton(selected: Boolean) {
     Box(
         modifier         = Modifier
             .size(18.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(if (checked) BrandPrimary else Color.Transparent)
+            .clip(CircleShape)
             .border(
-                width = if (checked) 0.dp else 1.5.dp,
-                color = if (checked) Color.Transparent else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(3.dp),
+                width = 1.5.dp,
+                color = if (selected) BrandPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                shape = CircleShape,
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) {
-            Icon(
-                imageVector        = Icons.Default.Check,
-                contentDescription = null,
-                tint               = Color.White,
-                modifier           = Modifier.size(12.dp),
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(BrandPrimary),
             )
         }
     }

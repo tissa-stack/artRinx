@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.create.presentation
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -238,7 +239,9 @@ fun CreateScreen(
                     modifier         = Modifier
                         .clip(RoundedCornerShape(50))
                         .border(1.dp, BrandPrimary, RoundedCornerShape(50))
-                        .clickable { }
+                        .clickable {
+                            Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
+                        }
                         .padding(horizontal = Spacing.md, vertical = Spacing.xs),
                     contentAlignment = Alignment.Center,
                 ) {

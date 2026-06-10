@@ -36,6 +36,9 @@ data class ArtDetailUiState(
     val error: Boolean = false,
     /** True when the current user owns this artwork → show Edit/Delete instead of Report. */
     val isOwn: Boolean = false,
+    /** False until ownership is known. The top-bar action stays hidden until then so we never
+     *  flash Report on the user's own art before [isOwn] resolves. */
+    val ownershipResolved: Boolean = false,
     val isDeleting: Boolean = false,
     // ── Report / block (moderation) ──
     val isReporting: Boolean = false,
@@ -81,7 +84,13 @@ class ArtDetailViewModel @Inject constructor(
     private fun seedFromCache(): ArtDetailUiState {
         val id = artworkId ?: return ArtDetailUiState(isLoading = true)
         val cached = detailCache.peekArtwork(id) ?: return ArtDetailUiState(isLoading = true)
-        return ArtDetailUiState(post = cached.post, moreLikeThis = cached.similar, isLoading = false)
+        return ArtDetailUiState(
+            post = cached.post,
+            moreLikeThis = cached.similar,
+            isLoading = false,
+            isOwn = cached.isOwn,
+            ownershipResolved = true,
+        )
     }
 
     /** One-shot: emitted after a successful delete so the screen can pop back. */
@@ -127,9 +136,12 @@ class ArtDetailViewModel @Inject constructor(
                 // Keep prior similar list if this refresh's similar call failed/absent.
                 val similar = (similarRes as? ApiResult.Success)?.data ?: _uiState.value.moreLikeThis
                 val isOwn = meId != null && post.ownerId == meId
-                detailCache.putArtwork(id, post, similar)
+                detailCache.putArtwork(id, post, similar, isOwn)
                 _uiState.update {
-                    it.copy(isLoading = false, error = false, post = post, moreLikeThis = similar, isOwn = isOwn)
+                    it.copy(
+                        isLoading = false, error = false, post = post, moreLikeThis = similar,
+                        isOwn = isOwn, ownershipResolved = true,
+                    )
                 }
                 // Resolve the conversation state with the owner so the send sheet shows the right
                 // framing (plain message for an active chat, not a fresh invitation).

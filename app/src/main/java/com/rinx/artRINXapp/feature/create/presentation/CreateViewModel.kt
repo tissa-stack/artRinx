@@ -52,10 +52,14 @@ class CreateViewModel @Inject constructor(
     fun resolveUploadAction(): UploadAction {
         val q = _state.value.quota ?: return UploadAction.OPEN_PICKER
         return when {
-            q.isPaid && q.limitReached -> UploadAction.LIMIT_REACHED
-            q.isPaid -> UploadAction.OPEN_PICKER
+            // Gallery is a web-billed (Stripe) plan: uploads are managed on artrinx.com, never via
+            // an in-app purchase (Apple anti-steering). Keep redirecting Gallery-role users to web.
             q.isGallery -> UploadAction.GALLERY_WEB
-            else -> UploadAction.UPGRADE_REQUIRED
+            // Every logged-in user is at least a Basic user, which the plan grants 10 uploads. Allow
+            // uploading up to the plan cap (10 Basic / 99 paid) and only block once it's reached —
+            // no upgrade paywall before the limit.
+            q.limitReached -> UploadAction.LIMIT_REACHED
+            else -> UploadAction.OPEN_PICKER
         }
     }
 }

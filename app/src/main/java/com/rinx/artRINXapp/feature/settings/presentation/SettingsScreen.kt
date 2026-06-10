@@ -57,7 +57,7 @@ fun SettingsScreen(
     onInviteFriends: () -> Unit,
     onBlockedAccounts: () -> Unit,
     onTermsAndConditions: () -> Unit,
-    onFaqs: () -> Unit,
+    onCommunityGuidelines: () -> Unit,
     onAboutUs: () -> Unit,
     onPrivacyPolicy: () -> Unit,
     onLogout: () -> Unit,
@@ -132,7 +132,7 @@ fun SettingsScreen(
 
             SectionHeader("Resources")
             SettingsRow(painter = R.drawable.ic_terms_and_conditions, label = "Terms and conditions", onClick = onTermsAndConditions)
-            SettingsRow(painter = R.drawable.ic_faq, label = "FAQS", onClick = onFaqs)
+            SettingsRow(painter = R.drawable.ic_guidelines, label = "Community Guidelines", onClick = onCommunityGuidelines)
             SettingsRow(painter = R.drawable.ic_about_us, label = "About us", onClick = onAboutUs)
             SettingsRow(painter = R.drawable.ic_privacy_policy, label = "Privacy policy", onClick = onPrivacyPolicy)
 

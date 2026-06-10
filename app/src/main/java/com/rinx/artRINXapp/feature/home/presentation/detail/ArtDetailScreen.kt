@@ -242,6 +242,8 @@ fun ArtDetailScreen(
                     )
                 }
                 Spacer(Modifier.weight(1f))
+                // Hold the action until ownership is known so we never flash Report on our own art.
+                if (uiState.ownershipResolved) {
                 if (uiState.isOwn) {
                     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                         IconButton(
@@ -285,6 +287,7 @@ fun ArtDetailScreen(
                             tint = Color.White,
                         )
                     }
+                }
                 }
             }
         }
