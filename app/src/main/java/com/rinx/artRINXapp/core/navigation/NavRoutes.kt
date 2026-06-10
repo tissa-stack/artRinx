@@ -25,6 +25,7 @@ object NavRoutes {
     const val PROFILE_TITLE_PLAN_EDIT = "profile_title_plan_edit?step={step}"
     const val BLOCKED_ACCOUNTS       = "blocked_accounts"
     const val INVITE_FRIENDS         = "invite_friends"
+    const val PHONE_PERMISSIONS      = "phone_permissions"
 
     fun profileTitlePlanEdit(step: Int = 0) = "profile_title_plan_edit?step=$step"
 

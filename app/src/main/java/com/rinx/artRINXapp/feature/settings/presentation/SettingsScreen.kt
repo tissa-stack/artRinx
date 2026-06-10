@@ -60,6 +60,7 @@ fun SettingsScreen(
     onProfileTitleAndPlan: () -> Unit,
     onInviteFriends: () -> Unit,
     onBlockedAccounts: () -> Unit,
+    onPhonePermissions: () -> Unit,
     onTermsAndConditions: () -> Unit,
     onCommunityGuidelines: () -> Unit,
     onAboutUs: () -> Unit,
@@ -145,6 +146,7 @@ fun SettingsScreen(
 
             SectionHeader("Privacy")
             SettingsRow(painter = R.drawable.ic_blocked_accounts, label = "Blocked accounts", onClick = onBlockedAccounts)
+            SettingsRow(imageVector = Icons.Outlined.PhoneAndroid, label = "Phone Permissions", onClick = onPhonePermissions)
 
             SectionHeader("Resources")
             SettingsRow(painter = R.drawable.ic_terms_and_conditions, label = "Terms and conditions", onClick = onTermsAndConditions)
@@ -155,13 +157,15 @@ fun SettingsScreen(
             Spacer(Modifier.height(Spacing.xxxl))
         }
 
-        // ── Logout pill ─────────────────────────────────────────────────────────
-        Box(
+        // ── Logout pill + app version ─────────────────────────────────────────────
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = dimens.screenPaddingHorizontal, vertical = Spacing.lg),
-            contentAlignment = Alignment.Center,
+                .padding(horizontal = dimens.screenPaddingHorizontal)
+                .padding(top = Spacing.lg, bottom = Spacing.md),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             Row(
                 modifier = Modifier
@@ -184,6 +188,13 @@ fun SettingsScreen(
                     modifier = Modifier.size(Spacing.lg),
                 )
             }
+
+            // App version (handout §9)
+            Text(
+                text = "App Version ${state.appVersion}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 

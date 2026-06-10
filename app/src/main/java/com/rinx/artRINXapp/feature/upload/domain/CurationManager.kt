@@ -31,11 +31,17 @@ class CurationManager @Inject constructor(
     private var job: Job? = null
     private var lastRequest: CreateCurationRequest? = null
 
-    /** Fire-and-forget. Ignores the call if a create is already running. */
-    fun enqueue(request: CreateCurationRequest) {
-        if (job?.isActive == true) return
+    /**
+     * Fire-and-forget. Returns `false` (and does nothing) if a create is already running. On accept,
+     * clears any stale terminal so this run emits a fresh `null → Creating → Success` sequence
+     * (mirrors [UploadManager]).
+     */
+    fun enqueue(request: CreateCurationRequest): Boolean {
+        if (job?.isActive == true) return false
         lastRequest = request
+        _progress.value = null
         job = scope.launch { run(request) }
+        return true
     }
 
     fun retry() {

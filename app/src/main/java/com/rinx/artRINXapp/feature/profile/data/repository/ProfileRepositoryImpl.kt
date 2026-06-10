@@ -201,6 +201,7 @@ class ProfileRepositoryImpl @Inject constructor(
                         city = dto.city.orEmpty(),
                         profilePictureUrl = dto.profilePictureUrl,
                         fullNameEditCount = dto.fullNameEditCount ?: 0,
+                        marketingSmsConsent = dto.marketingSmsConsent ?: false,
                     ),
                 )
             } else {
@@ -269,6 +270,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 changes.state?.let { parts["state"] = it.toRequestBody(textPlain) }
                 changes.city?.let { parts["city"] = it.toRequestBody(textPlain) }
                 changes.profileTypeId?.let { parts["profile_type_id"] = it.toString().toRequestBody(textPlain) }
+                changes.marketingSmsConsent?.let { parts["marketing_sms_consent"] = it.toString().toRequestBody(textPlain) }
 
                 val picturePart = newPictureUri?.let { uri ->
                     context.contentResolver.openInputStream(uri)?.use { stream ->
@@ -307,8 +309,10 @@ class ProfileRepositoryImpl @Inject constructor(
                 ApiResult.Success(
                     InviteInfo(
                         code = dto.invitationCode,
-                        remainingInvites = dto.remainingInvites,
-                        remainingChatInvites = dto.remainingChatInvites,
+                        // Prefer the override-aware nested counters (handout §16); fall back to legacy flat fields.
+                        remainingInvites = dto.peerInvites?.remaining ?: dto.remainingInvites,
+                        remainingChatInvites = dto.messageRequests?.remaining ?: dto.remainingChatInvites,
+                        chatInvitesMonthlyCap = dto.messageRequests?.monthlyCap,
                     ),
                 )
             } else {

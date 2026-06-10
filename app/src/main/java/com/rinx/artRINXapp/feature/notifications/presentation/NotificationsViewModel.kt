@@ -2,10 +2,14 @@ package com.rinx.artRINXapp.feature.notifications.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rinx.artRINXapp.core.navigation.DeepLinkRouter
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.network.ChatEvent
 import com.rinx.artRINXapp.core.network.ChatWebSocketManager
+import com.rinx.artRINXapp.feature.events.domain.model.EventDetail
+import com.rinx.artRINXapp.feature.events.domain.repository.EventsRepository
+import com.rinx.artRINXapp.feature.notifications.domain.UnreadNotificationsStore
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotifTab
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
@@ -34,6 +38,13 @@ data class NotificationsUiState(
     // blanks an already-populated tab (SWR).
     val notificationsError: String? = null,
     val conversationsError: String? = null,
+    // ── Event popup ──────────────────────────────────────────────────────────────
+    /** Non-null while the popup is open (null content + isEventLoading = fetching). */
+    val isEventPopupOpen: Boolean = false,
+    val isEventLoading: Boolean = false,
+    val eventPopup: EventDetail? = null,
+    /** One-shot error message for a failed/missing event fetch; cleared via [consumeEventError]. */
+    val eventError: String? = null,
 )
 
 @HiltViewModel
@@ -41,6 +52,9 @@ class NotificationsViewModel @Inject constructor(
     private val messagesRepository: MessagesRepository,
     private val notificationsRepository: NotificationsRepository,
     private val profileRepository: ProfileRepository,
+    private val eventsRepository: EventsRepository,
+    private val deepLinkRouter: DeepLinkRouter,
+    private val unreadStore: UnreadNotificationsStore,
     private val webSocket: ChatWebSocketManager,
 ) : ViewModel() {
 
@@ -62,6 +76,18 @@ class NotificationsViewModel @Inject constructor(
                 }
             }
         }
+        // A deep-link/push event parks its id here; switch to Notifications + open the popup.
+        viewModelScope.launch {
+            deepLinkRouter.pendingEventId.collect { id ->
+                if (id != null) {
+                    deepLinkRouter.consumeEventId()
+                    id.toLongOrNull()?.let { eid ->
+                        _state.update { it.copy(activeTab = NotifTab.NOTIFICATIONS) }
+                        onOpenEvent(eid)
+                    }
+                }
+            }
+        }
     }
 
     fun onTabSelected(tab: NotifTab) {
@@ -75,8 +101,11 @@ class NotificationsViewModel @Inject constructor(
     fun loadNotifications() {
         viewModelScope.launch {
             when (val res = notificationsRepository.getNotifications()) {
-                is ApiResult.Success -> _state.update {
-                    it.copy(notifications = res.data, isLoadingNotifications = false, notificationsError = null)
+                is ApiResult.Success -> {
+                    _state.update {
+                        it.copy(notifications = res.data, isLoadingNotifications = false, notificationsError = null)
+                    }
+                    unreadStore.set(res.data.count { !it.isRead })
                 }
                 is ApiResult.Error -> _state.update {
                     it.copy(isLoadingNotifications = false, notificationsError = res.userMessage())
@@ -153,8 +182,9 @@ class NotificationsViewModel @Inject constructor(
     // ── Notifications ──────────────────────────────────────────────────────────────
 
     /** No delete endpoint exists (§8) — remove locally only. */
-    fun onDeleteNotification(id: String) = _state.update {
-        it.copy(notifications = it.notifications.filter { n -> n.id != id })
+    fun onDeleteNotification(id: String) {
+        _state.update { it.copy(notifications = it.notifications.filter { n -> n.id != id }) }
+        unreadStore.set(_state.value.notifications.count { !it.isRead })
     }
 
     /** Optimistic local read, then PATCH /api/notifications/{id}/read (§8.1). */
@@ -164,6 +194,38 @@ class NotificationsViewModel @Inject constructor(
                 if (n.id == id) n.copy(isRead = true) else n
             })
         }
+        // Keep the bell badge in sync with the optimistic read.
+        unreadStore.set(_state.value.notifications.count { !it.isRead })
         viewModelScope.launch { notificationsRepository.markRead(id) }
     }
+
+    // ── Event popup ──────────────────────────────────────────────────────────────
+
+    /** Open the popup (spinner first), fetch the event; on failure close + surface a toast. */
+    fun onOpenEvent(eventId: Long) {
+        _state.update { it.copy(isEventPopupOpen = true, isEventLoading = true, eventPopup = null, eventError = null) }
+        viewModelScope.launch {
+            when (val res = eventsRepository.getEvent(eventId)) {
+                is ApiResult.Success -> _state.update {
+                    it.copy(isEventLoading = false, eventPopup = res.data)
+                }
+                is ApiResult.Error -> _state.update {
+                    // Legacy 404 events → "Event not found"; everything else → its message.
+                    it.copy(
+                        isEventPopupOpen = false,
+                        isEventLoading = false,
+                        eventPopup = null,
+                        eventError = if (res is ApiResult.Error.NotFound) "Event not found" else res.userMessage(),
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissEventPopup() = _state.update {
+        it.copy(isEventPopupOpen = false, isEventLoading = false, eventPopup = null)
+    }
+
+    /** Clear the one-shot event error after the screen has shown it as a toast. */
+    fun consumeEventError() = _state.update { it.copy(eventError = null) }
 }

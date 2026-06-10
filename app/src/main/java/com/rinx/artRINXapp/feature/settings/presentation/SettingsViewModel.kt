@@ -1,9 +1,11 @@
 package com.rinx.artRINXapp.feature.settings.presentation
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,10 +20,13 @@ data class SettingsUiState(
     val hasEmail: Boolean = true,
     /** True when the account has a phone → show the "Change phone number" row (hidden for email-only). */
     val hasPhone: Boolean = true,
+    /** Displayed at the bottom of Settings as "App Version X". */
+    val appVersion: String = "",
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
@@ -29,6 +34,7 @@ class SettingsViewModel @Inject constructor(
         SettingsUiState(
             hasEmail = !authRepository.getEmail().isNullOrBlank(),
             hasPhone = !authRepository.getPhone().isNullOrBlank(),
+            appVersion = readAppVersion(),
         ),
     )
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
@@ -42,6 +48,12 @@ class SettingsViewModel @Inject constructor(
                 hasPhone = !authRepository.getPhone().isNullOrBlank(),
             )
         }
+    }
+
+    private fun readAppVersion(): String = try {
+        "V" + (context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0")
+    } catch (_: Exception) {
+        "V1.0"
     }
 
     fun logout() {

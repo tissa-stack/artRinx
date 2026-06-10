@@ -195,11 +195,12 @@ fun NewArtScreen(
                     )
                 }
 
-                // Description
+                // Description (required)
                 item(key = "desc") {
                     Spacer(Modifier.height(Spacing.md))
                     DescriptionField(
                         description = state.description,
+                        hasError    = state.isDescriptionError,
                         onChange    = viewModel::onDescriptionChange,
                     )
                 }
@@ -207,15 +208,33 @@ fun NewArtScreen(
                 // Spacer between text-entry section and navigation rows
                 item(key = "gap") { Spacer(Modifier.height(Spacing.md)) }
 
-                // Artist
+                // Artist (required — name mandatory, with or without a RINX profile)
                 item(key = "artist") {
-                    NavRow("Artist", state.selectedArtist?.displayName, onNavigateToArtist)
+                    NavRow(
+                        label   = "Artist",
+                        value   = state.selectedArtist?.displayName,
+                        onClick = onNavigateToArtist,
+                        isError = state.isArtistError,
+                    )
+                    if (state.isArtistError) {
+                        Spacer(Modifier.height(Spacing.xs))
+                        FieldErrorText("Artist name is required")
+                    }
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Medium
+                // Medium (required)
                 item(key = "medium") {
-                    NavRow("Medium", state.selectedMedium, viewModel::onShowMediumPicker)
+                    NavRow(
+                        label   = "Medium",
+                        value   = state.selectedMedium,
+                        onClick = viewModel::onShowMediumPicker,
+                        isError = state.isMediumError,
+                    )
+                    if (state.isMediumError) {
+                        Spacer(Modifier.height(Spacing.xs))
+                        FieldErrorText("Please select a medium")
+                    }
                     Spacer(Modifier.height(Spacing.md))
                 }
 
@@ -240,7 +259,11 @@ fun NewArtScreen(
                             Spacer(Modifier.height(Spacing.md))
                         }
                         if (state.shopLink.isNotBlank()) item(key = "price") {
-                            PriceField(state.price, viewModel::onPriceChange)
+                            PriceField(state.price, state.isPriceError, viewModel::onPriceChange)
+                            if (state.isPriceError) {
+                                Spacer(Modifier.height(Spacing.xs))
+                                FieldErrorText("Enter a price for your shop link")
+                            }
                             Spacer(Modifier.height(Spacing.md))
                         }
                     }
@@ -378,11 +401,11 @@ private fun TitleField(title: String, hasError: Boolean, onChange: (String) -> U
 // ── Description field ─────────────────────────────────────────────────────────
 
 @Composable
-private fun DescriptionField(description: String, onChange: (String) -> Unit) {
+private fun DescriptionField(description: String, hasError: Boolean, onChange: (String) -> Unit) {
     val d = LocalDimens.current
-    Box(
+    Column(Modifier.padding(horizontal = Spacing.md)) {
+      Box(
         modifier = Modifier
-            .padding(horizontal = Spacing.md)
             .fillMaxWidth()
             .clip(RoundedCornerShape(d.cardCornerRadius))
             .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -421,20 +444,25 @@ private fun DescriptionField(description: String, onChange: (String) -> Unit) {
                 },
             )
         }
+      }
+        if (hasError) {
+            Spacer(Modifier.height(Spacing.xs))
+            FieldErrorText("Description is required")
+        }
     }
 }
 
 // ── Navigation row ────────────────────────────────────────────────────────────
 
 @Composable
-private fun NavRow(label: String, value: String?, onClick: () -> Unit) {
+private fun NavRow(label: String, value: String?, onClick: () -> Unit, isError: Boolean = false) {
     val d = LocalDimens.current
     Row(
         modifier          = Modifier
             .padding(horizontal = Spacing.md)
             .fillMaxWidth()
             .clip(RoundedCornerShape(d.cardCornerRadius))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (isError) ErrorDark.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant)
             .clickable { onClick() }
             .padding(horizontal = Spacing.md, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
@@ -566,14 +594,14 @@ private fun LockedShopLinkField(onTap: () -> Unit) {
 
 /** Price input — only rendered when a shop link is present (handout §Field gating). */
 @Composable
-private fun PriceField(value: String, onChange: (String) -> Unit) {
+private fun PriceField(value: String, isError: Boolean, onChange: (String) -> Unit) {
     val d = LocalDimens.current
     Row(
         modifier = Modifier
             .padding(horizontal = Spacing.md)
             .fillMaxWidth()
             .clip(RoundedCornerShape(d.cardCornerRadius))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (isError) ErrorDark.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = Spacing.md, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -736,4 +764,13 @@ private fun FieldHint(text: String) {
     Text(text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** Inline validation error shown beneath a required field. */
+@Composable
+private fun FieldErrorText(text: String) {
+    Text(text,
+        style    = MaterialTheme.typography.labelSmall,
+        color    = ErrorDark,
+        modifier = Modifier.padding(horizontal = Spacing.md + Spacing.xs))
 }

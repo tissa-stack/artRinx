@@ -38,7 +38,11 @@ class TokenRefreshCoordinator @Inject constructor(
         // re-sends a just-attempted refresh token. Re-sending it after a slow/timed-out attempt
         // trips the backend's reuse-detection, which invalidates the whole token family and signs
         // the user out (the "infinite loading + 403 Not authenticated" after idle).
-        if (now - lastAttemptAtMs < ATTEMPT_WINDOW_MS) {
+        // Cache a SUCCESS for ~30s (handout §Auth recency cache) so followers reuse the fresh token
+        // and we never re-send the just-rotated refresh token. A FAILURE is cached only briefly so a
+        // transient network error can retry soon rather than blocking auth for 30s.
+        val window = if (lastSuccess) SUCCESS_WINDOW_MS else FAILURE_WINDOW_MS
+        if (now - lastAttemptAtMs < window) {
             return@withLock lastSuccess
         }
 
@@ -74,7 +78,9 @@ class TokenRefreshCoordinator @Inject constructor(
     }
 
     private companion object {
-        /** Coalesce window: a burst of refreshes within this collapses to one round-trip. */
-        const val ATTEMPT_WINDOW_MS = 5_000L
+        /** Recency cache for a SUCCESSFUL refresh (handout §Auth ~30s). */
+        const val SUCCESS_WINDOW_MS = 30_000L
+        /** Short coalesce window for a FAILED attempt so transient errors retry quickly. */
+        const val FAILURE_WINDOW_MS = 5_000L
     }
 }

@@ -19,7 +19,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -59,9 +59,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.coil.compose)
     implementation(libs.androidx.exifinterface)
-    // Firebase Cloud Messaging (push notifications)
+    // Firebase Cloud Messaging (push notifications) + Analytics (handout §19/§20)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.analytics)
     implementation(libs.androidx.compose.ui.text.google.fonts)
     // Hilt
     implementation(libs.dagger.hilt.core)

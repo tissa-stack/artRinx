@@ -279,16 +279,21 @@ private fun ColumnScope.EditProfileContent(
             }
             Spacer(Modifier.height(Spacing.md))
 
-            // Full name (+ tooltip)
+            // Full name (+ tooltip) — locked once the 2-edit cap is reached (handout §9)
             LabeledTextField(
                 label = "Full name",
                 value = state.fullName,
                 onValueChange = viewModel::onFullNameChange,
+                enabled = state.canEditFullName,
                 trailingIcon = { HelpIcon(state.showFullNameTooltip, viewModel::onFullNameTooltipToggle) },
             )
             Tooltip(
                 visible = state.showFullNameTooltip,
-                text = "Ensure that the name you enter is your verifiable legal name. This can only be changed 3 times.",
+                text = if (state.canEditFullName) {
+                    "Ensure that the name you enter is your verifiable legal name. This can only be changed 2 times."
+                } else {
+                    "You've reached the limit for changing your full name."
+                },
                 onClose = viewModel::onFullNameTooltipToggle,
             )
             Spacer(Modifier.height(Spacing.md))

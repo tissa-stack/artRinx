@@ -176,12 +176,13 @@ fun ArtistSearchScreen(
             Spacer(Modifier.weight(1f))
         }
 
-        // ── Upload without a RINX-profile artist (no attribution) ─────────
-        if (query.isNotEmpty()) {
+        // ── Add an artist without a RINX profile (name only, no id) ───────
+        if (query.isNotBlank()) {
             AddWithoutProfileButton(
+                name     = query.trim(),
                 modifier = Modifier.padding(horizontal = Spacing.xl, vertical = Spacing.md),
                 onClick  = {
-                    viewModel.onClearArtist()
+                    viewModel.onArtistWithoutProfile(query)
                     onBack()
                 },
             )
@@ -250,21 +251,23 @@ private fun ArtistRow(artist: ArtistResult, onClick: () -> Unit) {
 // ── "Add artist without RINX profile" button ──────────────────────────────────
 
 @Composable
-private fun AddWithoutProfileButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun AddWithoutProfileButton(name: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier         = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(50))
             .background(BrandPrimary)
             .clickable { onClick() }
-            .padding(vertical = Spacing.md),
+            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text       = "Add artist without RINX profile",
+            text       = "Add \"$name\" without RINX profile",
             style      = MaterialTheme.typography.labelLarge,
             color      = Color.White,
             fontWeight = FontWeight.SemiBold,
+            maxLines   = 1,
+            textAlign  = TextAlign.Center,
         )
     }
 }

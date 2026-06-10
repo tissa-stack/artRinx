@@ -26,12 +26,15 @@ class HomeRepositoryImpl @Inject constructor(
     // SWR cache — survives navigation (this is @Singleton); cleared on logout/delete.
     @Volatile private var feedCache: HomeFeed? = null
     @Volatile private var shopCache: List<ShoppablePost>? = null
+    @Volatile private var forYouCache: List<FeedPost>? = null
 
     override fun cachedFeed(): HomeFeed? = feedCache
     override fun cachedShop(): List<ShoppablePost>? = shopCache
+    override fun cachedForYou(): List<FeedPost>? = forYouCache
     override fun clearCache() {
         feedCache = null
         shopCache = null
+        forYouCache = null
     }
 
     override suspend fun getDiscoverFeed(): ApiResult<HomeFeed> = safeCall {
@@ -59,6 +62,17 @@ class HomeRepositoryImpl @Inject constructor(
         if (response.isSuccessful) {
             val items = response.body()?.data?.items.orEmpty().map { it.toShoppablePost() }
             if (page == PAGE) shopCache = items // cache only the first page (what the tab seeds from)
+            ApiResult.Success(items)
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun getRecommendedArtworks(page: Int, size: Int): ApiResult<List<FeedPost>> = safeCall {
+        val response = apiService.getRecommendedArtworks(page, size)
+        if (response.isSuccessful) {
+            val items = response.body()?.data?.items.orEmpty().map { it.toFeedPost() }
+            if (page == PAGE) forYouCache = items // cache only the first page (what the tab seeds from)
             ApiResult.Success(items)
         } else {
             errorFor(response)

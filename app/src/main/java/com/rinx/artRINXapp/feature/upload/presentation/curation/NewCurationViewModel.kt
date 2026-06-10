@@ -98,6 +98,8 @@ class NewCurationViewModel @Inject constructor(
 
     fun onCreationDone() {
         awaitingPrivate = false
+        // Clear the manager's consumed terminal so the next create starts from a clean flow.
+        curationManager.dismiss()
         _state.update { it.copy(creationStatus = null, creationError = null) }
     }
 
@@ -182,19 +184,27 @@ class NewCurationViewModel @Inject constructor(
         if (!s.isValid) return false
         val artworkIds = s.selectedArts.mapNotNull { it.artworkId }
         if (artworkIds.isEmpty()) return false
+        val isPrivate = s.privacy == PrivacyOption.PRIVATE
         // Private creations stay on this screen and show the overlay instead of navigating.
-        awaitingPrivate = s.privacy == PrivacyOption.PRIVATE
-        if (awaitingPrivate) _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
-        curationManager.enqueue(
+        if (isPrivate) {
+            awaitingPrivate = true
+            _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
+        }
+        val started = curationManager.enqueue(
             CreateCurationRequest(
                 title = s.title,
                 description = s.description.ifBlank { null },
-                isPrivate = s.privacy == PrivacyOption.PRIVATE,
+                isPrivate = isPrivate,
                 artworkIds = artworkIds,
                 artworkUrls = s.selectedArts.mapNotNull { it.imageUrl },
             ),
         )
-        return true
+        // Already creating → nothing enqueued; undo the optimistic LOADING so it doesn't spin forever.
+        if (!started && isPrivate) {
+            awaitingPrivate = false
+            _state.update { it.copy(creationStatus = null) }
+        }
+        return started
     }
 
     /**

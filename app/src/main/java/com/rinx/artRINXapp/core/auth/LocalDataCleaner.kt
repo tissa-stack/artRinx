@@ -7,6 +7,7 @@ import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.notifications.data.local.ChatCache
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
+import com.rinx.artRINXapp.feature.notifications.domain.UnreadNotificationsStore
 import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.repository.SearchRepository
@@ -39,6 +40,7 @@ class LocalDataCleaner @Inject constructor(
     private val curationPreviewStore: CurationPreviewStore,
     private val chatCache: ChatCache,
     private val blockedUsersStore: BlockedUsersStore,
+    private val unreadNotificationsStore: UnreadNotificationsStore,
 ) {
     /** Wipe in-memory caches + transient upload/curation state. Keeps the session. */
     fun clearCaches() {
@@ -51,6 +53,7 @@ class LocalDataCleaner @Inject constructor(
         curationPreviewStore.clear()
         chatCache.clear()
         blockedUsersStore.clear()
+        unreadNotificationsStore.reset()
     }
 
     /** Wipe ALL user-scoped local state — tokens, draft, offline queue, and caches. Logout/delete. */

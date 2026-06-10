@@ -41,6 +41,8 @@ data class EditProfileUiState(
     val showUsernameTooltip: Boolean = false,
     val showFullNameTooltip: Boolean = false,
     val showDisplayNameTooltip: Boolean = false,
+    /** Full name may be changed at most twice (handout §9); false once the cap is reached. */
+    val canEditFullName: Boolean = true,
 ) {
     val canSave: Boolean
         get() = !isSaving && username.isNotBlank() && fullName.isNotBlank() && displayName.isNotBlank() &&
@@ -83,6 +85,7 @@ class EditProfileViewModel @Inject constructor(
                             countryOptions = locationRepository.countryNames(),
                             stateOptions = locationRepository.statesOf(p.country),
                             pictureUrl = p.profilePictureUrl,
+                            canEditFullName = p.fullNameEditCount < MAX_FULL_NAME_EDITS,
                             isLoading = false,
                             loadError = null,
                         )
@@ -161,7 +164,10 @@ class EditProfileViewModel @Inject constructor(
     fun onSaveHandled() = _state.update { it.copy(saveStatus = null, saveError = null) }
 
     fun onUsernameChange(v: String) = _state.update { it.copy(username = v, usernameError = null) }
-    fun onFullNameChange(v: String) = _state.update { it.copy(fullName = v) }
+    fun onFullNameChange(v: String) = _state.update {
+        // Guard: ignore edits once the 2-change cap is reached (the field is also disabled in the UI).
+        if (!it.canEditFullName) it else it.copy(fullName = v)
+    }
     fun onBioChange(v: String) = _state.update { it.copy(bio = v) }
     fun onDisplayNameChange(v: String) = _state.update { it.copy(displayName = v) }
     fun onAgeChange(v: String) = _state.update { it.copy(age = v) }
@@ -176,6 +182,10 @@ class EditProfileViewModel @Inject constructor(
     fun onUsernameTooltipToggle() = _state.update { it.copy(showUsernameTooltip = !it.showUsernameTooltip) }
     fun onFullNameTooltipToggle() = _state.update { it.copy(showFullNameTooltip = !it.showFullNameTooltip) }
     fun onDisplayNameTooltipToggle() = _state.update { it.copy(showDisplayNameTooltip = !it.showDisplayNameTooltip) }
+
+    private companion object {
+        const val MAX_FULL_NAME_EDITS = 2
+    }
 }
 
 private fun ApiResult.Error.toLoadMessage(): String = when (this) {

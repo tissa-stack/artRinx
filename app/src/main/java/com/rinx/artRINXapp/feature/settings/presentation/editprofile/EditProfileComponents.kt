@@ -34,12 +34,14 @@ fun LabeledTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     maxChars: Int = Int.MAX_VALUE,
+    enabled: Boolean = true,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     val dimens = LocalDimens.current
     OutlinedTextField(
         value = value,
         onValueChange = { if (it.length <= maxChars) onValueChange(it) },
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = dimens.textFieldHeight),

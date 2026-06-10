@@ -72,7 +72,10 @@ data class ArtFormState(
     val showPrivacyPicker: Boolean = false,
     val currentTagInput: String = "",
     val isTitleError: Boolean = false,
+    val isArtistError: Boolean = false,
     val isDescriptionError: Boolean = false,
+    val isMediumError: Boolean = false,
+    val isPriceError: Boolean = false,
     val isUploading: Boolean = false,
     val artistSearchQuery: String = "",
     /** Non-null while a PRIVATE upload is in flight / just finished (drives the overlay). */
@@ -85,7 +88,25 @@ data class ArtFormState(
     /** True while the existing artwork is being fetched to prefill the edit form. */
     val isLoadingEdit: Boolean = false,
 ) {
-    val isValid: Boolean get() = title.isNotEmpty()
+    /**
+     * Required to upload/save (handout §6): title, description, artist name (id optional), and a
+     * medium. A price is required only when a shop link is present (and the field is available).
+     */
+    val isValid: Boolean
+        get() = title.isNotEmpty() &&
+            description.isNotBlank() &&
+            !(selectedArtist?.displayName).isNullOrBlank() &&
+            selectedMediumId != null &&
+            isPriceValidForShopLink
+
+    /** Price must be a positive number when a shop link is entered; otherwise it's not required. */
+    val isPriceValidForShopLink: Boolean
+        get() = !isShopLinkEntered || (price.toDoubleOrNull()?.let { it > 0.0 } == true)
+
+    /** A shop link only counts when the field is actually shown to this user (role×plan gating). */
+    val isShopLinkEntered: Boolean
+        get() = shopLinkVisibility == ShopLinkVisibility.VISIBLE && shopLink.isNotBlank()
+
     val isEditing: Boolean get() = editArtworkId != null || isLoadingEdit
 }
 

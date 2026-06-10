@@ -28,6 +28,13 @@ interface HomeApiService {
         @Query("size") size: Int,
     ): Response<EnvelopeDto<PageDto<ArtworkDto>>>
 
+    /** Personalized recommendations for the Home "For You" tab. */
+    @GET("api/artworks/recommended")
+    suspend fun getRecommendedArtworks(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<ArtworkDto>>>
+
     @POST("api/artworks/like")
     suspend fun likeArtwork(@Body body: LikeArtworkRequest): Response<ResponseBody>
 

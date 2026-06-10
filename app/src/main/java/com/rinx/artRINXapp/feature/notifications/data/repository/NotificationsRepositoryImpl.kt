@@ -4,6 +4,7 @@ import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.notifications.data.remote.NotificationsApiService
 import com.rinx.artRINXapp.feature.notifications.data.remote.dto.NotificationDto
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
+import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
 import com.rinx.artRINXapp.feature.notifications.domain.repository.NotificationsRepository
 import retrofit2.Response
 import java.io.IOException
@@ -36,6 +37,11 @@ class NotificationsRepositoryImpl @Inject constructor(
 
     private fun NotificationDto.toItem(): NotificationItem? {
         val nid = id ?: return null
+        val resolvedKind = NotificationKind.from(type)
+        // Organizer id is parsed from the trailing path segment of organizer_profile_url
+        // (e.g. "https://www.artrinx.com/profile/167" or "rinxart://profile/167"), falling back
+        // to the actor id which carries the same organizer on event rows.
+        val organizerId = parseTrailingId(organizerProfileUrl) ?: actor?.id
         return NotificationItem(
             id = nid.toString(),
             message = message.orEmpty(),
@@ -43,10 +49,25 @@ class NotificationsRepositoryImpl @Inject constructor(
             isRead = isRead ?: false,
             // Likes/comments carry a square artwork/curation thumbnail; follows/shares carry an
             // actor avatar. The UI prefers the thumbnail when present, else the avatar.
-            thumbnailUrl = target?.thumbnailUrl,
+            thumbnailUrl = if (resolvedKind.isEvent) eventImageUrl else target?.thumbnailUrl,
             avatarUrl = actor?.profileImageUrl,
             type = type,
+            kind = resolvedKind,
+            actorId = actor?.id,
+            targetId = target?.id,
+            targetType = target?.type,
+            eventId = eventId,
+            eventImageUrl = eventImageUrl,
+            organizerId = organizerId,
+            organizerName = organizerName,
+            organizerHandle = organizerHandle,
         )
+    }
+
+    /** Trailing numeric path segment of a profile url, e.g. ".../profile/167" → 167. */
+    private fun parseTrailingId(url: String?): Long? {
+        if (url.isNullOrBlank()) return null
+        return url.trim().trimEnd('/').substringAfterLast('/').toLongOrNull()
     }
 
     // ── Relative time ──────────────────────────────────────────────────────────────

@@ -18,7 +18,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,11 +32,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+
+/**
+ * Unread-notification count for the bell-tab badge. Provided once at the app root (from
+ * [UnreadNotificationsStore]); defaults to 0 so previews and non-provided contexts render cleanly.
+ */
+val LocalUnreadNotificationCount = compositionLocalOf { 0 }
 
 private data class NavEntry(
     @DrawableRes val iconRes: Int,
@@ -115,11 +125,13 @@ fun BottomNavBar(
                     }
                 }
 
+                val unreadCount = LocalUnreadNotificationCount.current
                 endNavEntries.forEach { entry ->
                     NavIconSlot(
                         entry = entry,
                         isActive = entry.route == activeRoute,
                         onNavigate = onNavigate,
+                        badgeCount = if (entry.route == "notifications") unreadCount else 0,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -143,6 +155,7 @@ private fun NavIconSlot(
     isActive: Boolean,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
+    badgeCount: Int = 0,
     onBounds: ((route: String, Rect) -> Unit)? = null,
 ) {
     val d = LocalDimens.current
@@ -166,6 +179,32 @@ private fun NavIconSlot(
             contentDescription = entry.label,
             tint = if (isActive) BrandPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Spacing.xxl),
+        )
+        if (badgeCount > 0) {
+            NotificationBadge(
+                count = badgeCount,
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
+        }
+    }
+}
+
+/** Small red unread badge anchored to the top-end of the bell icon. */
+@Composable
+private fun NotificationBadge(count: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .padding(top = Spacing.sm, end = Spacing.lg)
+            .clip(CircleShape)
+            .background(DangerRed)
+            .padding(horizontal = Spacing.xs, vertical = 1.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = if (count > 99) "99+" else count.toString(),
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }

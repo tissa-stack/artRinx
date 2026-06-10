@@ -51,6 +51,25 @@
                     android:host="www.artrinx.com"
                     android:pathPrefix="/invite" />
             </intent-filter>
+
+            <!-- Event deep link (custom scheme): rinxart://event/<ID> -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rinxart" android:host="event" />
+            </intent-filter>
+
+            <!-- Event universal link: https://www.artrinx.com/event/<ID> -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="www.artrinx.com"
+                    android:pathPrefix="/event" />
+            </intent-filter>
         </activity>
 
         <!-- Firebase Cloud Messaging (API §11 / handout Push Notifications). -->

@@ -42,7 +42,8 @@ class HomeViewModel @Inject constructor(
             popularCurations = feed.curations,
             feedItems = feed.posts,
             shoppableItems = repository.cachedShop().orEmpty(),
-            forYouItems = buildForYou(feed.posts, feed.banners),
+            // Prefer cached recommendations; fall back to discover posts until they load.
+            forYouItems = buildForYou(repository.cachedForYou() ?: feed.posts, feed.banners),
             recentlyViewed = feed.recentlyViewed,
         )
     }
@@ -124,11 +125,13 @@ class HomeViewModel @Inject constructor(
                 }
             }
 
-            // Discover tab comes from one call; shop feed from another. Run concurrently.
+            // Discover tab comes from one call; shop + recommended feeds from others. Run concurrently.
             val feedJob = async { repository.getDiscoverFeed() }
             val shopJob = async { repository.getShopArtworks(PAGE, SIZE) }
+            val recommendedJob = async { repository.getRecommendedArtworks(PAGE, SIZE) }
             val feedRes = feedJob.await()
             val shopRes = shopJob.await()
+            val recommendedRes = recommendedJob.await()
 
             // The discover feed is the primary content — fail the screen only if it errored.
             if (feedRes is ApiResult.Error) {
@@ -162,7 +165,12 @@ class HomeViewModel @Inject constructor(
                     popularCurations = feed.curations,
                     feedItems = feed.posts,
                     shoppableItems = (shopRes as? ApiResult.Success)?.data.orEmpty(),
-                    forYouItems = buildForYou(feed.posts, feed.banners),
+                    // For You = personalized recommendations; fall back to discover posts if the
+                    // recommendation call failed or returned nothing, so the tab is never empty.
+                    forYouItems = buildForYou(
+                        (recommendedRes as? ApiResult.Success)?.data?.takeIf { it.isNotEmpty() } ?: feed.posts,
+                        feed.banners,
+                    ),
                     // Recorded server-side when a detail screen calls the similar-artworks endpoint;
                     // returned here in the same discover-feed payload.
                     recentlyViewed = feed.recentlyViewed,

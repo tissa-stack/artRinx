@@ -6,6 +6,38 @@ import com.rinx.artRINXapp.R
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 
+/**
+ * Tolerant notification kind. Unknown server values map to [UNKNOWN] so a newly rolled-out type
+ * never blanks the whole list — the row simply renders its message with no tap target.
+ */
+enum class NotificationKind {
+    ARTWORK_LIKE, ARTWORK_SHARE,
+    CURATION_LIKE, CURATION_SHARE,
+    FOLLOW, PROFILE_SHARE,
+    EVENT_CREATED, EVENT_REMINDER_WEEK, EVENT_REMINDER_DAY, EVENT_REMINDER_3H,
+    UNKNOWN;
+
+    val isEvent: Boolean
+        get() = this == EVENT_CREATED || this == EVENT_REMINDER_WEEK ||
+            this == EVENT_REMINDER_DAY || this == EVENT_REMINDER_3H
+
+    companion object {
+        fun from(raw: String?): NotificationKind = when (raw?.trim()?.lowercase()) {
+            "artwork_like" -> ARTWORK_LIKE
+            "artwork_share" -> ARTWORK_SHARE
+            "curation_like" -> CURATION_LIKE
+            "curation_share" -> CURATION_SHARE
+            "follow" -> FOLLOW
+            "profile_share" -> PROFILE_SHARE
+            "event_created" -> EVENT_CREATED
+            "event_reminder_week" -> EVENT_REMINDER_WEEK
+            "event_reminder_day" -> EVENT_REMINDER_DAY
+            "event_reminder_3h" -> EVENT_REMINDER_3H
+            else -> UNKNOWN
+        }
+    }
+}
+
 @Immutable
 data class NotificationItem(
     val id: String,
@@ -16,7 +48,18 @@ data class NotificationItem(
     @param:DrawableRes val avatarRes: Int? = null,     // circular person avatar (mock/local)
     val thumbnailUrl: String? = null,                  // square art image (from API target)
     val avatarUrl: String? = null,                     // circular person avatar (from API actor)
-    val type: String? = null,                          // raw API type, for future tap routing
+    val type: String? = null,                          // raw API type
+    val kind: NotificationKind = NotificationKind.UNKNOWN,
+    // Tap-routing ids (Phase 2): actor → profile, target → art/curation detail.
+    val actorId: Long? = null,
+    val targetId: Long? = null,
+    val targetType: String? = null,
+    // Event-only fields (populated when [kind].isEvent).
+    val eventId: Long? = null,
+    val eventImageUrl: String? = null,
+    val organizerId: Long? = null,
+    val organizerName: String? = null,
+    val organizerHandle: String? = null,
 )
 
 // ── Messages / Conversations ──────────────────────────────────────────────────

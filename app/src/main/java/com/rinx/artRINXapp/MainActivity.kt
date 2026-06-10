@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -18,6 +19,8 @@ import com.rinx.artRINXapp.core.push.NotificationChannels
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.push.RinxMessagingService
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
+import com.rinx.artRINXapp.feature.home.presentation.components.LocalUnreadNotificationCount
+import com.rinx.artRINXapp.feature.notifications.domain.UnreadNotificationsStore
 import com.rinx.artRINXapp.feature.notifications.domain.repository.NotificationsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -31,6 +34,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var pushTokenManager: PushTokenManager
     @Inject lateinit var notificationsRepository: NotificationsRepository
     @Inject lateinit var deepLinkRouter: DeepLinkRouter
+    @Inject lateinit var unreadNotificationsStore: UnreadNotificationsStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -48,14 +52,19 @@ class MainActivity : ComponentActivity() {
         // The POST_NOTIFICATIONS prompt is requested on the Home screen — i.e. after login/registration.
         NotificationChannels.ensureDefaultChannel(this)
         pushTokenManager.registerCurrentToken()
+        // Seed the bell-tab unread badge (no-op count if not signed in).
+        unreadNotificationsStore.refresh()
         handleIntentDeepLink(intent)
 
         setContent {
             ArtRinxTheme {
                 val startDestination by mainViewModel.startDestination.collectAsState()
+                val unreadCount by unreadNotificationsStore.count.collectAsState()
 
                 startDestination?.let { destination ->
-                    AppNavGraph(startDestination = destination, deepLinkRouter = deepLinkRouter)
+                    CompositionLocalProvider(LocalUnreadNotificationCount provides unreadCount) {
+                        AppNavGraph(startDestination = destination, deepLinkRouter = deepLinkRouter)
+                    }
                 }
             }
         }
@@ -83,6 +92,8 @@ class MainActivity : ComponentActivity() {
             route = intent.getStringExtra(RinxMessagingService.EXTRA_ROUTE),
             url = intent.getStringExtra(RinxMessagingService.EXTRA_URL),
             kind = intent.getStringExtra(RinxMessagingService.EXTRA_KIND),
+            type = intent.getStringExtra(RinxMessagingService.EXTRA_TYPE),
+            eventId = intent.getStringExtra(RinxMessagingService.EXTRA_EVENT_ID),
         )
         deepLinkRouter.post(target)
     }

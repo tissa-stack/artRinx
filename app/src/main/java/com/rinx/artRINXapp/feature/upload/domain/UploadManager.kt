@@ -35,13 +35,21 @@ class UploadManager @Inject constructor(
     private var lastArtistName: String = ""
     private var lastArtistHandle: String = ""
 
-    /** Fire-and-forget. Ignores the call if an upload is already running. */
-    fun enqueue(request: UploadRequest, artistName: String = "", artistHandle: String = "") {
-        if (job?.isActive == true) return
+    /**
+     * Fire-and-forget. Returns `false` (and does nothing) if an upload is already running, so the
+     * caller doesn't show a spinner that never resolves. On accept, clears any stale terminal
+     * (Success/Failed) from a previous upload so this run emits a fresh
+     * `null → Compressing → … → Success` sequence (avoids a lingering/replayed terminal confusing
+     * the private-overlay observer).
+     */
+    fun enqueue(request: UploadRequest, artistName: String = "", artistHandle: String = ""): Boolean {
+        if (job?.isActive == true) return false
         lastRequest = request
         lastArtistName = artistName
         lastArtistHandle = artistHandle
+        _progress.value = null
         job = scope.launch { run(request, artistName, artistHandle) }
+        return true
     }
 
     /** Re-run the last upload from scratch (file_path from a stale prepare may have expired). */

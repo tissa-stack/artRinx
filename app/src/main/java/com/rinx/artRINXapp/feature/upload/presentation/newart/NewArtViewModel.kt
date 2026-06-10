@@ -86,13 +86,16 @@ class NewArtViewModel @Inject constructor(
                         shopLink = a.shopLink.orEmpty(),
                         price = a.price?.let { p -> if (p % 1.0 == 0.0) p.toLong().toString() else p.toString() }.orEmpty(),
                         privacy = if (a.isPrivate) PrivacyOption.PRIVATE else PrivacyOption.PUBLIC,
-                        selectedArtist = a.artistId?.let { artistId ->
+                        // Restore the artist when either an id or a (no-profile) name exists.
+                        selectedArtist = if (a.artistId != null || !a.artistName.isNullOrBlank()) {
                             ArtistResult(
                                 handle = "",
                                 displayName = a.artistName.orEmpty(),
-                                subtitle = a.artistName.orEmpty(),
-                                userId = artistId,
+                                subtitle = if (a.artistId != null) a.artistName.orEmpty() else "No RINX profile",
+                                userId = a.artistId,
                             )
+                        } else {
+                            null
                         },
                         isLoadingEdit = false,
                     )
@@ -123,6 +126,9 @@ class NewArtViewModel @Inject constructor(
 
     fun onCreationDone() {
         awaitingPrivate = false
+        // Clear the manager's consumed terminal so the next upload starts from a clean flow
+        // (otherwise a lingering Success/Failed can confuse the next private overlay).
+        uploadManager.dismiss()
         _state.update { it.copy(creationStatus = null, creationError = null) }
     }
 
@@ -178,11 +184,14 @@ class NewArtViewModel @Inject constructor(
         it.copy(description = d.take(255), isDescriptionError = false)
     }
 
-    fun onShopLinkChange(url: String) = _state.update { it.copy(shopLink = url) }
+    fun onShopLinkChange(url: String) = _state.update {
+        // Clearing the shop link removes the price requirement, so drop any stale price error.
+        it.copy(shopLink = url, isPriceError = false)
+    }
 
     /** Price input; digits + a single decimal point only. Sent only when a shop link is present. */
     fun onPriceChange(p: String) = _state.update {
-        it.copy(price = p.filter { c -> c.isDigit() || c == '.' }.take(12))
+        it.copy(price = p.filter { c -> c.isDigit() || c == '.' }.take(12), isPriceError = false)
     }
 
     // ── Artist ────────────────────────────────────────────────────────────────
@@ -208,12 +217,29 @@ class NewArtViewModel @Inject constructor(
     }
 
     fun onArtistSelected(artist: ArtistResult) = _state.update {
-        it.copy(selectedArtist = artist, artistSearchQuery = "", artistResults = emptyList())
+        it.copy(selectedArtist = artist, isArtistError = false, artistSearchQuery = "", artistResults = emptyList())
     }
 
-    /** "Add artist without RINX profile" → upload with no artist attribution. */
-    fun onClearArtist() = _state.update {
-        it.copy(selectedArtist = null, artistSearchQuery = "", artistResults = emptyList())
+    /**
+     * "Add artist without RINX profile" → attribute the artwork to the typed [name] only.
+     * No artist id is sent (userId = null); the name is still required.
+     */
+    fun onArtistWithoutProfile(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        _state.update {
+            it.copy(
+                selectedArtist = ArtistResult(
+                    handle = "",
+                    displayName = trimmed,
+                    subtitle = "No RINX profile",
+                    userId = null,
+                ),
+                isArtistError = false,
+                artistSearchQuery = "",
+                artistResults = emptyList(),
+            )
+        }
     }
 
     private fun UserSearchItem.toArtistResult(): ArtistResult = ArtistResult(
@@ -229,7 +255,7 @@ class NewArtViewModel @Inject constructor(
     fun onShowMediumPicker()   = _state.update { it.copy(showMediumPicker = true) }
     fun onDismissMediumPicker() = _state.update { it.copy(showMediumPicker = false) }
     fun onMediumSelected(m: MediumOption) = _state.update {
-        it.copy(selectedMedium = m.title, selectedMediumId = m.id, showMediumPicker = false)
+        it.copy(selectedMedium = m.title, selectedMediumId = m.id, showMediumPicker = false, isMediumError = false)
     }
 
     // ── Tags ──────────────────────────────────────────────────────────────────
@@ -266,9 +292,23 @@ class NewArtViewModel @Inject constructor(
     // ── Upload ────────────────────────────────────────────────────────────────
 
     fun validate(): Boolean {
-        val titleEmpty = _state.value.title.isEmpty()
-        _state.update { it.copy(isTitleError = titleEmpty) }
-        return !titleEmpty
+        val s = _state.value
+        val titleEmpty = s.title.isEmpty()
+        val descriptionBlank = s.description.isBlank()
+        val artistNameBlank = (s.selectedArtist?.displayName).isNullOrBlank()
+        val mediumMissing = s.selectedMediumId == null
+        // Price is required only when a (visible) shop link has been entered.
+        val priceInvalid = !s.isPriceValidForShopLink
+        _state.update {
+            it.copy(
+                isTitleError = titleEmpty,
+                isDescriptionError = descriptionBlank,
+                isArtistError = artistNameBlank,
+                isMediumError = mediumMissing,
+                isPriceError = priceInvalid,
+            )
+        }
+        return !titleEmpty && !descriptionBlank && !artistNameBlank && !mediumMissing && !priceInvalid
     }
 
     /**
@@ -280,10 +320,14 @@ class NewArtViewModel @Inject constructor(
         val s = _state.value
         val uri = s.imageUri ?: return false
         val artist = s.selectedArtist
+        val isPrivate = s.privacy == PrivacyOption.PRIVATE
         // Private uploads stay on this screen and show the overlay instead of navigating.
-        awaitingPrivate = s.privacy == PrivacyOption.PRIVATE
-        if (awaitingPrivate) _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
-        uploadManager.enqueue(
+        // Set the awaited/LOADING state BEFORE enqueue (no window where a fast terminal is missed).
+        if (isPrivate) {
+            awaitingPrivate = true
+            _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
+        }
+        val started = uploadManager.enqueue(
             UploadRequest(
                 imageUri = uri,
                 title = s.title,
@@ -292,14 +336,20 @@ class NewArtViewModel @Inject constructor(
                 mediumId = s.selectedMediumId,
                 shopLink = s.shopLink.ifBlank { null },
                 price = priceFor(s),
-                isPrivate = s.privacy == PrivacyOption.PRIVATE,
+                isPrivate = isPrivate,
                 artistId = artist?.userId,
                 artistName = artist?.displayName,
             ),
             artistName = artist?.displayName.orEmpty(),
             artistHandle = artist?.handle?.let { "@$it" }.orEmpty(),
         )
-        return true
+        // An upload was already running → nothing was enqueued. Undo the optimistic LOADING so the
+        // private overlay doesn't spin forever waiting for a run that never starts.
+        if (!started && isPrivate) {
+            awaitingPrivate = false
+            _state.update { it.copy(creationStatus = null) }
+        }
+        return started
     }
 
     /**

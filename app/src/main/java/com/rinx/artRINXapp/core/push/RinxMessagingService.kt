@@ -41,6 +41,10 @@ class RinxMessagingService : FirebaseMessagingService() {
             message.data["route"]?.let { putExtra(EXTRA_ROUTE, it) }
             message.data["url"]?.let { putExtra(EXTRA_URL, it) }
             message.data["kind"]?.let { putExtra(EXTRA_KIND, it) }
+            // Event pushes: when no `url` is provided we build the event destination locally from
+            // `type` (event_*) + `event_id` (handout §11 fallback).
+            message.data["type"]?.let { putExtra(EXTRA_TYPE, it) }
+            message.data["event_id"]?.let { putExtra(EXTRA_EVENT_ID, it) }
         }
         // Collapse by collapse_id so repeated pushes about the same resource (e.g. "curation_297")
         // replace each other instead of stacking (handout §collapse_key). Fall back to the unique
@@ -82,5 +86,7 @@ class RinxMessagingService : FirebaseMessagingService() {
         const val EXTRA_ROUTE = "push_route"
         const val EXTRA_URL = "push_url"
         const val EXTRA_KIND = "push_kind"
+        const val EXTRA_TYPE = "push_type"
+        const val EXTRA_EVENT_ID = "push_event_id"
     }
 }

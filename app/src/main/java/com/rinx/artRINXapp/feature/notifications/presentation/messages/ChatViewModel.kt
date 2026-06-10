@@ -49,7 +49,16 @@ data class ChatUiState(
     val editingMessageId: String? = null,
 ) {
     val canSend: Boolean
-        get() = gate == ChatGate.FRESH_INVITE || gate == ChatGate.INVITE_RECEIVED || gate == ChatGate.ACTIVE
+        get() = when (gate) {
+            // A fresh invite consumes a new-chat (message-request) quota slot; block it at the cap.
+            ChatGate.FRESH_INVITE -> (remainingInvites ?: Int.MAX_VALUE) > 0
+            ChatGate.INVITE_RECEIVED, ChatGate.ACTIVE -> true
+            else -> false
+        }
+
+    /** A new chat can't be started because the monthly new-chat quota is exhausted. */
+    val isNewChatCapReached: Boolean
+        get() = gate == ChatGate.FRESH_INVITE && (remainingInvites ?: Int.MAX_VALUE) <= 0
 }
 
 @HiltViewModel

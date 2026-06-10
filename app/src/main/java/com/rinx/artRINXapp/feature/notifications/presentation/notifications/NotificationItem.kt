@@ -57,6 +57,7 @@ fun SwipeableNotificationItem(
     item: NotificationItem,
     onDelete: () -> Unit,
     onMarkRead: () -> Unit,
+    onClick: () -> Unit = {},
 ) {
     val scope        = rememberCoroutineScope()
     val density      = LocalDensity.current
@@ -137,6 +138,9 @@ fun SwipeableNotificationItem(
                         }
                     },
                 )
+                // Tap routes by notification type (set by the caller); horizontal drag still
+                // reveals the mark-read / delete actions.
+                .clickable { onClick() }
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalAlignment = Alignment.Top,

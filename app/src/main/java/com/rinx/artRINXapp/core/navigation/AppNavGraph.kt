@@ -50,6 +50,7 @@ import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedAccounts
 import com.rinx.artRINXapp.feature.settings.presentation.changeemail.ChangeEmailScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changephone.ChangePhoneScreen
 import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileScreen
+import com.rinx.artRINXapp.feature.settings.presentation.permissions.PhonePermissionsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.invite.InviteFriendsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.ProfileTitleAndPlanEditScreen
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.ProfileTitleAndPlanScreen
@@ -78,6 +79,12 @@ fun AppNavGraph(
         when (val t = pendingDeepLink) {
             is DeepLinkTarget.Route -> {
                 navController.navigate(t.navRoute); deepLinkRouter.consume()
+            }
+            is DeepLinkTarget.Event -> {
+                // Park the id for NotificationsViewModel to fetch + popup, then switch tabs.
+                deepLinkRouter.postEventId(t.id)
+                navController.navigateToTab(NavRoutes.NOTIFICATIONS)
+                deepLinkRouter.consume()
             }
             DeepLinkTarget.HomeOnly -> {
                 navController.navigate(NavRoutes.HOME); deepLinkRouter.consume()
@@ -235,6 +242,15 @@ fun AppNavGraph(
                 onNavigateToProfile    = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToChat       = { conv -> navController.navigate(NavRoutes.chat(conv.id)) },
                 onNavigateToNewMessage = { navController.navigate(NavRoutes.NEW_MESSAGE) },
+                onOpenUserProfile      = { id ->
+                    navController.navigate(NavRoutes.userProfile(id.toString(), NavRoutes.NOTIFICATIONS))
+                },
+                onOpenArtDetail        = { id ->
+                    navController.navigate(NavRoutes.artDetail(id.toString(), NavRoutes.NOTIFICATIONS))
+                },
+                onOpenCurationDetail   = { id ->
+                    navController.navigate(NavRoutes.curationDetail(id.toString(), NavRoutes.NOTIFICATIONS))
+                },
             )
         }
 
@@ -395,6 +411,7 @@ fun AppNavGraph(
                 onProfileTitleAndPlan = { navController.navigate(NavRoutes.PROFILE_TITLE_PLAN) },
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
+                onPhonePermissions    = { navController.navigate(NavRoutes.PHONE_PERMISSIONS) },
                 onTermsAndConditions  = { runCatching { uriHandler.openUri(LegalLinks.TERMS_OF_USE) } },
                 onCommunityGuidelines = { runCatching { uriHandler.openUri(LegalLinks.COMMUNITY_GUIDELINES) } },
                 onAboutUs             = { runCatching { uriHandler.openUri(LegalLinks.ABOUT_US) } },
@@ -412,6 +429,10 @@ fun AppNavGraph(
                 onBack  = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() },
             )
+        }
+
+        composable(NavRoutes.PHONE_PERMISSIONS) {
+            PhonePermissionsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(NavRoutes.CHANGE_EMAIL) {

@@ -71,6 +71,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ChatMenuViewModel
@@ -586,13 +587,23 @@ private fun ChatGateBanner(
             )
             if (remainingInvites != null) {
                 Spacer(Modifier.height(Spacing.sm))
-                Text(
-                    "You have $remainingInvites new chats this month",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = iconColor.copy(alpha = 0.5f),
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (remainingInvites <= 0) {
+                    // Cap reached → existing chats stay open, but no new invites this month.
+                    Text(
+                        "You've reached your monthly limit for new chats. " +
+                            "Unlimited messages within your active chats.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ErrorDark,
+                    )
+                } else {
+                    Text(
+                        "You have $remainingInvites new chats this month",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = iconColor.copy(alpha = 0.5f),
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
 

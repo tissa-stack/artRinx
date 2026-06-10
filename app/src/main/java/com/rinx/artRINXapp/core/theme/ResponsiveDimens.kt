@@ -104,6 +104,12 @@ data class ResponsiveDimens(
     // Chat screen
     val chatBubbleMaxWidth: Dp         = w(0.750f, 230.dp, 320.dp)   // ~270dp at 360w reference
     val chatAvatarSize: Dp             = w(0.089f,  28.dp,  44.dp)   // circle avatar beside received bubble
+
+    // Events (notification row banner + detail popup)
+    val eventThumbnailSize: Dp         = w(0.153f,  48.dp,  72.dp)   // ~55dp at 360w — square banner
+    val eventPopupIconSize: Dp         = w(0.156f,  48.dp,  76.dp)   // ~56dp at 360w — popup glyph
+    val eventPopupLabelColumn: Dp      = w(0.211f,  72.dp, 104.dp)   // ~76dp fixed label column
+    val eventPopupMaxWidth: Dp         = w(0.860f, 300.dp, 520.dp)   // card width cap on large screens
 }
 
 /** Default matches the 360×800dp reference phone so previews look correct. */

@@ -56,6 +56,8 @@ data class InviteInfo(
     val code: String?,
     val remainingInvites: Int?,
     val remainingChatInvites: Int? = null,
+    /** Monthly cap for new chats (message requests), when the server provides the nested counter. */
+    val chatInvitesMonthlyCap: Int? = null,
 )
 
 /**
@@ -131,6 +133,7 @@ data class EditableProfile(
     val city: String,
     val profilePictureUrl: String?,
     val fullNameEditCount: Int = 0,
+    val marketingSmsConsent: Boolean = false,
 )
 
 /**
@@ -148,8 +151,9 @@ data class ProfileUpdate(
     val state: String? = null,
     val city: String? = null,
     val profileTypeId: Int? = null, // sent as profile_type_id (the profile title/role)
+    val marketingSmsConsent: Boolean? = null, // sent as marketing_sms_consent
 ) {
     val hasAnyField: Boolean
         get() = listOf(username, fullName, displayName, bio, age, country, state, city)
-            .any { it != null } || profileTypeId != null
+            .any { it != null } || profileTypeId != null || marketingSmsConsent != null
 }

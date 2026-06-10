@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.rinx.artRINXapp.feature.home.presentation.detail.components.ZoomableImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DangerRed
@@ -349,13 +350,10 @@ private fun ArtDetailContent(
                     .fillMaxWidth()
                     .height(d.artDetailImageHeight),
             ) {
-                AsyncImage(
+                ZoomableImage(
                     model = post.imageUrl,
                     contentDescription = post.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.fillMaxSize(),
                 )
                 // Subtle top gradient so back button stays readable
                 Box(

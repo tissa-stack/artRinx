@@ -17,6 +17,7 @@ data class MyProfileDto(
     @SerializedName("profile_link") val profileLink: String? = null,
     @SerializedName("profile_picture_url") val profilePictureUrl: String? = null,
     @SerializedName("full_name_edit_count") val fullNameEditCount: Int? = null,
+    @SerializedName(value = "marketing_sms_consent", alternate = ["marketingSmsConsent"]) val marketingSmsConsent: Boolean? = null,
     @SerializedName("invitation_code") val invitationCode: String? = null,
     @SerializedName("remaining_invites") val remainingInvites: Int? = null,
     @SerializedName("subscription") val subscription: SubscriptionDto? = null,
@@ -29,4 +30,13 @@ data class MyProfileDto(
     @SerializedName("curation_count") val curationCount: Int? = null,
     @SerializedName("follower_count") val followerCount: Int? = null,
     @SerializedName("following_count") val followingCount: Int? = null,
+    // V1.9 override-aware nested counters (preferred over the legacy flat fields above).
+    @SerializedName("peer_invites") val peerInvites: QuotaCounterDto? = null,
+    @SerializedName("message_requests") val messageRequests: QuotaCounterDto? = null,
+)
+
+/** Override-aware quota counter (handout §16): reflects admin overrides on the plan default. */
+data class QuotaCounterDto(
+    @SerializedName(value = "monthly_cap", alternate = ["monthlyCap"]) val monthlyCap: Int? = null,
+    @SerializedName("remaining") val remaining: Int? = null,
 )

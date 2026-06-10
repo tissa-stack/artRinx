@@ -36,10 +36,12 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         logging: HttpLoggingInterceptor,
+        appVersionInterceptor: AppVersionInterceptor,
         authTokenInterceptor: AuthTokenInterceptor,
         tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient =
         OkHttpClient.Builder()
+            .addInterceptor(appVersionInterceptor)
             .addInterceptor(authTokenInterceptor)
             .authenticator(tokenAuthenticator)
             .addInterceptor(logging)
@@ -66,8 +68,10 @@ object NetworkModule {
     @Named("refresh")
     fun provideRefreshOkHttpClient(
         logging: HttpLoggingInterceptor,
+        appVersionInterceptor: AppVersionInterceptor,
     ): OkHttpClient =
         OkHttpClient.Builder()
+            .addInterceptor(appVersionInterceptor)
             .addInterceptor(logging)
             .connectTimeout(REFRESH_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(REFRESH_TIMEOUT_SECONDS, TimeUnit.SECONDS)

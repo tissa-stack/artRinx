@@ -444,14 +444,19 @@ private fun OtherProfileHeader(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = profile.role,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // "Art Curious" is the lurker role — never shown publicly (handout §17).
+                val isArtCurious = profile.role.trim().replace(" ", "").equals("artcurious", ignoreCase = true) ||
+                    profile.role.trim().equals("curious", ignoreCase = true)
+                if (profile.role.isNotBlank() && !isArtCurious) {
+                    Text(
+                        text = profile.role,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             if (profile.canMessage) {
                 Box(
