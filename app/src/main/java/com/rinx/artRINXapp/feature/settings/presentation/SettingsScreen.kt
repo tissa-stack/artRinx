@@ -20,10 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MailOutline
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +56,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onEditProfile: () -> Unit,
     onChangeEmail: () -> Unit,
+    onChangePhone: () -> Unit,
     onProfileTitleAndPlan: () -> Unit,
     onInviteFriends: () -> Unit,
     onBlockedAccounts: () -> Unit,
@@ -66,6 +70,9 @@ fun SettingsScreen(
     val dimens = LocalDimens.current
     val state by viewModel.state.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    // Shown when a phone-login user with no email taps "Change phone number": adding an email is
+    // required first, so an email stays as a login/recovery path once phone login is retired.
+    var showAddEmailPrompt by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.loggedOut) {
         if (state.loggedOut) onLogout()
@@ -76,7 +83,7 @@ fun SettingsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshHasEmail()
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshContactState()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -124,6 +131,15 @@ fun SettingsScreen(
                 label = if (state.hasEmail) "Change email" else "Add email",
                 onClick = onChangeEmail,
             )
+            // Phone change is offered only to accounts that have a phone (email-only users don't see it).
+            // Require an email first so the user keeps a login/recovery path when phone login is retired.
+            if (state.hasPhone) {
+                SettingsRow(
+                    imageVector = Icons.Outlined.PhoneAndroid,
+                    label = "Change phone number",
+                    onClick = { if (state.hasEmail) onChangePhone() else showAddEmailPrompt = true },
+                )
+            }
             SettingsRow(painter = R.drawable.ic_profile_title_and_plan, label = "Profile title and plan", onClick = onProfileTitleAndPlan)
             SettingsRow(painter = R.drawable.ic_invite_friends, label = "Invite Friends", onClick = onInviteFriends)
 
@@ -178,6 +194,28 @@ fun SettingsScreen(
                 viewModel.logout()
             },
             onDismiss = { showLogoutDialog = false },
+        )
+    }
+
+    if (showAddEmailPrompt) {
+        AlertDialog(
+            onDismissRequest = { showAddEmailPrompt = false },
+            title = { Text("Add an email first") },
+            text = {
+                Text(
+                    "Please add an email before changing your phone. It keeps you able to sign in " +
+                        "and recover your account if phone sign-in is unavailable.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAddEmailPrompt = false
+                    onChangeEmail()
+                }) { Text("Add email") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddEmailPrompt = false }) { Text("Not now") }
+            },
         )
     }
 }

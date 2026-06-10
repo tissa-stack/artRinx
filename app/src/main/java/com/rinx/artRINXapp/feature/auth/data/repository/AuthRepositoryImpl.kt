@@ -269,6 +269,46 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    // ── Change phone (contact change, §1.8) ───────────────────────────────────
+
+    override fun getPhone(): String? = sessionDataSource.getPhone()
+
+    override suspend fun startChangePhone(newPhone: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactStartChange(
+                ContactStartChangeRequest(kind = "phone", newValue = newPhone),
+            )
+            if (response.isSuccessful) {
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun confirmChangePhone(newPhone: String, code: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactConfirmChange(
+                ContactConfirmChangeRequest(kind = "phone", newValue = newPhone, code = code),
+            )
+            if (response.isSuccessful) {
+                adoptSessionIfEnvelope(response.body()?.string())
+                sessionDataSource.savePhone(newPhone)
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
     /**
      * Contact confirm endpoints may return a fresh auth envelope (the server revokes other devices'
      * refresh tokens) or an empty success. If an envelope is present, adopt the new token pair so
@@ -350,6 +390,10 @@ class AuthRepositoryImpl @Inject constructor(
         "refresh_invalid", "refresh_reused", "session_expired" ->
             "Your session has expired. Please sign in again."
         "not_allowed_on_this_surface" -> "This action isn't available in the app."
+        // Contact change (email/phone)
+        "email_required_before_phone_change" -> "Please add an email before changing your phone."
+        "contact_in_use", "phone_in_use", "email_in_use" -> "That contact is already in use by another account."
+        "invalid_contact" -> "Enter a valid phone number or email."
         else -> null
     }
 

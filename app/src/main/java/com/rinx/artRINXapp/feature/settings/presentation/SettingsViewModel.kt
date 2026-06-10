@@ -16,6 +16,8 @@ data class SettingsUiState(
     val loggedOut: Boolean = false,
     /** False for phone-only accounts → the account row reads "Add email" instead of "Change email". */
     val hasEmail: Boolean = true,
+    /** True when the account has a phone → show the "Change phone number" row (hidden for email-only). */
+    val hasPhone: Boolean = true,
 )
 
 @HiltViewModel
@@ -23,13 +25,23 @@ class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(SettingsUiState(hasEmail = !authRepository.getEmail().isNullOrBlank()))
+    private val _state = MutableStateFlow(
+        SettingsUiState(
+            hasEmail = !authRepository.getEmail().isNullOrBlank(),
+            hasPhone = !authRepository.getPhone().isNullOrBlank(),
+        ),
+    )
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
-    /** Re-read whether the account has an email — call on resume so the row flips to "Change email"
-     *  right after a phone-only user adds one and returns from the Change Email screen. */
-    fun refreshHasEmail() {
-        _state.update { it.copy(hasEmail = !authRepository.getEmail().isNullOrBlank()) }
+    /** Re-read email/phone presence — call on resume so the rows reflect changes made elsewhere
+     *  (e.g. "Add email" flips to "Change email"; the new number shows after a phone change). */
+    fun refreshContactState() {
+        _state.update {
+            it.copy(
+                hasEmail = !authRepository.getEmail().isNullOrBlank(),
+                hasPhone = !authRepository.getPhone().isNullOrBlank(),
+            )
+        }
     }
 
     fun logout() {

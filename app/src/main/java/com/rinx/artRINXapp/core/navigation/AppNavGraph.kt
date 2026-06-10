@@ -48,6 +48,7 @@ import com.rinx.artRINXapp.feature.search.presentation.SearchScreen
 import com.rinx.artRINXapp.feature.settings.presentation.SettingsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedAccountsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changeemail.ChangeEmailScreen
+import com.rinx.artRINXapp.feature.settings.presentation.changephone.ChangePhoneScreen
 import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileScreen
 import com.rinx.artRINXapp.feature.settings.presentation.invite.InviteFriendsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.ProfileTitleAndPlanEditScreen
@@ -390,6 +391,7 @@ fun AppNavGraph(
                 onBack                = { navController.popBackStack() },
                 onEditProfile         = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                 onChangeEmail         = { navController.navigate(NavRoutes.CHANGE_EMAIL) },
+                onChangePhone         = { navController.navigate(NavRoutes.CHANGE_PHONE) },
                 onProfileTitleAndPlan = { navController.navigate(NavRoutes.PROFILE_TITLE_PLAN) },
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
@@ -414,6 +416,13 @@ fun AppNavGraph(
 
         composable(NavRoutes.CHANGE_EMAIL) {
             ChangeEmailScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
+            )
+        }
+
+        composable(NavRoutes.CHANGE_PHONE) {
+            ChangePhoneScreen(
                 onBack = { navController.popBackStack() },
                 onDone = { navController.popBackStack() },
             )

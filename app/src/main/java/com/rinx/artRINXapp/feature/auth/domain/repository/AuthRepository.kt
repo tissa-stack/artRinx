@@ -43,4 +43,13 @@ interface AuthRepository {
 
     /** Verify the OTP and attach the new email (§1.8); adopts the fresh token pair if returned. */
     suspend fun confirmAddEmail(newEmail: String, code: String): ApiResult<Unit>
+
+    /** The user's current phone in E.164 (cached from the auth envelope), or null if signed up via email. */
+    fun getPhone(): String?
+
+    /** Begin a phone change — OTP is sent to [newPhone] (E.164) (§1.8). */
+    suspend fun startChangePhone(newPhone: String): ApiResult<Unit>
+
+    /** Verify the OTP and apply the phone change (§1.8); adopts the fresh token pair if returned. */
+    suspend fun confirmChangePhone(newPhone: String, code: String): ApiResult<Unit>
 }

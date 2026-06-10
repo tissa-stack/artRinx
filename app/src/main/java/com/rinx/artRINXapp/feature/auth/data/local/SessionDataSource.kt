@@ -36,6 +36,7 @@ class SessionDataSource @Inject constructor(
             .putLong(KEY_REFRESH_EXPIRY, System.currentTimeMillis() + response.refreshExpiresIn * 1000L)
             .putString(KEY_USER_ROLE, response.user.role)
             .putString(KEY_EMAIL, response.user.email)
+            .putString(KEY_PHONE, response.user.phone)
             // Gate Home vs Profile-Completion on whether a profile EXISTS (existing users → Home).
             // profile_completed is computed strictly and is false even for usable profiles.
             .putBoolean(KEY_PROFILE_COMPLETED, response.user.profileExists)
@@ -67,6 +68,14 @@ class SessionDataSource @Inject constructor(
     /** The user's current email, cached from the auth envelope (login / email-change confirm). */
     fun getEmail(): String? = prefs.getString(KEY_EMAIL, null)
 
+    /** The user's current phone (E.164), cached from the auth envelope; null if signed up via email. */
+    fun getPhone(): String? = prefs.getString(KEY_PHONE, null)
+
+    /** Persist the phone after a successful phone-change confirm (covers an empty-body server reply). */
+    suspend fun savePhone(phone: String) = withContext(Dispatchers.IO) {
+        prefs.edit().putString(KEY_PHONE, phone).apply()
+    }
+
     /** Persist the email after a successful add/change confirm (covers an empty-body server reply). */
     suspend fun saveEmail(email: String) = withContext(Dispatchers.IO) {
         prefs.edit().putString(KEY_EMAIL, email).apply()
@@ -89,6 +98,7 @@ class SessionDataSource @Inject constructor(
             .remove(KEY_REFRESH_EXPIRY)
             .remove(KEY_USER_ROLE)
             .remove(KEY_EMAIL)
+            .remove(KEY_PHONE)
             .remove(KEY_PROFILE_COMPLETED)
             .apply()
     }
@@ -100,6 +110,7 @@ class SessionDataSource @Inject constructor(
         const val KEY_REFRESH_EXPIRY = "refresh_token_expiry_epoch"
         const val KEY_USER_ROLE = "user_role"
         const val KEY_EMAIL = "user_email"
+        const val KEY_PHONE = "user_phone"
         const val KEY_PROFILE_COMPLETED = "profile_completed"
     }
 }
