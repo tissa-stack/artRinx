@@ -10,12 +10,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
+import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 
 @Composable
 fun NotificationsContent(
@@ -24,12 +28,23 @@ fun NotificationsContent(
     onDelete: (String) -> Unit,
     onMarkRead: (String) -> Unit,
     modifier: Modifier = Modifier,
+    error: String? = null,
+    onRetry: () -> Unit = {},
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when {
             isLoading && notifications.isEmpty() -> CircularProgressIndicator(
                 color    = BrandPrimary,
                 modifier = Modifier.align(Alignment.Center).size(Spacing.xxxl),
+            )
+            // Network/server failure with nothing cached to fall back on → show the reason + Retry.
+            notifications.isEmpty() && error != null -> SearchMessageView(
+                title       = "Couldn't load notifications",
+                subtitle    = error,
+                icon        = Icons.Outlined.CloudOff,
+                actionLabel = "Retry",
+                onAction    = onRetry,
+                modifier    = Modifier.align(Alignment.Center),
             )
             notifications.isEmpty() -> Text(
                 text     = "No notifications yet",

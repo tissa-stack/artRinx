@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.notifications.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.network.ChatEvent
 import com.rinx.artRINXapp.core.network.ChatWebSocketManager
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
@@ -28,6 +29,11 @@ data class NotificationsUiState(
     val isLoadingConversations: Boolean = true,
     val isLoadingNotifications: Boolean = true,
     val isRefreshing: Boolean = false,
+    // Set when a load fails AND there is nothing cached to show; cleared on the next success.
+    // The UI surfaces these only when the matching list is empty, so a flaky refresh never
+    // blanks an already-populated tab (SWR).
+    val notificationsError: String? = null,
+    val conversationsError: String? = null,
 )
 
 @HiltViewModel
@@ -70,11 +76,19 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             when (val res = notificationsRepository.getNotifications()) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(notifications = res.data, isLoadingNotifications = false)
+                    it.copy(notifications = res.data, isLoadingNotifications = false, notificationsError = null)
                 }
-                else -> _state.update { it.copy(isLoadingNotifications = false) }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isLoadingNotifications = false, notificationsError = res.userMessage())
+                }
             }
         }
+    }
+
+    /** Re-show the loading state, then re-fetch — wired to the error view's Retry button. */
+    fun retryNotifications() {
+        _state.update { it.copy(isLoadingNotifications = true, notificationsError = null) }
+        loadNotifications()
     }
 
     fun onMessageQueryChange(q: String) = _state.update { it.copy(messageQuery = q) }
@@ -85,9 +99,20 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             when (val res = messagesRepository.getChatrooms()) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(conversations = res.data, isLoadingConversations = false, isRefreshing = false)
+                    it.copy(
+                        conversations = res.data,
+                        isLoadingConversations = false,
+                        isRefreshing = false,
+                        conversationsError = null,
+                    )
                 }
-                else -> _state.update { it.copy(isLoadingConversations = false, isRefreshing = false) }
+                is ApiResult.Error -> _state.update {
+                    it.copy(
+                        isLoadingConversations = false,
+                        isRefreshing = false,
+                        conversationsError = res.userMessage(),
+                    )
+                }
             }
         }
     }

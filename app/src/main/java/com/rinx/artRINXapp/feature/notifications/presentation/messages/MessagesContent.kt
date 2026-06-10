@@ -48,8 +48,11 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ConfirmDialog
+import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +67,8 @@ fun MessagesContent(
     onNewMessage: () -> Unit,
     onMarkRead: (ConversationItem) -> Unit = {},
     onDelete: (ConversationItem) -> Unit = {},
+    error: String? = null,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -139,23 +144,36 @@ fun MessagesContent(
             )
         }
 
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh    = onRefresh,
-            modifier     = Modifier.weight(1f),
-        ) {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(filtered, key = { it.id }) { conv ->
-                    SwipeableMessageItem(
-                        item      = conv,
-                        onClick   = { onConversationClick(conv) },
-                        onMarkRead = { onMarkRead(conv) },
-                        onDelete   = { pendingDelete = conv },
-                    )
-                    HorizontalDivider(
-                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                        modifier = Modifier.padding(horizontal = Spacing.lg),
-                    )
+        // Network/server failure with no cached conversations to fall back on → show the reason
+        // + Retry. A flaky refresh that still has rows keeps the list (handled by the else branch).
+        if (conversations.isEmpty() && error != null) {
+            SearchMessageView(
+                title       = "Couldn't load messages",
+                subtitle    = error,
+                icon        = Icons.Outlined.CloudOff,
+                actionLabel = "Retry",
+                onAction    = onRetry,
+                modifier    = Modifier.weight(1f),
+            )
+        } else {
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh    = onRefresh,
+                modifier     = Modifier.weight(1f),
+            ) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(filtered, key = { it.id }) { conv ->
+                        SwipeableMessageItem(
+                            item      = conv,
+                            onClick   = { onConversationClick(conv) },
+                            onMarkRead = { onMarkRead(conv) },
+                            onDelete   = { pendingDelete = conv },
+                        )
+                        HorizontalDivider(
+                            color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.padding(horizontal = Spacing.lg),
+                        )
+                    }
                 }
             }
         }

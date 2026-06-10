@@ -138,6 +138,8 @@ fun NotificationsScreen(
                         isLoading     = state.isLoadingNotifications,
                         onDelete      = viewModel::onDeleteNotification,
                         onMarkRead    = viewModel::onMarkNotificationRead,
+                        error         = state.notificationsError,
+                        onRetry       = viewModel::retryNotifications,
                         modifier      = Modifier.weight(1f),
                     )
                     NotifTab.MESSAGES -> MessagesContent(
@@ -151,6 +153,8 @@ fun NotificationsScreen(
                         onNewMessage       = onNavigateToNewMessage,
                         onMarkRead         = viewModel::onMarkConversationRead,
                         onDelete           = viewModel::onDeleteConversation,
+                        error              = state.conversationsError,
+                        onRetry            = { viewModel.refreshConversations(isUserRefresh = true) },
                         modifier           = Modifier.weight(1f),
                     )
                 }
