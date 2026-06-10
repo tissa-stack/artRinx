@@ -36,6 +36,8 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.onboarding.presentation.components.ArtMosaicGrid
+
+import com.rinx.artRINXapp.feature.onboarding.presentation.components.AutoResizeText
 import com.rinx.artRINXapp.feature.onboarding.presentation.components.OnboardingControls
 
 @Composable
@@ -135,12 +137,14 @@ fun OnboardingScreen(
                             overflow = TextOverflow.Ellipsis,
                             )
                         Spacer(modifier = Modifier.height(Spacing.sm))
-                        Text(
+                        // Shrink-to-fit so the headline is never clipped on small/narrow screens or
+                        // under large font scales — it scales down instead of ellipsizing.
+                        AutoResizeText(
                             text = page.headline,
                             style = MaterialTheme.typography.headlineLarge,
                             color = MaterialTheme.colorScheme.onBackground,
                             maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
 
