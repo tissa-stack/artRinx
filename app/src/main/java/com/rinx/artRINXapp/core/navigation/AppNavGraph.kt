@@ -38,6 +38,7 @@ import com.rinx.artRINXapp.feature.home.presentation.detail.ArtDetailScreen
 import com.rinx.artRINXapp.feature.home.presentation.detail.CurationDetailScreen
 import com.rinx.artRINXapp.feature.onboarding.presentation.OnboardingScreen
 import com.rinx.artRINXapp.feature.profile.presentation.follow.FollowListScreen
+import com.rinx.artRINXapp.feature.profile.presentation.artistarts.ArtByArtistScreen
 import com.rinx.artRINXapp.feature.profile.presentation.other.OtherProfileScreen
 import com.rinx.artRINXapp.feature.profile.presentation.view.UserProfileScreen
 import com.rinx.artRINXapp.feature.create.presentation.CreateScreen
@@ -509,7 +510,26 @@ fun AppNavGraph(
                 onNavigateToNewCuration   = { navController.navigate(NavRoutes.NEW_CURATION) },
                 onEditArt                 = { navController.navigate(NavRoutes.newArtForEdit()) },
                 onOpenProfile             = { id -> navController.navigate(NavRoutes.userProfile(id.toString(), source)) },
+                onOpenArtistArts          = { name, artistId ->
+                    navController.navigate(NavRoutes.artByArtist(name, artistId, source))
+                },
                 activeRoute = source,
+            )
+        }
+
+        composable(
+            route     = NavRoutes.ART_BY_ARTIST,
+            arguments = listOf(
+                navArgument("artistName") { type = NavType.StringType },
+                navArgument("artistId") { type = NavType.StringType; defaultValue = "" },
+                navArgument("source") { type = NavType.StringType; defaultValue = NavRoutes.HOME },
+            ),
+        ) { backStackEntry ->
+            val source = backStackEntry.arguments?.getString("source") ?: NavRoutes.HOME
+            ArtByArtistScreen(
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { id -> navController.navigate(NavRoutes.userProfile(id.toString(), source)) },
+                onNavigateToDetail = { postId -> navController.navigate(NavRoutes.artDetail(postId, source)) },
             )
         }
 

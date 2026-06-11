@@ -13,11 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,18 +40,11 @@ fun ExpandingPagerIndicator(
     val window = minOf(maxDots, pageCount)
     val ash = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
 
-    // Stateful sliding window: the active dot MOVES across the visible dots, and the window only
-    // scrolls once the active dot reaches an edge — so every banner change shows real progress.
-    var windowStart by remember { mutableIntStateOf(0) }
-    LaunchedEffect(currentPage, pageCount, window) {
-        val maxStart = (pageCount - window).coerceAtLeast(0)
-        windowStart = when {
-            currentPage < windowStart -> currentPage
-            currentPage > windowStart + window - 1 -> currentPage - window + 1
-            else -> windowStart
-        }.coerceIn(0, maxStart)
-    }
-    val end = (windowStart + window).coerceAtMost(pageCount)
+    // Paged groups: within a group of [window] dots the active dot advances; crossing into the next
+    // group resets the visible dots so the active starts from the beginning again — clear progress
+    // for any page count, never stuck on the last dot.
+    val groupStart = (currentPage / window) * window
+    val end = (groupStart + window).coerceAtMost(pageCount)
 
     Row(
         modifier = modifier
@@ -64,16 +53,9 @@ fun ExpandingPagerIndicator(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        for (index in windowStart until end) {
+        for (index in groupStart until end) {
             val isActive = index == currentPage
-            // Dots at the window edge that still have pages beyond them shrink to hint "there's more".
-            val isOverflowEdge =
-                (index == windowStart && windowStart > 0) || (index == end - 1 && end < pageCount)
-            val targetSize = when {
-                isActive -> d.indicatorDotActive
-                isOverflowEdge -> d.indicatorDotSmall
-                else -> d.indicatorDotMedium
-            }
+            val targetSize = if (isActive) d.indicatorDotActive else d.indicatorDotMedium
             val animatedSize by animateDpAsState(
                 targetValue = targetSize,
                 animationSpec = spring(stiffness = Spring.StiffnessMedium),

@@ -165,7 +165,10 @@ class HomeRepositoryImpl @Inject constructor(
     )
 
     private fun ArtworkDto.bestImage(): String = imageUrl ?: webpUrl ?: thumbnailUrl ?: ""
-    private fun ArtworkDto.artistDisplay(): String = displayName ?: artist?.artistName ?: ""
+    // Credit the artwork's named artist first (who the piece is BY), falling back to the uploader's
+    // display name only when no credited artist is present.
+    private fun ArtworkDto.artistDisplay(): String =
+        artist?.artistName?.takeIf { it.isNotBlank() } ?: displayName ?: ""
 
     private fun ArtworkDto.toArtworkItem() = ArtworkItem(
         id = id?.toString() ?: "",
@@ -203,6 +206,8 @@ class HomeRepositoryImpl @Inject constructor(
         shopUrl = shopLink.orEmpty(),
         price = price,
         ownerId = userId,
+        ownerName = displayName?.takeIf { it.isNotBlank() } ?: artistDisplay(),
+        artistId = artist?.artistId,
     )
 
     private fun CurationDto.toCurationItem(): CurationItem {

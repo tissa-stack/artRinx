@@ -124,6 +124,7 @@ fun ChatScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var blockConfirm by remember { mutableStateOf(false) }
     var unblockConfirm by remember { mutableStateOf(false) }
+    var unfollowConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(menuState.actionError) {
         menuState.actionError?.let {
@@ -150,6 +151,13 @@ fun ChatScreen(
             viewModel.loadConversation()
         }
     }
+    LaunchedEffect(menuState.unfollowedSuccess) {
+        if (menuState.unfollowedSuccess) {
+            Toast.makeText(context, "Unfollowed ${menuState.name}", Toast.LENGTH_SHORT).show()
+            unfollowConfirm = false
+            menuViewModel.onUnfollowedHandled()
+        }
+    }
 
     if (blockConfirm) {
         ConfirmActionDialog(
@@ -170,6 +178,16 @@ fun ChatScreen(
             isLoading = menuState.isActioning,
             onConfirm = { menuViewModel.unblockUser() },
             onDismiss = { unblockConfirm = false },
+        )
+    }
+    if (unfollowConfirm) {
+        ConfirmActionDialog(
+            title = "Are you sure want\nto unfollow \"${menuState.name}\"?",
+            confirmLabel = "Unfollow",
+            iconRes = R.drawable.ic_navigation_profile,
+            isLoading = menuState.isActioning,
+            onConfirm = { menuViewModel.unfollowUser() },
+            onDismiss = { unfollowConfirm = false },
         )
     }
     if (showDeleteConfirm) {
@@ -201,7 +219,7 @@ fun ChatScreen(
             userName = menuState.name,
             onDismiss = { showReportSent = false },
             onBlock = { showReportSent = false; blockConfirm = true },
-            onUnfollow = { menuViewModel.unfollowUser(); showReportSent = false },
+            onUnfollow = { showReportSent = false; unfollowConfirm = true },
         )
     }
 

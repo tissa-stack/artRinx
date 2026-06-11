@@ -489,6 +489,21 @@ class ProfileRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getArtworksByName(name: String, page: Int, size: Int): ApiResult<List<ProfileArtItem>> {
+        return try {
+            val response = apiService.getArtworksByName(name, page, size)
+            if (response.isSuccessful) {
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() })
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
     override suspend fun getPublicCurations(userId: Int, page: Int, size: Int): ApiResult<List<ProfileCurationItem>> {
         return try {
             val response = apiService.getPublicCurations(userId, page, size)
@@ -704,7 +719,7 @@ class ProfileRepositoryImpl @Inject constructor(
         imageRes = null,
         imageUrl = imageUrl ?: thumbnailUrl ?: webpUrl,
         title = title ?: "Untitled",
-        artistName = displayName ?: artist?.artistName.orEmpty(),
+        artistName = artist?.artistName?.takeIf { it.isNotBlank() } ?: displayName.orEmpty(),
         isPrivate = privacy ?: false,
         cardHeight = aspectRatio.toCardHeight(),
     )

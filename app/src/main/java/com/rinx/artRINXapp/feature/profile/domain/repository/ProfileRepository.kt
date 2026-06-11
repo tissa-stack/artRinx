@@ -50,6 +50,8 @@ interface ProfileRepository {
     // ── Other user's public profile ─────────────────────────────────────────
     suspend fun getPublicProfile(userId: Int): ApiResult<PublicProfile>
     suspend fun getPublicArtworks(userId: Int, page: Int, size: Int): ApiResult<List<ProfileArtItem>>
+    /** Artworks credited to an artist display name (for the "Art by <name>" screen). */
+    suspend fun getArtworksByName(name: String, page: Int, size: Int): ApiResult<List<ProfileArtItem>>
     suspend fun getPublicCurations(userId: Int, page: Int, size: Int): ApiResult<List<ProfileCurationItem>>
     suspend fun followUser(userId: Int): ApiResult<Unit>
     suspend fun unfollowUser(userId: Int): ApiResult<Unit>

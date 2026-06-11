@@ -1,14 +1,12 @@
 package com.rinx.artRINXapp.feature.profile.presentation.other
 
 import android.widget.Toast
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,10 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
-import com.rinx.artRINXapp.core.ui.CollapsingHeaderTabsPager
+import com.rinx.artRINXapp.core.ui.ProfileHeaderTabsPager
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -84,7 +81,7 @@ import com.rinx.artRINXapp.feature.profile.presentation.view.components.shimmer.
 
 private enum class ConfirmKind { UNFOLLOW, BLOCK, UNBLOCK }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtherProfileScreen(
     onBack: () -> Unit,
@@ -126,6 +123,13 @@ fun OtherProfileScreen(
         if (uiState.unblockedSuccess) {
             Toast.makeText(context, "Unblocked ${uiState.profile?.displayName ?: "user"}", Toast.LENGTH_SHORT).show()
             viewModel.onUnblockedShown()
+        }
+    }
+
+    LaunchedEffect(uiState.actionMessage) {
+        uiState.actionMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onActionMessageShown()
         }
     }
 
@@ -178,6 +182,8 @@ fun OtherProfileScreen(
             else -> {
                 val profile = uiState.profile!!
                 val tabs = listOf(ProfileTab.ART, ProfileTab.CURATIONS)
+                // Fixed header + tab bar above a swipeable pager (mirrors Home): swipe or drag the
+                // bar to change tabs; the header/tabs stay put while pages slide.
                 val pagerState = rememberPagerState(
                     initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
                 ) { tabs.size }
@@ -198,8 +204,9 @@ fun OtherProfileScreen(
                     snapshotFlow { activeListState.canScrollForward }
                         .collect { canScroll -> if (!canScroll) viewModel.loadMore() }
                 }
-                CollapsingHeaderTabsPager(
+                ProfileHeaderTabsPager(
                     pagerState = pagerState,
+                    listStateFor = { listStateFor(tabs[it]) },
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(bottom = innerPadding.calculateBottomPadding())
@@ -235,46 +242,40 @@ fun OtherProfileScreen(
                         )
                     },
                 ) { page ->
-                      val tab = tabs[page]
-                      LazyColumn(
-                        state = listStateFor(tab),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = Spacing.xxl),
-                      ) {
-                        item(key = "content_${tab.name}") {
-                            when (tab) {
-                                ProfileTab.CURATIONS -> if (uiState.curations.isEmpty()) {
-                                    EmptyView(
-                                        icon = Icons.Outlined.Collections,
-                                        title = "No curations yet",
-                                        subtitle = "This artist hasn't created any curations.",
-                                        modifier = Modifier.padding(top = Spacing.md),
-                                    )
-                                } else {
-                                    ProfileCurationsGrid(
-                                        items = uiState.curations,
-                                        modifier = Modifier.padding(top = Spacing.md),
-                                        onItemClick = { onNavigateToCurationDetail(it.id) },
-                                    )
-                                }
-                                else -> if (uiState.artItems.isEmpty()) {
-                                    EmptyView(
-                                        icon = Icons.Outlined.Image,
-                                        title = "No art yet",
-                                        subtitle = "This artist hasn't posted any art.",
-                                        modifier = Modifier.padding(top = Spacing.md),
-                                    )
-                                } else {
-                                    ProfileArtMasonryGrid(
-                                        items = uiState.artItems,
-                                        modifier = Modifier.padding(top = Spacing.md),
-                                        onItemClick = { onNavigateToDetail(it.id) },
-                                    )
-                                }
+                    val tab = tabs[page]
+                    item(key = "content_${tab.name}") {
+                        when (tab) {
+                            ProfileTab.CURATIONS -> if (uiState.curations.isEmpty()) {
+                                EmptyView(
+                                    icon = Icons.Outlined.Collections,
+                                    title = "No curations yet",
+                                    subtitle = "This artist hasn't created any curations.",
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                )
+                            } else {
+                                ProfileCurationsGrid(
+                                    items = uiState.curations,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToCurationDetail(it.id) },
+                                )
+                            }
+                            else -> if (uiState.artItems.isEmpty()) {
+                                EmptyView(
+                                    icon = Icons.Outlined.Image,
+                                    title = "No art yet",
+                                    subtitle = "This artist hasn't posted any art.",
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                )
+                            } else {
+                                ProfileArtMasonryGrid(
+                                    items = uiState.artItems,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToDetail(it.id) },
+                                )
                             }
                         }
-                      }
                     }
+                }
             }
         }
     }

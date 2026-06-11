@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import com.rinx.artRINXapp.core.theme.LocalDimens
 
+private const val MAX_VISIBLE_PILLS = 5
+
 @Composable
 fun OnboardingControls(
     pageCount: Int,
@@ -43,12 +45,17 @@ fun OnboardingControls(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Page the pills in groups of [MAX_VISIBLE_PILLS]: within a group the active pill advances,
+        // and once the group is complete the next set restarts from the beginning — so the indicator
+        // keeps showing progress for any page count instead of overflowing / sticking at the last pill.
+        val groupStart = (currentPage / MAX_VISIBLE_PILLS) * MAX_VISIBLE_PILLS
+        val groupEnd = minOf(groupStart + MAX_VISIBLE_PILLS, pageCount)
         Row(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(dimens.pillSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            repeat(pageCount) { index ->
+            for (index in groupStart until groupEnd) {
                 val pillWidth by animateDpAsState(
                     targetValue = if (index == currentPage) dimens.pillActiveWidth else dimens.pillInactiveWidth,
                     animationSpec = tween(durationMillis = 250),

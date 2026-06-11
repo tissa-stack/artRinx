@@ -77,6 +77,10 @@ data class ShoppablePost(
     val price: Double? = null,
     /** Artwork owner's user id — used to detect "this is my own art". */
     val ownerId: Int? = null,
+    /** Uploader's display name (the profile that owns this art — may differ from the credited artist). */
+    val ownerName: String = "",
+    /** Credited artist's RINX profile id (null when they have no profile). */
+    val artistId: Int? = null,
 )
 
 /** Everything the single /api/feed/discover call returns, mapped to domain models. */

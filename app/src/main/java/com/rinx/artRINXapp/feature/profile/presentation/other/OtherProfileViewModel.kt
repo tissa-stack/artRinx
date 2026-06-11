@@ -45,6 +45,8 @@ data class OtherProfileUiState(
     val reportSent: Boolean = false,
     // one-shot: set after a successful unblock so the screen can toast a success message
     val unblockedSuccess: Boolean = false,
+    /** One-shot follow/unfollow success message (toasted then cleared by the screen). */
+    val actionMessage: String? = null,
 )
 
 @HiltViewModel
@@ -165,7 +167,10 @@ class OtherProfileViewModel @Inject constructor(
                     s.copy(isFollowPending = false, profile = cur.copy(isFollowing = false, followerCount = (cur.followerCount - 1).coerceAtLeast(0)), actionError = "Couldn't follow. Please try again.")
                 }
             } else {
-                _uiState.update { it.copy(isFollowPending = false) }
+                _uiState.update { s ->
+                    val name = s.profile?.displayName?.takeIf { it.isNotBlank() }
+                    s.copy(isFollowPending = false, actionMessage = if (name != null) "Following $name" else "Following")
+                }
             }
         }
     }
@@ -178,9 +183,11 @@ class OtherProfileViewModel @Inject constructor(
             when (repository.unfollowUser(id)) {
                 is ApiResult.Success -> _uiState.update { s ->
                     val cur = s.profile
+                    val name = cur?.displayName?.takeIf { it.isNotBlank() }
                     s.copy(
                         isActioning = false,
                         profile = cur?.copy(isFollowing = false, followerCount = (cur.followerCount - 1).coerceAtLeast(0)),
+                        actionMessage = if (name != null) "Unfollowed $name" else "Unfollowed",
                     )
                 }
                 is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = "Couldn't unfollow. Please try again.") }
@@ -237,6 +244,7 @@ class OtherProfileViewModel @Inject constructor(
     fun onReportClosed() = _uiState.update { it.copy(isReporting = false, reportSent = false) }
     fun onActionErrorShown() = _uiState.update { it.copy(actionError = null) }
     fun onUnblockedShown() = _uiState.update { it.copy(unblockedSuccess = false) }
+    fun onActionMessageShown() = _uiState.update { it.copy(actionMessage = null) }
 
     private companion object {
         const val PAGE_SIZE = 30

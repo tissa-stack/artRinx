@@ -1,21 +1,18 @@
 package com.rinx.artRINXapp.feature.profile.presentation.view
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import com.rinx.artRINXapp.core.ui.CollapsingHeaderTabsPager
+import com.rinx.artRINXapp.core.ui.ProfileHeaderTabsPager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -91,7 +88,6 @@ fun UserProfileScreen(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun UserProfileContent(
     uiState: UserProfileUiState,
@@ -142,10 +138,11 @@ private fun UserProfileContent(
             )
         } else if (uiState.profile != null) {
             val tabs = ProfileTab.entries
+            // Fixed header + tab bar above a swipeable pager (mirrors Home): swipe or drag the bar
+            // to change tabs; the header/tabs stay put while pages slide.
             val pagerState = rememberPagerState(
                 initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
             ) { tabs.size }
-            // Swipe ↔ tab two-way sync (mirrors Home tabs).
             LaunchedEffect(pagerState.currentPage) {
                 val swiped = tabs[pagerState.currentPage]
                 if (swiped != uiState.activeTab) onTabSelected(swiped)
@@ -168,8 +165,9 @@ private fun UserProfileContent(
                 snapshotFlow { activeListState.canScrollForward }
                     .collect { canScroll -> if (!canScroll) onLoadMore() }
             }
-            CollapsingHeaderTabsPager(
+            ProfileHeaderTabsPager(
                 pagerState = pagerState,
+                listStateFor = { listStateFor(tabs[it]) },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = innerPadding.calculateBottomPadding())
@@ -214,13 +212,8 @@ private fun UserProfileContent(
                     )
                 },
             ) { page ->
-                  val tab = tabs[page]
-                  LazyColumn(
-                    state = listStateFor(tab),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = Spacing.xxl),
-                  ) {
-                    item(key = "content_${tab.name}") {
+                val tab = tabs[page]
+                item(key = "content_${tab.name}") {
                     when (tab) {
                         ProfileTab.ART -> Column {
                             uiState.uploadProgress?.let { progress ->
@@ -287,9 +280,8 @@ private fun UserProfileContent(
                             }
                         }
                     }
-                    }
-                  }
                 }
+            }
         }
     }
 }

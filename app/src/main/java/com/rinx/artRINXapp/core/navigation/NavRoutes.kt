@@ -71,6 +71,13 @@ object NavRoutes {
     fun userProfile(userId: String, source: String = HOME) =
         "user_profile/${Uri.encode(userId)}?source=${Uri.encode(source)}"
 
+    // "Art by <artist>" — credited-artist arts. artistId is blank when the artist has no RINX profile.
+    const val ART_BY_ARTIST = "art_by_artist/{artistName}?artistId={artistId}&source={source}"
+
+    fun artByArtist(artistName: String, artistId: Int?, source: String = HOME) =
+        "art_by_artist/${Uri.encode(artistName)}" +
+            "?artistId=${artistId?.toString().orEmpty()}&source=${Uri.encode(source)}"
+
     // Current user's followers / following list. tab = "followers" | "following".
     const val FOLLOW_LIST = "follow_list?tab={tab}"
 

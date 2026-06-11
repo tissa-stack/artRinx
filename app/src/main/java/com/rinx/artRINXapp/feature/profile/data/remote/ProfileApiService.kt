@@ -93,6 +93,14 @@ interface ProfileApiService {
         @Query("size") size: Int,
     ): Response<EnvelopeDto<PageDto<ArtworkDto>>>
 
+    /** Artworks credited to a given artist display name (api-skill §4.1). */
+    @GET("api/artworks/by-name/{artistName}")
+    suspend fun getArtworksByName(
+        @Path("artistName") artistName: String,
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<ArtworkDto>>>
+
     @GET("api/profile/{userId}/public/curations")
     suspend fun getPublicCurations(
         @Path("userId") userId: Int,

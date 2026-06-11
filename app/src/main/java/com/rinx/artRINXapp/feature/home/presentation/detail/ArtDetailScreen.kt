@@ -85,6 +85,7 @@ fun ArtDetailScreen(
     onNavigateToNewCuration: () -> Unit = {},
     onEditArt: () -> Unit = {},
     onOpenProfile: (Int) -> Unit = {},
+    onOpenArtistArts: (name: String, artistId: Int?) -> Unit = { _, _ -> },
     activeRoute: String = "home",
     viewModel: ArtDetailViewModel = hiltViewModel(),
 ) {
@@ -121,7 +122,7 @@ fun ArtDetailScreen(
     if (showReportSheet) {
         ReportBottomSheet(
             artTitle = uiState.post?.title ?: "",
-            profileName = uiState.post?.artistName ?: "",
+            profileName = uiState.post?.ownerName?.takeIf { it.isNotBlank() } ?: uiState.post?.artistName ?: "",
             isReporting = uiState.isReporting,
             reportSent = uiState.reportSent,
             isBlocking = uiState.isBlocking,
@@ -139,7 +140,7 @@ fun ArtDetailScreen(
     blockConfirm?.let { kind ->
         ConfirmActionDialog(
             title = if (kind == "art") "Are you sure want\nto block this art?"
-                    else "Are you sure want\nto block \"${uiState.post?.artistName.orEmpty()}\"?",
+                    else "Are you sure want\nto block \"${uiState.post?.ownerName?.takeIf { it.isNotBlank() } ?: uiState.post?.artistName.orEmpty()}\"?",
             confirmLabel = "Block",
             confirmColor = DangerRed,
             iconRes = R.drawable.ic_block,
@@ -205,6 +206,7 @@ fun ArtDetailScreen(
                     onNavigateToDetail = onNavigateToDetail,
                     onAddToCuration = { showAddToCuration = true },
                     onOpenProfile = onOpenProfile,
+                    onOpenArtistArts = onOpenArtistArts,
                     onInviteSheetOpened = viewModel::onInviteSheetOpened,
                     onSendInvite = viewModel::onSendInvite,
                     onInviteSheetClosed = viewModel::onInviteSheetClosed,
@@ -306,6 +308,7 @@ private fun ArtDetailContent(
     onNavigateToDetail: (String) -> Unit,
     onAddToCuration: () -> Unit = {},
     onOpenProfile: (Int) -> Unit = {},
+    onOpenArtistArts: (name: String, artistId: Int?) -> Unit = { _, _ -> },
     onInviteSheetOpened: () -> Unit = {},
     onSendInvite: (String) -> Unit = {},
     onInviteSheetClosed: () -> Unit = {},
@@ -334,7 +337,7 @@ private fun ArtDetailContent(
     if (showSendSheet) {
         LaunchedEffect(Unit) { onInviteSheetOpened() }
         SendMessageBottomSheet(
-            artistName      = post.artistName,
+            artistName      = post.ownerName.ifBlank { post.artistName },
             artistRole      = post.artistRole,
             artistAvatarUrl = post.artistAvatarUrl,
             artworkTitle    = post.title,
@@ -454,7 +457,18 @@ private fun ArtDetailContent(
                     .padding(horizontal = Spacing.md, vertical = Spacing.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        // Tapping the artist name opens "Art by <artist>".
+                        .then(
+                            if (post.artistName.isNotBlank()) {
+                                Modifier.clickable { onOpenArtistArts(post.artistName, post.artistId) }
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
                     Text(
                         text = "Artist",
                         style = MaterialTheme.typography.labelSmall,
@@ -464,7 +478,7 @@ private fun ArtDetailContent(
                         text = post.artistName,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        color = BrandPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -554,7 +568,7 @@ private fun ArtDetailContent(
                     if (!post.artistAvatarUrl.isNullOrBlank()) {
                         AsyncImage(
                             model = post.artistAvatarUrl,
-                            contentDescription = post.artistName,
+                            contentDescription = post.ownerName,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                         )
@@ -570,7 +584,7 @@ private fun ArtDetailContent(
                 Spacer(Modifier.width(Spacing.sm))
                 Column(modifier = Modifier.weight(1f).then(artistClick)) {
                     Text(
-                        text = post.artistName,
+                        text = post.ownerName.ifBlank { post.artistName },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,

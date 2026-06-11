@@ -26,6 +26,8 @@ data class ChatMenuUiState(
     val blockedSuccess: Boolean = false,
     /** One-shot: set true after a successful unblock so the screen can close the confirm dialog. */
     val unblockedSuccess: Boolean = false,
+    /** One-shot: set true after a successful unfollow so the screen can toast a confirmation. */
+    val unfollowedSuccess: Boolean = false,
 )
 
 @HiltViewModel
@@ -97,13 +99,24 @@ class ChatMenuViewModel @Inject constructor(
         }
     }
 
+    /** Caller confirms the unfollow first (see the chat screen's confirm dialog). */
     fun unfollowUser() {
-        if (userId != 0) viewModelScope.launch { profileRepository.unfollowUser(userId) }
+        if (userId == 0 || _state.value.isActioning) return
+        _state.update { it.copy(isActioning = true, actionError = null) }
+        viewModelScope.launch {
+            when (profileRepository.unfollowUser(userId)) {
+                is ApiResult.Success -> _state.update { it.copy(isActioning = false, unfollowedSuccess = true) }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isActioning = false, actionError = "Couldn't unfollow. Please try again.")
+                }
+            }
+        }
     }
 
     fun onActionErrorShown() = _state.update { it.copy(actionError = null) }
     fun onBlockedHandled() = _state.update { it.copy(blockedSuccess = false) }
     fun onUnblockedHandled() = _state.update { it.copy(unblockedSuccess = false) }
+    fun onUnfollowedHandled() = _state.update { it.copy(unfollowedSuccess = false) }
 
     /** Delete all messages with this user (§7.10). */
     fun deleteChat() {
