@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -143,7 +142,6 @@ private fun LoginContent(
                 contentDescription = "RiNX logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
-                    .aspectRatio(4f)
                     .align(Alignment.Center),
                 contentScale = ContentScale.Fit,
             )

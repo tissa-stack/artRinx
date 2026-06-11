@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -41,8 +40,7 @@ fun ProfileCompletionScreen() {
                 painter = painterResource(R.drawable.artrinx_logo_dark_theme),
                 contentDescription = "RiNX logo",
                 modifier = Modifier
-                    .height(dimens.logoHeight)
-                    .aspectRatio(4f),
+                    .height(dimens.logoHeight),
                 contentScale = ContentScale.Fit,
             )
             Spacer(modifier = Modifier.height(Spacing.xxxl))

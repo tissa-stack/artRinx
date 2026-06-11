@@ -11,7 +11,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -138,8 +137,7 @@ fun InviteCodeScreen(
                     ),
                     contentDescription = "RiNX logo",
                     modifier = Modifier
-                        .height(dimens.logoHeight)
-                        .aspectRatio(4f),
+                        .height(dimens.logoHeight),
                     contentScale = ContentScale.Fit,
                 )
             }

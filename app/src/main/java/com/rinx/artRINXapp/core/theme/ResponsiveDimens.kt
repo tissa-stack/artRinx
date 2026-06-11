@@ -25,8 +25,8 @@ data class ResponsiveDimens(
 
     // ── Logo ──────────────────────────────────────────────────────────────
     // Width-based so the horizontal logo stays proportional regardless of device height.
-    // 360w × 0.156 ≈ 56dp  |  min 48dp so it's never tiny on small phones
-    val logoHeight: Dp            = w(0.104f, 30.dp, 46.dp)
+    // 360w × 0.068 ≈ 25dp  |  min 20dp small phones, max 30dp large — kept uniform app-wide.
+    val logoHeight: Dp            = w(0.068f, 20.dp, 30.dp)
     val logoPaddingVertical: Dp   = h(0.030f, 16.dp, 32.dp)
     val logoPaddingHorizontal: Dp = w(0.067f, 16.dp, 32.dp)
 
