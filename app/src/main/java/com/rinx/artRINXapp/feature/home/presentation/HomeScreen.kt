@@ -1,7 +1,6 @@
 package com.rinx.artRINXapp.feature.home.presentation
 
 import android.widget.Toast
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,9 +15,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.DynamicFeed
@@ -112,6 +114,9 @@ fun HomeScreen(
         uiState = uiState,
         reselectTick = reselectTick,
         onReselect = onReselect,
+        // Disable horizontal tab-swiping while the first-launch tour is up so it can't
+        // fight the tour's own segment changes / coach-marks.
+        swipeEnabled = !tourActive,
         onTabSelected = viewModel::onTabSelected,
         onTabBounds = if (tourActive) {
             { tab, rect -> tour.report(tab.toTourTarget(), rect) }
@@ -149,6 +154,7 @@ fun HomeScreenContent(
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
     reselectTick: Int = 0,
+    swipeEnabled: Boolean = true,
     onReselect: () -> Unit = {},
     onTabBounds: ((HomeTab, Rect) -> Unit)? = null,
     onItemBounds: ((String, Rect) -> Unit)? = null,
@@ -196,6 +202,7 @@ fun HomeScreenContent(
             onRetry = onRetry,
             onLike = onLike,
             reselectTick = reselectTick,
+            swipeEnabled = swipeEnabled,
             onShopLike = onShopLike,
             onRefresh = onRefresh,
             onRetryUpload = onRetryUpload,
@@ -233,7 +240,7 @@ private fun segmentForTourStep(step: Int): HomeTab? = when (TourStep.ordered.get
     else -> null
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeContent(
     uiState: HomeUiState,
@@ -242,6 +249,7 @@ fun HomeContent(
     onRetry: () -> Unit,
     onLike: (String) -> Unit,
     reselectTick: Int = 0,
+    swipeEnabled: Boolean = true,
     onShopLike: (String) -> Unit = {},
     onRefresh: () -> Unit = {},
     onRetryUpload: () -> Unit = {},
@@ -256,16 +264,32 @@ fun HomeContent(
     modifier: Modifier = Modifier,
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
-    val d = LocalDimens.current
     var addToCurationSource by remember { mutableStateOf<CurationSource?>(null) }
     // Each tab keeps its own scroll position so switching tabs doesn't carry the scroll over.
     val discoverListState = rememberLazyListState()
     val shopListState = rememberLazyListState()
     val forYouListState = rememberLazyListState()
-    val listState = when (uiState.activeTab) {
+    fun listStateFor(tab: HomeTab) = when (tab) {
         HomeTab.DISCOVER -> discoverListState
         HomeTab.SHOP -> shopListState
         HomeTab.FOR_YOU -> forYouListState
+    }
+    val listState = listStateFor(uiState.activeTab)
+
+    // Horizontal pager backing the three tabs — swiping moves between them, and the
+    // tab indicator / active state stay in sync with the pager position both ways.
+    val pagerState = rememberPagerState(initialPage = uiState.activeTab.ordinal) { HomeTab.entries.size }
+
+    // Swipe (or settle) → update the selected tab.
+    LaunchedEffect(pagerState.currentPage) {
+        val swipedTab = HomeTab.entries[pagerState.currentPage]
+        if (swipedTab != uiState.activeTab) onTabSelected(swipedTab)
+    }
+    // Tab tapped (activeTab changed elsewhere) → animate the pager to it.
+    LaunchedEffect(uiState.activeTab) {
+        if (pagerState.currentPage != uiState.activeTab.ordinal) {
+            pagerState.animateScrollToPage(uiState.activeTab.ordinal)
+        }
     }
 
     // Re-tapping the Home tab while already on Home scrolls the active list back to the top.
@@ -282,25 +306,88 @@ fun HomeContent(
     }
 
     Box(modifier = modifier) {
-    PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing,
-        onRefresh = onRefresh,
-        modifier = Modifier.fillMaxSize(),
-    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Tabs live in a fixed header above the pager so they stay put while pages swipe.
+            TopTabs(
+                activeTab = uiState.activeTab,
+                pagerState = pagerState,
+                onTabSelected = onTabSelected,
+                isDarkTheme = isDarkTheme,
+                onTabBounds = onTabBounds,
+                swipeEnabled = swipeEnabled,
+            )
+
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = swipeEnabled,
+                    // Keep neighbouring pages composed so a swipe reveals ready content.
+                    beyondViewportPageCount = 1,
+                ) { page ->
+                    HomeTabPage(
+                        tab = HomeTab.entries[page],
+                        uiState = uiState,
+                        listState = listStateFor(HomeTab.entries[page]),
+                        bottomPadding = bottomPadding,
+                        onRetry = onRetry,
+                        onLike = onLike,
+                        onShopLike = onShopLike,
+                        onRetryUpload = onRetryUpload,
+                        onDismissUpload = onDismissUpload,
+                        onRetryCuration = onRetryCuration,
+                        onDismissCuration = onDismissCuration,
+                        onNavigateToDetail = onNavigateToDetail,
+                        onNavigateToCurationDetail = onNavigateToCurationDetail,
+                        onOpenProfile = onOpenProfile,
+                        onAddToCuration = { addToCurationSource = it },
+                    )
+                }
+            }
+        }
+
+        addToCurationSource?.let { src ->
+            AddToCurationSheet(
+                source = src,
+                onDismiss = { addToCurationSource = null },
+                onCreateNew = {
+                    addToCurationSource = null
+                    onNavigateToNewCuration()
+                },
+            )
+        }
+    }
+}
+
+/** Scrollable content for a single Home tab — one of the three [HorizontalPager] pages. */
+@Composable
+private fun HomeTabPage(
+    tab: HomeTab,
+    uiState: HomeUiState,
+    listState: LazyListState,
+    bottomPadding: PaddingValues,
+    onRetry: () -> Unit,
+    onLike: (String) -> Unit,
+    onShopLike: (String) -> Unit,
+    onRetryUpload: () -> Unit,
+    onDismissUpload: () -> Unit,
+    onRetryCuration: () -> Unit,
+    onDismissCuration: () -> Unit,
+    onNavigateToDetail: (String) -> Unit,
+    onNavigateToCurationDetail: (String) -> Unit,
+    onOpenProfile: (Int) -> Unit,
+    onAddToCuration: (CurationSource) -> Unit,
+) {
+    val d = LocalDimens.current
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = bottomPadding.calculateBottomPadding()),
     ) {
-        stickyHeader(key = "top-tabs") {
-            TopTabs(
-                activeTab = uiState.activeTab,
-                onTabSelected = onTabSelected,
-                isDarkTheme = isDarkTheme,
-                onTabBounds = onTabBounds,
-            )
-        }
-
         // ── Uploading row (public uploads) — pinned at the very top of the feed ──
         uiState.uploadProgress?.let { progress ->
             item(key = "upload-progress") {
@@ -323,239 +410,228 @@ fun HomeContent(
             }
         }
 
-        // ── Shop tab: shoppable feed only ─────────────────────────────
-        if (uiState.activeTab == HomeTab.SHOP) {
-            if (uiState.isLoading) {
-                items(count = 3, key = { "shop-shimmer-$it" }) { FeedShimmer() }
-            } else if (uiState.shoppableItems.isEmpty()) {
-                item(key = "shop-empty") {
-                    EmptyView(
-                        icon = Icons.Outlined.Collections,
-                        title = "No shoppable art yet",
-                        subtitle = "Check back later for art you can buy.",
-                    )
-                }
-            } else {
-                items(uiState.shoppableItems, key = { it.id }) { post ->
-                    ShoppableFeedItem(
-                        post = post,
-                        onLike = { onShopLike(post.id) },
-                        onClick = { onNavigateToDetail(post.id) },
-                        onAddToCuration = { post.id.toIntOrNull()?.let { addToCurationSource = CurationSource.Artwork(it, post.imageUrl) } },
-                        onArtistClick = { post.ownerId?.let(onOpenProfile) },
-                    )
+        when (tab) {
+            // ── Shop tab: shoppable feed only ─────────────────────────────
+            HomeTab.SHOP -> {
+                if (uiState.isLoading) {
+                    items(count = 3, key = { "shop-shimmer-$it" }) { FeedShimmer() }
+                } else if (uiState.shoppableItems.isEmpty()) {
+                    item(key = "shop-empty") {
+                        EmptyView(
+                            icon = Icons.Outlined.Collections,
+                            title = "No shoppable art yet",
+                            subtitle = "Check back later for art you can buy.",
+                        )
+                    }
+                } else {
+                    items(uiState.shoppableItems, key = { it.id }) { post ->
+                        ShoppableFeedItem(
+                            post = post,
+                            onLike = { onShopLike(post.id) },
+                            onClick = { onNavigateToDetail(post.id) },
+                            onAddToCuration = { post.id.toIntOrNull()?.let { onAddToCuration(CurationSource.Artwork(it, post.imageUrl)) } },
+                            onArtistClick = { post.ownerId?.let(onOpenProfile) },
+                        )
+                    }
                 }
             }
-            return@LazyColumn
-        }
 
-        // ── For You tab: finite mixed feed (posts + sponsored banners) ─
-        if (uiState.activeTab == HomeTab.FOR_YOU) {
-            if (uiState.isLoading) {
-                items(count = 3, key = { "foryou-shimmer-$it" }) { FeedShimmer() }
-            } else if (uiState.forYouItems.isEmpty()) {
-                item(key = "foryou-empty") {
-                    EmptyView(
-                        icon = Icons.Outlined.Palette,
-                        title = "Nothing here yet",
-                        subtitle = "Curated art is on its way.",
-                    )
-                }
-            } else {
-                items(
-                    count = uiState.forYouItems.size,
-                    key = { i ->
-                        when (val it = uiState.forYouItems[i]) {
-                            is ForYouItem.Post -> "foryou-post-${it.post.id}"
-                            is ForYouItem.Sponsored -> "foryou-sponsor-${it.banner.id}"
-                        }
-                    },
-                ) { i ->
-                    when (val forYouItem = uiState.forYouItems[i]) {
-                        is ForYouItem.Post -> DiscoverFeedItem(
-                            post = forYouItem.post,
-                            onLike = { onLike(forYouItem.post.id) },
-                            onClick = { onNavigateToDetail(forYouItem.post.id) },
-                            onAddToCuration = {
-                                forYouItem.post.id.toIntOrNull()?.let {
-                                    addToCurationSource = CurationSource.Artwork(it, forYouItem.post.imageUrl)
-                                }
-                            },
-                            onArtistClick = { forYouItem.post.ownerId?.let(onOpenProfile) },
+            // ── For You tab: finite mixed feed (posts + sponsored banners) ─
+            HomeTab.FOR_YOU -> {
+                if (uiState.isLoading) {
+                    items(count = 3, key = { "foryou-shimmer-$it" }) { FeedShimmer() }
+                } else if (uiState.forYouItems.isEmpty()) {
+                    item(key = "foryou-empty") {
+                        EmptyView(
+                            icon = Icons.Outlined.Palette,
+                            title = "Nothing here yet",
+                            subtitle = "Curated art is on its way.",
                         )
-                        is ForYouItem.Sponsored -> Column(
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = "Sponsored",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(
+                    }
+                } else {
+                    items(
+                        count = uiState.forYouItems.size,
+                        key = { i ->
+                            when (val it = uiState.forYouItems[i]) {
+                                is ForYouItem.Post -> "foryou-post-${it.post.id}"
+                                is ForYouItem.Sponsored -> "foryou-sponsor-${it.banner.id}"
+                            }
+                        },
+                    ) { i ->
+                        when (val forYouItem = uiState.forYouItems[i]) {
+                            is ForYouItem.Post -> DiscoverFeedItem(
+                                post = forYouItem.post,
+                                onLike = { onLike(forYouItem.post.id) },
+                                onClick = { onNavigateToDetail(forYouItem.post.id) },
+                                onAddToCuration = {
+                                    forYouItem.post.id.toIntOrNull()?.let {
+                                        onAddToCuration(CurationSource.Artwork(it, forYouItem.post.imageUrl))
+                                    }
+                                },
+                                onArtistClick = { forYouItem.post.ownerId?.let(onOpenProfile) },
+                            )
+                            is ForYouItem.Sponsored -> Column(
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    text = "Sponsored",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(
+                                        horizontal = Spacing.md,
+                                        vertical = Spacing.xs,
+                                    ),
+                                )
+                                FeaturedCarouselItem(
+                                    item = forYouItem.banner,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(d.bannerHeight),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Discover tab ───────────────────────────────────────────────
+            HomeTab.DISCOVER -> {
+                if (uiState.error != null) {
+                    item(key = "error-state") {
+                        ErrorView(
+                            error = uiState.error,
+                            onRetry = onRetry,
+                            modifier = Modifier.fillParentMaxHeight(0.7f),
+                        )
+                    }
+                } else {
+                    // ── Banner ─────────────────────────────────────────────────
+                    item(key = "banner") {
+                        when {
+                            uiState.isLoading -> BannerShimmer()
+                            uiState.bannerItems.isEmpty() -> EmptyView(
+                                icon = Icons.Outlined.Image,
+                                title = "No featured art",
+                                subtitle = "Check back later for new artwork.",
+                            )
+                            else -> FeaturedCarousel(
+                                items = uiState.bannerItems,
+                            )
+                        }
+                    }
+
+                    // ── New Art For You ────────────────────────────────────────
+                    item(key = "new-art-header") {
+                        SectionHeader(title = "New Art For You")
+                    }
+                    item(key = "new-art-content") {
+                        when {
+                            uiState.isLoading -> HorizontalListShimmer()
+                            uiState.newArtItems.isEmpty() -> EmptyView(
+                                icon = Icons.Outlined.Palette,
+                                title = "No new art yet",
+                                subtitle = "Explore art you might like.",
+                            )
+                            else -> LazyRow(
+                                contentPadding = PaddingValues(
                                     horizontal = Spacing.md,
                                     vertical = Spacing.xs,
                                 ),
-                            )
-                            FeaturedCarouselItem(
-                                item = forYouItem.banner,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(d.bannerHeight),
-                            )
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                            ) {
+                                items(uiState.newArtItems, key = { it.id }) { item ->
+                                    ArtworkCard(item = item, onClick = { onNavigateToDetail(item.id) })
+                                }
+                            }
                         }
                     }
-                }
-            }
-            return@LazyColumn
-        }
 
-        // ── Discover tab ───────────────────────────────────────────────
-        if (uiState.error != null) {
-            item(key = "error-state") {
-                ErrorView(
-                    error = uiState.error,
-                    onRetry = onRetry,
-                    modifier = Modifier.fillParentMaxHeight(0.7f),
-                )
-            }
-        } else {
-            // ── Banner ─────────────────────────────────────────────────
-            item(key = "banner") {
-                when {
-                    uiState.isLoading -> BannerShimmer()
-                    uiState.bannerItems.isEmpty() -> EmptyView(
-                        icon = Icons.Outlined.Image,
-                        title = "No featured art",
-                        subtitle = "Check back later for new artwork.",
-                    )
-                    else -> FeaturedCarousel(
-                        items = uiState.bannerItems,
-                    )
-                }
-            }
-
-            // ── New Art For You ────────────────────────────────────────
-            item(key = "new-art-header") {
-                SectionHeader(title = "New Art For You")
-            }
-            item(key = "new-art-content") {
-                when {
-                    uiState.isLoading -> HorizontalListShimmer()
-                    uiState.newArtItems.isEmpty() -> EmptyView(
-                        icon = Icons.Outlined.Palette,
-                        title = "No new art yet",
-                        subtitle = "Explore art you might like.",
-                    )
-                    else -> LazyRow(
-                        contentPadding = PaddingValues(
-                            horizontal = Spacing.md,
-                            vertical = Spacing.xs,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                    ) {
-                        items(uiState.newArtItems, key = { it.id }) { item ->
-                            ArtworkCard(item = item, onClick = { onNavigateToDetail(item.id) })
+                    // ── Popular Curations ──────────────────────────────────────
+                    item(key = "curations-header") {
+                        SectionHeader(title = "Popular Curations")
+                    }
+                    item(key = "curations-content") {
+                        when {
+                            uiState.isLoading -> CollectionShimmer()
+                            uiState.popularCurations.isEmpty() -> EmptyView(
+                                icon = Icons.Outlined.Collections,
+                                title = "No curations yet",
+                                subtitle = "Follow curators to see their collections.",
+                            )
+                            else -> LazyRow(
+                                contentPadding = PaddingValues(
+                                    horizontal = Spacing.md,
+                                    vertical = Spacing.sm,
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                            ) {
+                                items(uiState.popularCurations, key = { it.id }) { item ->
+                                    CollectionCard(
+                                        item = item,
+                                        onClick = { onNavigateToCurationDetail(item.id) },
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-            }
 
-            // ── Popular Curations ──────────────────────────────────────
-            item(key = "curations-header") {
-                SectionHeader(title = "Popular Curations")
-            }
-            item(key = "curations-content") {
-                when {
-                    uiState.isLoading -> CollectionShimmer()
-                    uiState.popularCurations.isEmpty() -> EmptyView(
-                        icon = Icons.Outlined.Collections,
-                        title = "No curations yet",
-                        subtitle = "Follow curators to see their collections.",
-                    )
-                    else -> LazyRow(
-                        contentPadding = PaddingValues(
-                            horizontal = Spacing.md,
-                            vertical = Spacing.sm,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                    ) {
-                        items(uiState.popularCurations, key = { it.id }) { item ->
-                            CollectionCard(
-                                item = item,
-                                onClick = { onNavigateToCurationDetail(item.id) },
+                    // ── Recently Viewed ────────────────────────────────────────
+                    item(key = "recent-header") {
+                        SectionHeader(title = "Recently Viewed")
+                    }
+                    item(key = "recent-content") {
+                        when {
+                            uiState.isLoading -> HorizontalListShimmer()
+                            uiState.recentlyViewed.isEmpty() -> EmptyView(
+                                icon = Icons.Outlined.History,
+                                title = "Nothing viewed yet",
+                                subtitle = "Start exploring to see artwork here.",
+                            )
+                            else -> LazyRow(
+                                contentPadding = PaddingValues(
+                                    horizontal = Spacing.md,
+                                    vertical = Spacing.xs,
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                            ) {
+                                items(uiState.recentlyViewed, key = { it.id }) { item ->
+                                    RecentlyViewedCard(item = item, onClick = { onNavigateToDetail(item.id) })
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Discover Feed ──────────────────────────────────────────
+                    item(key = "feed-header") {
+                        SectionHeader(title = "Discover")
+                    }
+
+                    if (uiState.isLoading) {
+                        items(count = 3, key = { "feed-shimmer-$it" }) {
+                            FeedShimmer()
+                        }
+                    } else if (uiState.feedItems.isEmpty()) {
+                        item(key = "feed-empty") {
+                            EmptyView(
+                                icon = Icons.Outlined.DynamicFeed,
+                                title = "Nothing in your feed",
+                                subtitle = "Follow artists to see their work here.",
                             )
                         }
-                    }
-                }
-            }
-
-            // ── Recently Viewed ────────────────────────────────────────
-            item(key = "recent-header") {
-                SectionHeader(title = "Recently Viewed")
-            }
-            item(key = "recent-content") {
-                when {
-                    uiState.isLoading -> HorizontalListShimmer()
-                    uiState.recentlyViewed.isEmpty() -> EmptyView(
-                        icon = Icons.Outlined.History,
-                        title = "Nothing viewed yet",
-                        subtitle = "Start exploring to see artwork here.",
-                    )
-                    else -> LazyRow(
-                        contentPadding = PaddingValues(
-                            horizontal = Spacing.md,
-                            vertical = Spacing.xs,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                    ) {
-                        items(uiState.recentlyViewed, key = { it.id }) { item ->
-                            RecentlyViewedCard(item = item, onClick = { onNavigateToDetail(item.id) })
+                    } else {
+                        items(uiState.feedItems, key = { it.id }) { post ->
+                            DiscoverFeedItem(
+                                post = post,
+                                onLike = { onLike(post.id) },
+                                onClick = { onNavigateToDetail(post.id) },
+                                onAddToCuration = { post.id.toIntOrNull()?.let { onAddToCuration(CurationSource.Artwork(it, post.imageUrl)) } },
+                                onArtistClick = { post.ownerId?.let(onOpenProfile) },
+                            )
                         }
                     }
-                }
-            }
-
-            // ── Discover Feed ──────────────────────────────────────────
-            item(key = "feed-header") {
-                SectionHeader(title = "Discover")
-            }
-
-            if (uiState.isLoading) {
-                items(count = 3, key = { "feed-shimmer-$it" }) {
-                    FeedShimmer()
-                }
-            } else if (uiState.feedItems.isEmpty()) {
-                item(key = "feed-empty") {
-                    EmptyView(
-                        icon = Icons.Outlined.DynamicFeed,
-                        title = "Nothing in your feed",
-                        subtitle = "Follow artists to see their work here.",
-                    )
-                }
-            } else {
-                items(uiState.feedItems, key = { it.id }) { post ->
-                    DiscoverFeedItem(
-                        post = post,
-                        onLike = { onLike(post.id) },
-                        onClick = { onNavigateToDetail(post.id) },
-                        onAddToCuration = { post.id.toIntOrNull()?.let { addToCurationSource = CurationSource.Artwork(it, post.imageUrl) } },
-                        onArtistClick = { post.ownerId?.let(onOpenProfile) },
-                    )
                 }
             }
         }
-    }
-    }
-
-    addToCurationSource?.let { src ->
-        AddToCurationSheet(
-            source = src,
-            onDismiss = { addToCurationSource = null },
-            onCreateNew = {
-                addToCurationSource = null
-                onNavigateToNewCuration()
-            },
-        )
-    }
     }
 }
 
