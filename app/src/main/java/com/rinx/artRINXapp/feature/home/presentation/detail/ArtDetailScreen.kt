@@ -57,7 +57,9 @@ import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
-import com.rinx.artRINXapp.core.util.shareArtwork
+import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
+import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
+import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
@@ -309,11 +311,15 @@ private fun ArtDetailContent(
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
-    val context = LocalContext.current
     val post = uiState.post ?: return
     var descExpanded by remember { mutableStateOf(false) }
     var showSendSheet by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
+    var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
+
+    shareTarget?.let { target ->
+        ShareSheet(target = target, onDismiss = { shareTarget = null })
+    }
 
     if (showShopDialog) {
         ShopLinkDialog(
@@ -407,11 +413,12 @@ private fun ArtDetailContent(
                             modifier = Modifier
                                 .size(Spacing.xxl)
                                 .clickable {
-                                    context.shareArtwork(
+                                    shareTarget = ShareTarget(
+                                        kind = ShareKind.ARTWORK,
+                                        id = post.id,
                                         title = post.title,
-                                        artistName = post.artistName,
-                                        description = post.description,
-                                        link = post.shopUrl.ifBlank { null },
+                                        subtitle = "by ${post.artistName}",
+                                        imageUrl = post.imageUrl,
                                     )
                                 },
                         )

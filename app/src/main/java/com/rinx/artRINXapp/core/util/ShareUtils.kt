@@ -31,6 +31,20 @@ fun Context.shareArtwork(
     shareText(text)
 }
 
+/**
+ * Share any entity (artwork / curation / profile) to the system chooser: a title, optional
+ * subtitle (e.g. "by Jane" or "@handle"), and the canonical link. Used by the in-app share sheet's
+ * "Share to…" action.
+ */
+fun Context.shareEntity(title: String, subtitle: String?, link: String) {
+    val text = buildString {
+        append(title.ifBlank { "Check this out on RINX" })
+        if (!subtitle.isNullOrBlank()) append(" ").also { append(subtitle) }
+        if (link.isNotBlank()) append("\n\n").also { append(link) }
+    }
+    shareText(text)
+}
+
 /** Share a curation: title + curator, plus description when available. */
 fun Context.shareCuration(
     title: String,

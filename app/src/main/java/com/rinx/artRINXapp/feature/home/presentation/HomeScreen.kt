@@ -63,6 +63,8 @@ import com.rinx.artRINXapp.feature.home.presentation.components.CurationProgress
 import com.rinx.artRINXapp.feature.home.presentation.components.TopTabs
 import com.rinx.artRINXapp.feature.home.presentation.components.UploadProgressRow
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
+import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
+import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.BannerShimmer
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.CollectionShimmer
@@ -265,6 +267,7 @@ fun HomeContent(
     bottomPadding: PaddingValues = PaddingValues(),
 ) {
     var addToCurationSource by remember { mutableStateOf<CurationSource?>(null) }
+    var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
     // Each tab keeps its own scroll position so switching tabs doesn't carry the scroll over.
     val discoverListState = rememberLazyListState()
     val shopListState = rememberLazyListState()
@@ -345,6 +348,7 @@ fun HomeContent(
                         onNavigateToCurationDetail = onNavigateToCurationDetail,
                         onOpenProfile = onOpenProfile,
                         onAddToCuration = { addToCurationSource = it },
+                        onShare = { shareTarget = it },
                     )
                 }
             }
@@ -359,6 +363,10 @@ fun HomeContent(
                     onNavigateToNewCuration()
                 },
             )
+        }
+
+        shareTarget?.let { target ->
+            ShareSheet(target = target, onDismiss = { shareTarget = null })
         }
     }
 }
@@ -381,6 +389,7 @@ private fun HomeTabPage(
     onNavigateToCurationDetail: (String) -> Unit,
     onOpenProfile: (Int) -> Unit,
     onAddToCuration: (CurationSource) -> Unit,
+    onShare: (ShareTarget) -> Unit,
 ) {
     val d = LocalDimens.current
     LazyColumn(
@@ -431,6 +440,7 @@ private fun HomeTabPage(
                             onClick = { onNavigateToDetail(post.id) },
                             onAddToCuration = { post.id.toIntOrNull()?.let { onAddToCuration(CurationSource.Artwork(it, post.imageUrl)) } },
                             onArtistClick = { post.ownerId?.let(onOpenProfile) },
+                            onShare = onShare,
                         )
                     }
                 }
@@ -469,6 +479,7 @@ private fun HomeTabPage(
                                     }
                                 },
                                 onArtistClick = { forYouItem.post.ownerId?.let(onOpenProfile) },
+                                onShare = onShare,
                             )
                             is ForYouItem.Sponsored -> Column(
                                 modifier = Modifier.fillMaxWidth(),
@@ -626,6 +637,7 @@ private fun HomeTabPage(
                                 onClick = { onNavigateToDetail(post.id) },
                                 onAddToCuration = { post.id.toIntOrNull()?.let { onAddToCuration(CurationSource.Artwork(it, post.imageUrl)) } },
                                 onArtistClick = { post.ownerId?.let(onOpenProfile) },
+                                onShare = onShare,
                             )
                         }
                     }

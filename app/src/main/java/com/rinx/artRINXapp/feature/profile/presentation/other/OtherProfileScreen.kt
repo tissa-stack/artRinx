@@ -70,6 +70,9 @@ import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomShee
 import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileTab
 import com.rinx.artRINXapp.feature.profile.domain.model.PublicProfile
+import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
+import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
+import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileArtMasonryGrid
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileCurationsGrid
@@ -99,6 +102,7 @@ fun OtherProfileScreen(
     var showActions by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<ConfirmKind?>(null) }
+    var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
 
     // Pop back after a successful block (toast survives the pop — it's app-context level).
     LaunchedEffect(Unit) {
@@ -190,6 +194,15 @@ fun OtherProfileScreen(
                             onExpandBio = viewModel::onBioExpandToggle,
                             onBack = onBack,
                             onMessage = { onMessage(profile.userId) },
+                            onShare = {
+                                shareTarget = ShareTarget(
+                                    kind = ShareKind.PROFILE,
+                                    id = profile.userId.toString(),
+                                    title = profile.displayName,
+                                    subtitle = profile.handle,
+                                    imageUrl = profile.avatarUrl,
+                                )
+                            },
                             onPillClick = {
                                 if (profile.iBlocked) confirm = ConfirmKind.UNBLOCK
                                 else showActions = true
@@ -258,6 +271,10 @@ fun OtherProfileScreen(
         )
     }
 
+    shareTarget?.let { target ->
+        ShareSheet(target = target, onDismiss = { shareTarget = null })
+    }
+
     // ── Confirmations ────────────────────────────────────────────────────────
     when (confirm) {
         ConfirmKind.UNFOLLOW -> ConfirmActionDialog(
@@ -317,6 +334,7 @@ private fun OtherProfileHeader(
     onExpandBio: () -> Unit,
     onBack: () -> Unit,
     onMessage: () -> Unit,
+    onShare: () -> Unit,
     onPillClick: () -> Unit,
 ) {
     val d = LocalDimens.current
@@ -346,33 +364,14 @@ private fun OtherProfileHeader(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).offset(x = -Spacing.sm),
             )
-            // Message button gating (handout §Public profile "Message" button):
-            // i_blocked → hidden (Unblock pill handles it); invite_pending → "Invitation Sent" pill;
-            // they_blocked / !can_message → disabled; otherwise enabled.
-            when {
-                profile.iBlocked -> Unit
-                profile.blockReason == "invite_pending" -> Text(
-                    text = "Invitation Sent",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = Spacing.sm),
+            // The paper-plane is the Share button: opens the in-app share sheet (not chat).
+            IconButton(onClick = onShare, modifier = Modifier.size(Spacing.huge)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_send),
+                    contentDescription = "Share profile",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(Spacing.xl),
                 )
-                else -> {
-                    val canMsg = profile.canMessage && !profile.theyBlocked
-                    IconButton(
-                        onClick = onMessage,
-                        enabled = canMsg,
-                        modifier = Modifier.size(Spacing.huge),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_send),
-                            contentDescription = "Message",
-                            tint = if (canMsg) MaterialTheme.colorScheme.onBackground
-                                   else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                            modifier = Modifier.size(Spacing.xl),
-                        )
-                    }
-                }
             }
             Spacer(Modifier.width(Spacing.sm))
             FollowPill(

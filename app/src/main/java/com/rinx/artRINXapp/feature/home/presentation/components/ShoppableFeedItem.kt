@@ -31,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,8 +40,9 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.util.shareArtwork
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
+import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
+import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 
 @Composable
 fun ShoppableFeedItem(
@@ -52,9 +52,9 @@ fun ShoppableFeedItem(
     modifier: Modifier = Modifier,
     onAddToCuration: () -> Unit = {},
     onArtistClick: () -> Unit = {},
+    onShare: (ShareTarget) -> Unit = {},
 ) {
     val d = LocalDimens.current
-    val context = LocalContext.current
     var descriptionExpanded by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
 
@@ -178,11 +178,14 @@ fun ShoppableFeedItem(
                     modifier = Modifier
                         .size(Spacing.xxl)
                         .clickable {
-                            context.shareArtwork(
-                                title = post.title,
-                                artistName = post.artistName,
-                                description = post.description,
-                                link = post.shopUrl.ifBlank { null },
+                            onShare(
+                                ShareTarget(
+                                    kind = ShareKind.ARTWORK,
+                                    id = post.id,
+                                    title = post.title,
+                                    subtitle = "by ${post.artistName}",
+                                    imageUrl = post.imageUrl,
+                                ),
                             )
                         },
                 )

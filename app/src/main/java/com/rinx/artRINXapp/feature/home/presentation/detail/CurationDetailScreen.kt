@@ -55,7 +55,9 @@ import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
-import com.rinx.artRINXapp.core.util.shareCuration
+import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
+import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
+import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.CollectionCard
@@ -278,11 +280,15 @@ private fun CurationDetailContent(
     modifier: Modifier = Modifier,
 ) {
     val d        = LocalDimens.current
-    val context  = LocalContext.current
     val curation = uiState.curation ?: return
     var descExpanded by remember { mutableStateOf(true) }
     var showSendSheet by remember { mutableStateOf(false) }
     var currentArtworkIndex by remember { mutableIntStateOf(0) }
+    var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
+
+    shareTarget?.let { target ->
+        ShareSheet(target = target, onDismiss = { shareTarget = null })
+    }
     val currentArtworkUrl = curation.artworkUrls.getOrElse(currentArtworkIndex) {
         curation.artworkUrls.firstOrNull() ?: ""
     }
@@ -353,10 +359,12 @@ private fun CurationDetailContent(
                         modifier           = Modifier
                             .size(Spacing.xxl)
                             .clickable {
-                                context.shareCuration(
+                                shareTarget = ShareTarget(
+                                    kind = ShareKind.CURATION,
+                                    id = curation.id,
                                     title = curation.title,
-                                    curatorName = curation.curatorName,
-                                    description = curation.description,
+                                    subtitle = "by ${curation.curatorName}",
+                                    imageUrl = curation.artworkUrls.firstOrNull(),
                                 )
                             },
                     )
