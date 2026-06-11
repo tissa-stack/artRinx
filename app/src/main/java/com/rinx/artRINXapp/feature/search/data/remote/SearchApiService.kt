@@ -22,6 +22,9 @@ interface SearchApiService {
         @Query("medium_ids") mediumIds: List<Int>?,
         @Query("has_shop_link") hasShopLink: Boolean?,
         @Query("sort_by") sortBy: String,
+        @Query("country") country: String? = null,
+        @Query("state") state: String? = null,
+        @Query("city") city: String? = null,
     ): Response<EnvelopeDto<SearchDataDto>>
 
     @GET("api/search/trending-tags")

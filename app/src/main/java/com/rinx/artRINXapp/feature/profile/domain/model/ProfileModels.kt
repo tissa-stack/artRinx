@@ -58,6 +58,8 @@ data class InviteInfo(
     val remainingChatInvites: Int? = null,
     /** Monthly cap for new chats (message requests), when the server provides the nested counter. */
     val chatInvitesMonthlyCap: Int? = null,
+    /** Monthly cap for peer-share invites (e.g. 5) — used to show "used/cap" on the invite screen. */
+    val invitesMonthlyCap: Int? = null,
 )
 
 /**

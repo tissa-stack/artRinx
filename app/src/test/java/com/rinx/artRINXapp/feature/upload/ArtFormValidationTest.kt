@@ -87,13 +87,20 @@ class ArtFormValidationTest {
     }
 
     @Test
-    fun `price not required when shop-link field is not visible`() {
-        // Defensive: a stale shopLink value with a non-visible field must not require a price.
+    fun `price not required when no shop link is entered`() {
+        // Shop link is now a normal field for everyone; with a blank link, price isn't required.
+        val s = validBase().copy(shopLink = "", price = "")
+        assertTrue(s.isValid)
+    }
+
+    @Test
+    fun `price required whenever a shop link is entered regardless of visibility`() {
+        // The premium gating was removed — any non-blank shop link requires a valid price.
         val s = validBase().copy(
             shopLinkVisibility = ShopLinkVisibility.HIDDEN,
-            shopLink = "https://leftover",
+            shopLink = "https://shop.example/art",
             price = "",
         )
-        assertTrue(s.isValid)
+        assertFalse(s.isValid)
     }
 }

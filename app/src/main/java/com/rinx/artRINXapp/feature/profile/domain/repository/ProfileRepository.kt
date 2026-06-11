@@ -44,6 +44,8 @@ interface ProfileRepository {
     suspend fun reportCuration(curationId: Int, message: String): ApiResult<Unit>
     /** Report a user/profile with a free-text [message]. */
     suspend fun reportUser(userId: Int, message: String): ApiResult<Unit>
+    /** Submit free-text app feedback (POST /api/feedbacks/). */
+    suspend fun submitFeedback(review: String): ApiResult<Unit>
 
     // ── Other user's public profile ─────────────────────────────────────────
     suspend fun getPublicProfile(userId: Int): ApiResult<PublicProfile>

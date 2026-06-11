@@ -36,6 +36,9 @@ class SearchRepositoryImpl @Inject constructor(
         mediumIds: List<Int>,
         shopArtOnly: Boolean,
         sortBy: SortOption,
+        country: String?,
+        state: String?,
+        city: String?,
     ): ApiResult<List<SearchResultItem>> = safeCall {
         val response = apiService.search(
             query = query,
@@ -43,6 +46,9 @@ class SearchRepositoryImpl @Inject constructor(
             mediumIds = mediumIds.ifEmpty { null },
             hasShopLink = if (shopArtOnly) true else null,
             sortBy = sortBy.apiValue,
+            country = country?.ifBlank { null },
+            state = state?.ifBlank { null },
+            city = city?.ifBlank { null },
         )
         if (response.isSuccessful) {
             ApiResult.Success(response.body()?.data?.artworks.orEmpty().map { it.toResultItem() })
@@ -55,6 +61,9 @@ class SearchRepositoryImpl @Inject constructor(
         query: String,
         mediumIds: List<Int>,
         sortBy: SortOption,
+        country: String?,
+        state: String?,
+        city: String?,
     ): ApiResult<List<CurationItem>> = safeCall {
         val response = apiService.search(
             query = query,
@@ -62,6 +71,9 @@ class SearchRepositoryImpl @Inject constructor(
             mediumIds = mediumIds.ifEmpty { null },
             hasShopLink = null,
             sortBy = sortBy.apiValue,
+            country = country?.ifBlank { null },
+            state = state?.ifBlank { null },
+            city = city?.ifBlank { null },
         )
         if (response.isSuccessful) {
             ApiResult.Success(response.body()?.data?.curations.orEmpty().map { it.toCurationItem() })
@@ -70,13 +82,21 @@ class SearchRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun searchUsers(query: String): ApiResult<List<UserSearchItem>> = safeCall {
+    override suspend fun searchUsers(
+        query: String,
+        country: String?,
+        state: String?,
+        city: String?,
+    ): ApiResult<List<UserSearchItem>> = safeCall {
         val response = apiService.search(
             query = query,
             category = "user",
             mediumIds = null,
             hasShopLink = null,
             sortBy = SortOption.NEWEST.apiValue,
+            country = country?.ifBlank { null },
+            state = state?.ifBlank { null },
+            city = city?.ifBlank { null },
         )
         if (response.isSuccessful) {
             ApiResult.Success(response.body()?.data?.users.orEmpty().map { it.toUserItem() })

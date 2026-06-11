@@ -12,15 +12,26 @@ interface SearchRepository {
         mediumIds: List<Int>,
         shopArtOnly: Boolean,
         sortBy: SortOption,
+        country: String? = null,
+        state: String? = null,
+        city: String? = null,
     ): ApiResult<List<SearchResultItem>>
 
     suspend fun searchCurations(
         query: String,
         mediumIds: List<Int>,
         sortBy: SortOption,
+        country: String? = null,
+        state: String? = null,
+        city: String? = null,
     ): ApiResult<List<CurationItem>>
 
-    suspend fun searchUsers(query: String): ApiResult<List<UserSearchItem>>
+    suspend fun searchUsers(
+        query: String,
+        country: String? = null,
+        state: String? = null,
+        city: String? = null,
+    ): ApiResult<List<UserSearchItem>>
 
     suspend fun getTrendingTags(): ApiResult<List<String>>
 

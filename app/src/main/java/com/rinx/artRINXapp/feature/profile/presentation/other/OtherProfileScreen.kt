@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.rememberPagerState
+import com.rinx.artRINXapp.core.ui.CollapsingHeaderTabsPager
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,6 +72,7 @@ import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomShee
 import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileTab
 import com.rinx.artRINXapp.feature.profile.domain.model.PublicProfile
+import com.rinx.artRINXapp.feature.profile.presentation.components.PortfolioLinkDialog
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
@@ -174,20 +177,34 @@ fun OtherProfileScreen(
 
             else -> {
                 val profile = uiState.profile!!
-                val listState = rememberLazyListState()
-                LaunchedEffect(listState, uiState.activeTab) {
-                    snapshotFlow { listState.canScrollForward }
+                val tabs = listOf(ProfileTab.ART, ProfileTab.CURATIONS)
+                val pagerState = rememberPagerState(
+                    initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
+                ) { tabs.size }
+                LaunchedEffect(pagerState.currentPage) {
+                    val swiped = tabs[pagerState.currentPage]
+                    if (swiped != uiState.activeTab) viewModel.onTabSelected(swiped)
+                }
+                LaunchedEffect(uiState.activeTab) {
+                    val idx = tabs.indexOf(uiState.activeTab).coerceAtLeast(0)
+                    if (pagerState.currentPage != idx) pagerState.animateScrollToPage(idx)
+                }
+                val artListState = rememberLazyListState()
+                val curationListState = rememberLazyListState()
+                fun listStateFor(tab: ProfileTab) =
+                    if (tab == ProfileTab.CURATIONS) curationListState else artListState
+                val activeListState = listStateFor(uiState.activeTab)
+                LaunchedEffect(activeListState, uiState.activeTab) {
+                    snapshotFlow { activeListState.canScrollForward }
                         .collect { canScroll -> if (!canScroll) viewModel.loadMore() }
                 }
-                LazyColumn(
-                    state = listState,
+                CollapsingHeaderTabsPager(
+                    pagerState = pagerState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(bottom = innerPadding.calculateBottomPadding())
                         .statusBarsPadding(),
-                    contentPadding = PaddingValues(bottom = Spacing.xxl),
-                ) {
-                    item(key = "header") {
+                    header = {
                         OtherProfileHeader(
                             profile = profile,
                             isBioExpanded = uiState.isBioExpanded,
@@ -208,49 +225,56 @@ fun OtherProfileScreen(
                                 else showActions = true
                             },
                         )
-                    }
-
-                    stickyHeader(key = "tabs") {
+                    },
+                    tabBar = {
                         ProfileTabBar(
                             activeTab = uiState.activeTab,
                             onTabSelected = viewModel::onTabSelected,
-                            tabs = listOf(ProfileTab.ART, ProfileTab.CURATIONS),
+                            pagerState = pagerState,
+                            tabs = tabs,
                         )
-                    }
-
-                    item(key = "content_${uiState.activeTab.name}") {
-                        when (uiState.activeTab) {
-                            ProfileTab.CURATIONS -> if (uiState.curations.isEmpty()) {
-                                EmptyView(
-                                    icon = Icons.Outlined.Collections,
-                                    title = "No curations yet",
-                                    subtitle = "This artist hasn't created any curations.",
-                                    modifier = Modifier.padding(top = Spacing.md),
-                                )
-                            } else {
-                                ProfileCurationsGrid(
-                                    items = uiState.curations,
-                                    modifier = Modifier.padding(top = Spacing.md),
-                                    onItemClick = { onNavigateToCurationDetail(it.id) },
-                                )
-                            }
-                            else -> if (uiState.artItems.isEmpty()) {
-                                EmptyView(
-                                    icon = Icons.Outlined.Image,
-                                    title = "No art yet",
-                                    subtitle = "This artist hasn't posted any art.",
-                                    modifier = Modifier.padding(top = Spacing.md),
-                                )
-                            } else {
-                                ProfileArtMasonryGrid(
-                                    items = uiState.artItems,
-                                    modifier = Modifier.padding(top = Spacing.md),
-                                    onItemClick = { onNavigateToDetail(it.id) },
-                                )
+                    },
+                ) { page ->
+                      val tab = tabs[page]
+                      LazyColumn(
+                        state = listStateFor(tab),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = Spacing.xxl),
+                      ) {
+                        item(key = "content_${tab.name}") {
+                            when (tab) {
+                                ProfileTab.CURATIONS -> if (uiState.curations.isEmpty()) {
+                                    EmptyView(
+                                        icon = Icons.Outlined.Collections,
+                                        title = "No curations yet",
+                                        subtitle = "This artist hasn't created any curations.",
+                                        modifier = Modifier.padding(top = Spacing.md),
+                                    )
+                                } else {
+                                    ProfileCurationsGrid(
+                                        items = uiState.curations,
+                                        modifier = Modifier.padding(top = Spacing.md),
+                                        onItemClick = { onNavigateToCurationDetail(it.id) },
+                                    )
+                                }
+                                else -> if (uiState.artItems.isEmpty()) {
+                                    EmptyView(
+                                        icon = Icons.Outlined.Image,
+                                        title = "No art yet",
+                                        subtitle = "This artist hasn't posted any art.",
+                                        modifier = Modifier.padding(top = Spacing.md),
+                                    )
+                                } else {
+                                    ProfileArtMasonryGrid(
+                                        items = uiState.artItems,
+                                        modifier = Modifier.padding(top = Spacing.md),
+                                        onItemClick = { onNavigateToDetail(it.id) },
+                                    )
+                                }
                             }
                         }
+                      }
                     }
-                }
             }
         }
     }
@@ -338,6 +362,16 @@ private fun OtherProfileHeader(
     onPillClick: () -> Unit,
 ) {
     val d = LocalDimens.current
+    var showPortfolio by remember { mutableStateOf(false) }
+
+    if (showPortfolio && profile.website.isNotEmpty()) {
+        PortfolioLinkDialog(
+            name = profile.displayName,
+            link = profile.website,
+            onDismiss = { showPortfolio = false },
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -407,12 +441,22 @@ private fun OtherProfileHeader(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    Icon(
-                        Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(d.profileAvatarSize * 0.55f),
-                    )
+                    val initials = com.rinx.artRINXapp.core.util.initialsOf(profile.displayName)
+                    if (initials != null) {
+                        Text(
+                            text = initials,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(d.profileAvatarSize * 0.55f),
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(Spacing.lg))
@@ -474,16 +518,6 @@ private fun OtherProfileHeader(
             }
         }
 
-        if (profile.website.isNotEmpty()) {
-            Spacer(Modifier.height(Spacing.sm))
-            Text(
-                text = profile.website,
-                style = MaterialTheme.typography.bodySmall,
-                color = BrandPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
         if (profile.bio.isNotEmpty()) {
             Spacer(Modifier.height(Spacing.xs))
             val truncateAt = 90
@@ -510,6 +544,18 @@ private fun OtherProfileHeader(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        // Portfolio link below the bio — tap opens the third-party-warning popup.
+        if (profile.website.isNotEmpty()) {
+            Spacer(Modifier.height(Spacing.sm))
+            Text(
+                text = profile.website,
+                style = MaterialTheme.typography.bodySmall,
+                color = BrandPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable { showPortfolio = true },
+            )
         }
 
         Spacer(Modifier.height(Spacing.lg))

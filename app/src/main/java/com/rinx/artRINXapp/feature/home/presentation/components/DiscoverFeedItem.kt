@@ -35,6 +35,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.domain.model.FeedPost
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 
@@ -59,29 +60,12 @@ fun DiscoverFeedItem(
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(d.avatarSize)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!post.artistAvatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = post.artistAvatarUrl,
-                        contentDescription = post.artistName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(d.avatarSize * 0.6f),
-                    )
-                }
-            }
+            RinxAvatar(
+                url = post.artistAvatarUrl,
+                contentDescription = post.artistName,
+                size = d.avatarSize,
+                name = post.artistName,
+            )
             Spacer(Modifier.width(Spacing.sm))
             Column {
                 Text(

@@ -179,19 +179,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** Interleave a sponsored banner after every two posts for the "For You" tab. */
-    private fun buildForYou(posts: List<FeedPost>, banners: List<BannerItem>): List<ForYouItem> {
-        if (posts.isEmpty()) return emptyList()
-        val out = mutableListOf<ForYouItem>()
-        var bannerIdx = 0
-        posts.forEachIndexed { i, post ->
-            out.add(ForYouItem.Post(post))
-            if ((i + 1) % 2 == 0 && bannerIdx < banners.size) {
-                out.add(ForYouItem.Sponsored(banners[bannerIdx++]))
-            }
-        }
-        return out
-    }
+    /**
+     * "For You" tab content. Only real API posts are shown — sponsored banners are NOT interleaved
+     * (per product: Shop/For You must show only actual API data, no banners in between).
+     */
+    private fun buildForYou(posts: List<FeedPost>, banners: List<BannerItem>): List<ForYouItem> =
+        posts.map { ForYouItem.Post(it) }
 
     fun onTabSelected(tab: HomeTab) {
         _uiState.update { it.copy(activeTab = tab) }

@@ -22,6 +22,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.rinx.artRINXapp.feature.profile.presentation.components.PortfolioLinkDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,10 +49,20 @@ fun ProfileHeaderSection(
     onExpandBio: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onInviteFriendsClick: () -> Unit = {},
     onFollowersClick: () -> Unit = {},
     onFollowingClick: () -> Unit = {},
 ) {
     val d = LocalDimens.current
+    var showPortfolio by remember { mutableStateOf(false) }
+
+    if (showPortfolio && profile.website.isNotEmpty()) {
+        PortfolioLinkDialog(
+            name = profile.displayName,
+            link = profile.website,
+            onDismiss = { showPortfolio = false },
+        )
+    }
 
     Column(
         modifier = modifier
@@ -69,6 +84,17 @@ fun ProfileHeaderSection(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            IconButton(
+                onClick = onInviteFriendsClick,
+                modifier = Modifier.size(Spacing.huge),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_invite_friends),
+                    contentDescription = "Invite friends",
+                    tint = BrandPrimary,
+                    modifier = Modifier.size(Spacing.xl),
+                )
+            }
             IconButton(
                 onClick = onSettingsClick,
                 modifier = Modifier.size(Spacing.huge),
@@ -105,12 +131,22 @@ fun ProfileHeaderSection(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(d.profileAvatarSize * 0.55f),
-                    )
+                    val initials = com.rinx.artRINXapp.core.util.initialsOf(profile.displayName)
+                    if (initials != null) {
+                        Text(
+                            text = initials,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(d.profileAvatarSize * 0.55f),
+                        )
+                    }
                 }
             }
 
@@ -153,15 +189,6 @@ fun ProfileHeaderSection(
         if (profile.website.isNotEmpty() || profile.bio.isNotEmpty()) {
             Spacer(Modifier.height(Spacing.sm))
             Column(modifier = Modifier.animateContentSize()) {
-                if (profile.website.isNotEmpty()) {
-                    Text(
-                        text = profile.website,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BrandPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
                 if (profile.bio.isNotEmpty()) {
                     val truncateAt = 90
                     val isLong = profile.bio.length > truncateAt
@@ -187,6 +214,18 @@ fun ProfileHeaderSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+                // Portfolio link below the bio — tap opens the third-party-warning popup.
+                if (profile.website.isNotEmpty()) {
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(
+                        text = profile.website,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BrandPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable { showPortfolio = true },
+                    )
                 }
             }
         }

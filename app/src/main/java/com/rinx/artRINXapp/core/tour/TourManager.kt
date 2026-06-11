@@ -11,7 +11,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class TourState(val active: Boolean = false, val step: Int = 0)
+/**
+ * [completed] = the first-launch tour is resolved and done (either finished/skipped now, or already
+ * completed on a previous launch). It stays false until [startIfFirstTime] resolves, so callers can
+ * defer follow-up prompts (e.g. notification permission) until AFTER the tour — without the
+ * first-frame race where `!active` is briefly true before the tour starts.
+ */
+data class TourState(val active: Boolean = false, val step: Int = 0, val completed: Boolean = false)
 
 /**
  * App-scoped state for the first-launch tour. Single source of truth so the tour survives the
@@ -50,7 +56,11 @@ class TourManager @Inject constructor(
         if (started) return
         started = true
         scope.launch {
-            if (!prefs.isCompleted()) _state.value = TourState(active = true, step = 0)
+            if (prefs.isCompleted()) {
+                _state.value = TourState(active = false, completed = true)
+            } else {
+                _state.value = TourState(active = true, step = 0)
+            }
         }
     }
 
@@ -70,7 +80,12 @@ class TourManager @Inject constructor(
     }
 
     private fun finish() {
-        _state.value = _state.value.copy(active = false)
+        _state.value = _state.value.copy(active = false, completed = true)
         scope.launch { prefs.markCompleted() }
+    }
+
+    /** Manually (re)start the tour on demand — e.g. Settings → "App tutorial". */
+    fun restart() {
+        _state.value = TourState(active = true, step = 0)
     }
 }

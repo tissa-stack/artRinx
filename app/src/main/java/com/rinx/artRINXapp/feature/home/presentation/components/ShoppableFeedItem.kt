@@ -41,6 +41,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 
@@ -76,29 +77,12 @@ fun ShoppableFeedItem(
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(d.avatarSize)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!post.artistAvatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = post.artistAvatarUrl,
-                        contentDescription = post.artistName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(d.avatarSize * 0.6f),
-                    )
-                }
-            }
+            RinxAvatar(
+                url = post.artistAvatarUrl,
+                contentDescription = post.artistName,
+                size = d.avatarSize,
+                name = post.artistName,
+            )
             Spacer(Modifier.width(Spacing.sm))
             Column {
                 Text(
@@ -228,20 +212,9 @@ fun ShoppableFeedItem(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
-            // Shop Art — theme-aware button: light gray in light mode, dark gray in dark mode
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(Spacing.sm))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { showShopDialog = true }
-                    .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Shop Art",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+            // Shop Art — only shown when this artwork actually has a shop link.
+            if (post.shopUrl.isNotBlank()) {
+                ShopArtButton(price = post.price, onClick = { showShopDialog = true })
             }
         }
 

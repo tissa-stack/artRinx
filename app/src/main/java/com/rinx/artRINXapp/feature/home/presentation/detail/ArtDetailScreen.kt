@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.feature.home.presentation.detail.components.ZoomableImage
@@ -64,6 +65,7 @@ import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
+import com.rinx.artRINXapp.feature.home.presentation.components.ShopArtButton
 import com.rinx.artRINXapp.feature.home.presentation.components.LikeButton
 import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.SectionHeader
@@ -353,6 +355,7 @@ private fun ArtDetailContent(
         item(key = "hero") {
             Box(
                 modifier = Modifier
+                    .zIndex(1f) // draw above the detail items so a zoomed image overlays them
                     .fillMaxWidth()
                     .height(d.artDetailImageHeight),
             ) {
@@ -484,21 +487,9 @@ private fun ArtDetailContent(
                         )
                     }
                 }
-                if (showActions) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(Spacing.sm))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { showShopDialog = true }
-                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "Shop Art",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
+                // Shop Art — only when this artwork has a shop link.
+                if (showActions && post.shopUrl.isNotBlank()) {
+                    ShopArtButton(price = post.price, onClick = { showShopDialog = true })
                 }
             }
         }

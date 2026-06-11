@@ -34,3 +34,8 @@ data class ReportMessageRequest(
     @SerializedName("reported_user_id") val reportedUserId: Int,
     @SerializedName("message") val message: String,
 )
+
+/** POST /api/feedbacks/ — free-text app feedback. */
+data class FeedbackRequest(
+    @SerializedName("review") val review: String,
+)

@@ -53,6 +53,7 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationCardStack
@@ -163,6 +164,7 @@ fun NewCurationScreen(
                         singleLine  = true,
                         charLimit   = 40,
                         showCounter = state.title.isNotEmpty(),
+                        required    = true,
                     )
                 }
 
@@ -189,6 +191,7 @@ fun NewCurationScreen(
                         value   = if (state.selectedArts.isNotEmpty())
                                       "${state.selectedArts.size} selected" else null,
                         onClick = onNavigateToAddArt,
+                        required = true,
                     )
                     Spacer(Modifier.height(Spacing.md))
                 }
@@ -313,6 +316,7 @@ private fun FormTextField(
     charLimit: Int,
     showCounter: Boolean,
     contentHeight: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp.Unspecified,
+    required: Boolean = false,
 ) {
     val d = LocalDimens.current
     Box(
@@ -326,10 +330,12 @@ private fun FormTextField(
         Column(Modifier.fillMaxWidth()) {
             if (showCounter) {
                 Row(Modifier.fillMaxWidth()) {
-                    Text(placeholder,
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f))
+                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                        Text(placeholder,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (required) RequiredStar()
+                    }
                     Text("${value.length}/$charLimit characters",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -355,9 +361,12 @@ private fun FormTextField(
                 decorationBox   = { inner ->
                     Box {
                         if (value.isEmpty()) {
-                            Text(placeholder,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(placeholder,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (required) RequiredStar()
+                            }
                         }
                         inner()
                     }
@@ -370,7 +379,7 @@ private fun FormTextField(
 // ── Navigation row ────────────────────────────────────────────────────────────
 
 @Composable
-private fun NavRow(label: String, value: String?, onClick: () -> Unit) {
+private fun NavRow(label: String, value: String?, onClick: () -> Unit, required: Boolean = false) {
     val d = LocalDimens.current
     Row(
         modifier          = Modifier
@@ -382,19 +391,30 @@ private fun NavRow(label: String, value: String?, onClick: () -> Unit) {
             .padding(horizontal = Spacing.md, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text     = if (value != null) "$label  ·  $value" else label,
-            style    = MaterialTheme.typography.bodyMedium,
-            color    = if (value != null) MaterialTheme.colorScheme.onBackground
-                       else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text     = if (value != null) "$label  ·  $value" else label,
+                style    = MaterialTheme.typography.bodyMedium,
+                color    = if (value != null) MaterialTheme.colorScheme.onBackground
+                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (required && value == null) RequiredStar()
+        }
         Icon(painterResource(R.drawable.ic_arrow_right), null,
             tint     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             modifier = Modifier.size(Spacing.xl))
     }
+}
+
+/** Small red asterisk denoting a mandatory field. */
+@Composable
+private fun RequiredStar() {
+    Text(" *",
+        style = MaterialTheme.typography.bodyMedium,
+        color = ErrorDark,
+        fontWeight = FontWeight.SemiBold)
 }
 
 // ── Privacy row ───────────────────────────────────────────────────────────────

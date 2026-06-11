@@ -199,6 +199,7 @@ class HomeRepositoryImpl @Inject constructor(
         likeCount = likesCount ?: 0,
         isLiked = isLiked ?: false,
         shopUrl = shopLink.orEmpty(),
+        price = price,
         ownerId = userId,
     )
 
@@ -209,13 +210,16 @@ class HomeRepositoryImpl @Inject constructor(
         // curation's deck distinct and reflects its real 1-2-3 ordering.
         val ordered = artworks.orEmpty()
         val styleList = ordered.mapNotNull { it.medium?.title }.distinct()
+        // Keep ids index-aligned with urls: filter the two together so a missing image can't shift them.
+        val withImages = ordered.filter { (it.imageUrl ?: it.thumbnailUrl) != null }
         return CurationItem(
             id = id?.toString() ?: "",
             title = title.orEmpty(),
             curatorHandle = author?.username?.let { "@$it" } ?: "",
             curatorName = author?.displayName ?: author?.username ?: "Curator",
             curatorAvatarUrl = author?.profilePicture,
-            artworkUrls = ordered.mapNotNull { it.imageUrl ?: it.thumbnailUrl },
+            artworkUrls = withImages.map { (it.imageUrl ?: it.thumbnailUrl)!! },
+            artworkIds = withImages.map { it.id?.toString() ?: "" },
             styles = styleList.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Painting",
             description = description ?: "A carefully curated collection of remarkable artworks.",
             likeCount = likesCount ?: 0,

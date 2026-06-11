@@ -1,28 +1,46 @@
 package com.rinx.artRINXapp.feature.profile.presentation.view
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import com.rinx.artRINXapp.core.ui.CollapsingHeaderTabsPager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.navigation.NavRoutes
+import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.profile.presentation.feedback.FeedbackDialog
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationProgressRow
 import com.rinx.artRINXapp.feature.home.presentation.components.UploadProgressRow
@@ -42,6 +60,7 @@ fun UserProfileScreen(
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToInviteFriends: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onOpenFollowers: () -> Unit = {},
@@ -62,6 +81,7 @@ fun UserProfileScreen(
         onNavigateToCreate        = onNavigateToCreate,
         onNavigateToNotifications = onNavigateToNotifications,
         onNavigateToSettings      = onNavigateToSettings,
+        onNavigateToInviteFriends = onNavigateToInviteFriends,
         onNavigateToDetail        = onNavigateToDetail,
         onNavigateToCurationDetail = onNavigateToCurationDetail,
         onOpenFollowers = onOpenFollowers,
@@ -85,12 +105,17 @@ private fun UserProfileContent(
     onNavigateToCreate: () -> Unit,
     onNavigateToNotifications: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToInviteFriends: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCurationDetail: (String) -> Unit,
     onOpenFollowers: () -> Unit = {},
     onOpenFollowing: () -> Unit = {},
     onLoadMore: () -> Unit = {},
 ) {
+    var showFeedback by remember { mutableStateOf(false) }
+    if (showFeedback) {
+        FeedbackDialog(onDismiss = { showFeedback = false })
+    }
     Scaffold(
         bottomBar = {
             BottomNavBar(
@@ -105,6 +130,23 @@ private fun UserProfileContent(
                 },
             )
         },
+        floatingActionButton = {
+            Box(
+                modifier = Modifier
+                    .size(Spacing.giant)
+                    .clip(CircleShape)
+                    .background(BrandPrimary)
+                    .clickable { showFeedback = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_feedback),
+                    contentDescription = "Leave feedback",
+                    tint = Color.White,
+                    modifier = Modifier.size(Spacing.xl),
+                )
+            }
+        },
         contentWindowInsets = WindowInsets(0),
     ) { innerPadding ->
         if (uiState.isLoading) {
@@ -115,40 +157,67 @@ private fun UserProfileContent(
                     .statusBarsPadding(),
             )
         } else if (uiState.profile != null) {
-            val listState = rememberLazyListState()
-            // Infinite scroll: when the column can't scroll further, page the active tab.
-            LaunchedEffect(listState, uiState.activeTab) {
-                snapshotFlow { listState.canScrollForward }
+            val tabs = ProfileTab.entries
+            val pagerState = rememberPagerState(
+                initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
+            ) { tabs.size }
+            // Swipe ↔ tab two-way sync (mirrors Home tabs).
+            LaunchedEffect(pagerState.currentPage) {
+                val swiped = tabs[pagerState.currentPage]
+                if (swiped != uiState.activeTab) onTabSelected(swiped)
+            }
+            LaunchedEffect(uiState.activeTab) {
+                val idx = tabs.indexOf(uiState.activeTab).coerceAtLeast(0)
+                if (pagerState.currentPage != idx) pagerState.animateScrollToPage(idx)
+            }
+            // Each tab keeps its own scroll position; infinite-scroll pages the active tab.
+            val artListState = rememberLazyListState()
+            val curationListState = rememberLazyListState()
+            val likedListState = rememberLazyListState()
+            fun listStateFor(tab: ProfileTab) = when (tab) {
+                ProfileTab.ART -> artListState
+                ProfileTab.CURATIONS -> curationListState
+                ProfileTab.LIKED -> likedListState
+            }
+            val activeListState = listStateFor(uiState.activeTab)
+            LaunchedEffect(activeListState, uiState.activeTab) {
+                snapshotFlow { activeListState.canScrollForward }
                     .collect { canScroll -> if (!canScroll) onLoadMore() }
             }
-            LazyColumn(
-                state = listState,
+            CollapsingHeaderTabsPager(
+                pagerState = pagerState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = innerPadding.calculateBottomPadding())
                     .statusBarsPadding(),
-                contentPadding = PaddingValues(bottom = Spacing.xxl),
-            ) {
-                item(key = "header") {
+                header = {
                     ProfileHeaderSection(
                         profile = uiState.profile,
                         isBioExpanded = uiState.isBioExpanded,
                         onExpandBio = onBioExpandToggle,
                         onSettingsClick = onNavigateToSettings,
+                        onInviteFriendsClick = onNavigateToInviteFriends,
                         onFollowersClick = onOpenFollowers,
                         onFollowingClick = onOpenFollowing,
                     )
-                }
-
-                stickyHeader(key = "tabs") {
+                },
+                tabBar = {
                     ProfileTabBar(
                         activeTab = uiState.activeTab,
                         onTabSelected = onTabSelected,
+                        pagerState = pagerState,
+                        tabs = tabs,
                     )
-                }
-
-                item(key = "content_${uiState.activeTab.name}") {
-                    when (uiState.activeTab) {
+                },
+            ) { page ->
+                  val tab = tabs[page]
+                  LazyColumn(
+                    state = listStateFor(tab),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = Spacing.xxl),
+                  ) {
+                    item(key = "content_${tab.name}") {
+                    when (tab) {
                         ProfileTab.ART -> Column {
                             uiState.uploadProgress?.let { progress ->
                                 UploadProgressRow(
@@ -214,8 +283,9 @@ private fun UserProfileContent(
                             }
                         }
                     }
+                    }
+                  }
                 }
-            }
         }
     }
 }

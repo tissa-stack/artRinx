@@ -10,6 +10,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -77,6 +78,7 @@ fun CurationCardStack(
     artworks: List<Any>,
     modifier: Modifier = Modifier,
     onTopIndexChanged: (Int) -> Unit = {},
+    onCardClick: (Int) -> Unit = {},
 ) {
     if (artworks.isEmpty()) return
 
@@ -194,7 +196,11 @@ fun CurationCardStack(
                             .clip(RoundedCornerShape(d.cardCornerRadius))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .then(
-                                if (isTop && !isAnimatingOut) Modifier.pointerInput(topIndex) {
+                                if (isTop && !isAnimatingOut) Modifier
+                                    .pointerInput(topIndex) {
+                                        detectTapGestures { onCardClick(topIndex % count) }
+                                    }
+                                    .pointerInput(topIndex) {
                                     var velX = 0f
                                     detectDragGestures(
                                         onDragStart = { velX = 0f },

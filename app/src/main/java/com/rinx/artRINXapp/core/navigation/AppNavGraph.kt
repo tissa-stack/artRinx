@@ -360,6 +360,7 @@ fun AppNavGraph(
                 onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
                 onNavigateToSettings      = { navController.navigate(NavRoutes.SETTINGS) },
+                onNavigateToInviteFriends = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, NavRoutes.PROFILE)) },
                 onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, NavRoutes.PROFILE)) },
                 onOpenFollowers           = { navController.navigate(NavRoutes.followList("followers")) },
@@ -403,6 +404,7 @@ fun AppNavGraph(
 
         composable(NavRoutes.SETTINGS) {
             val uriHandler = LocalUriHandler.current
+            val tour: com.rinx.artRINXapp.core.tour.TourViewModel = hiltViewModel()
             SettingsScreen(
                 onBack                = { navController.popBackStack() },
                 onEditProfile         = { navController.navigate(NavRoutes.EDIT_PROFILE) },
@@ -410,6 +412,7 @@ fun AppNavGraph(
                 onChangePhone         = { navController.navigate(NavRoutes.CHANGE_PHONE) },
                 onProfileTitleAndPlan = { navController.navigate(NavRoutes.PROFILE_TITLE_PLAN) },
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
+                onAppTutorial         = { tour.restart(); navController.navigateToTab(NavRoutes.HOME) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
                 onPhonePermissions    = { navController.navigate(NavRoutes.PHONE_PERMISSIONS) },
                 onTermsAndConditions  = { runCatching { uriHandler.openUri(LegalLinks.TERMS_OF_USE) } },
@@ -522,6 +525,9 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onNavigateToCuration = { curationId ->
                     navController.navigate(NavRoutes.curationDetail(curationId, source))
+                },
+                onNavigateToArtDetail = { artId ->
+                    navController.navigate(NavRoutes.artDetail(artId, source))
                 },
                 onNavigateHome            = { navController.navigateToTab(NavRoutes.HOME) },
                 onNavigateToSearch        = { navController.navigateToTab(NavRoutes.SEARCH) },

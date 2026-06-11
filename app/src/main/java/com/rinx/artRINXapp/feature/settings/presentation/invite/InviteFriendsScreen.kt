@@ -199,12 +199,27 @@ fun InviteFriendsScreen(
                     }
                     Spacer(Modifier.height(Spacing.xl))
 
-                    Text(
-                        text = "Your invitees",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Your invitees",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Used/cap this month (already-invited + pending), e.g. "1/5".
+                        if (state.invitesUsed != null && state.invitesMonthlyCap != null) {
+                            Text(
+                                text = "${state.invitesUsed}/${state.invitesMonthlyCap}",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandPrimary,
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(Spacing.sm))
                 }
 

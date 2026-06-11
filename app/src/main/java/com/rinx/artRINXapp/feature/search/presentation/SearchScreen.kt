@@ -176,6 +176,11 @@ fun SearchScreen(
                 onReset = viewModel::onResetFilter,
                 onViewResults = viewModel::onApplyFilter,
                 onDismiss = viewModel::onDismissFilter,
+                countryOptions = uiState.countryOptions,
+                stateOptions = uiState.stateOptions,
+                onCountrySelected = viewModel::onCountrySelected,
+                onStateSelected = viewModel::onStateSelected,
+                onCityChanged = viewModel::onCityChanged,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -193,40 +198,20 @@ private fun SearchIdleContent(
     when {
         uiState.isIdleLoading -> SearchIdleShimmer(modifier = Modifier.fillMaxSize())
 
-        uiState.trendingTags.isEmpty() && uiState.recommended.isEmpty() ->
+        uiState.trendingTags.isEmpty() ->
             SearchMessageView(
                 title = "Nothing to show yet",
                 subtitle = "Search for art, artists, and curations.",
                 modifier = Modifier.fillMaxSize(),
             )
 
+        // Landing shows ONLY trending tags (no "Recommended For You" section per design).
         else -> LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Spacing.lg, vertical = Spacing.sm),
         ) {
-            if (uiState.trendingTags.isNotEmpty()) {
-                item(key = "trending") {
-                    TrendingTagsSection(tags = uiState.trendingTags, onTagClick = onTagClick)
-                }
-            }
-            if (uiState.recommended.isNotEmpty()) {
-                item(key = "rec-header") {
-                    Spacer(Modifier.height(Spacing.xl))
-                    Text(
-                        text = "Recommended For You",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(Modifier.height(Spacing.md))
-                }
-                item(key = "rec-grid") {
-                    ManualMasonryGrid(
-                        items = uiState.recommended,
-                        onItemClick = { item -> if (item.artId.isNotEmpty()) onNavigateToDetail(item.artId) },
-                    )
-                    Spacer(Modifier.height(Spacing.xxl))
-                }
+            item(key = "trending") {
+                TrendingTagsSection(tags = uiState.trendingTags, onTagClick = onTagClick)
             }
         }
     }

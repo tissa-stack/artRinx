@@ -107,9 +107,10 @@ fun HomeScreen(
         if (tourState.active) segmentForTourStep(tourState.step)?.let(viewModel::onTabSelected)
     }
 
-    // Home is the post-login / post-registration landing — ask for notification permission here,
-    // but not while the first-launch tour is up (avoid the OS dialog covering the coach-marks).
-    if (!tourState.active) NotificationPermissionEffect()
+    // Ask for notification permission only AFTER the first-launch tour has resolved/finished —
+    // `completed` stays false until the tour is done, so the OS dialog never appears before or
+    // during the coach-marks (and reliably appears once, post-tour, for first-time users).
+    if (tourState.completed) NotificationPermissionEffect()
 
     val tourActive = tourState.active
     HomeScreenContent(
@@ -612,11 +613,7 @@ private fun HomeTabPage(
                         }
                     }
 
-                    // ── Discover Feed ──────────────────────────────────────────
-                    item(key = "feed-header") {
-                        SectionHeader(title = "Discover")
-                    }
-
+                    // ── Discover Feed (no section header per design) ────────────
                     if (uiState.isLoading) {
                         items(count = 3, key = { "feed-shimmer-$it" }) {
                             FeedShimmer()

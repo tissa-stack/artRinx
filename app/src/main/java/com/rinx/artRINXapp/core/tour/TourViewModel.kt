@@ -19,6 +19,7 @@ class TourViewModel @Inject constructor(
     val bounds get() = manager.bounds
 
     fun startIfFirstTime() = manager.startIfFirstTime()
+    fun restart() = manager.restart()
     fun next() = manager.next()
     fun back() = manager.back()
     fun skip() = manager.skip()

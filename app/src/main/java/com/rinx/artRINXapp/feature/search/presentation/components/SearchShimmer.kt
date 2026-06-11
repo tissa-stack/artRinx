@@ -27,7 +27,6 @@ import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.remember
 @Composable
 fun SearchIdleShimmer(modifier: Modifier = Modifier) {
     val shimmer = rememberShimmerBrush()
-    val d = LocalDimens.current
 
     Column(
         modifier = modifier
@@ -69,53 +68,7 @@ fun SearchIdleShimmer(modifier: Modifier = Modifier) {
             }
         }
 
-        Spacer(Modifier.height(Spacing.xl))
-
-        // "Recommended For You" header shimmer
-        Box(
-            modifier = Modifier
-                .width(Spacing.giant + Spacing.huge)
-                .height(Spacing.lg)
-                .clip(RoundedCornerShape(Spacing.xs))
-                .background(shimmer),
-        )
-        Spacer(Modifier.height(Spacing.md))
-
-        // Manual 2-col masonry shimmer — no rounded corners on image cards
-        val leftHeights  = listOf(d.masonryCardHeightTall, d.masonryCardHeightShort, d.masonryCardHeightMedium)
-        val rightHeights = listOf(d.masonryCardHeightShort, d.masonryCardHeightTall, d.masonryCardHeightShort)
-
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-        ) {
-            Column(
-                modifier            = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                leftHeights.forEach { h ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(h)
-                            .background(shimmer),
-                    )
-                }
-            }
-            Column(
-                modifier            = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                rightHeights.forEach { h ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(h)
-                            .background(shimmer),
-                    )
-                }
-            }
-        }
+        // Recommended-for-you was removed — the idle screen shows only trending tags.
     }
 }
 

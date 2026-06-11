@@ -17,9 +17,16 @@ data class InviteFriendsUiState(
     val code: String = "",
     val invitees: List<Invitee> = emptyList(),
     val invitesPerMonth: Int? = null,
+    /** Monthly peer-invite cap (e.g. 5). Used with [invitesPerMonth] to show "used/cap". */
+    val invitesMonthlyCap: Int? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
-)
+) {
+    /** Invites consumed this month (sent/joined) = cap − remaining. Null when unknown. */
+    val invitesUsed: Int?
+        get() = if (invitesMonthlyCap != null && invitesPerMonth != null)
+            (invitesMonthlyCap - invitesPerMonth).coerceAtLeast(0) else null
+}
 
 @HiltViewModel
 class InviteFriendsViewModel @Inject constructor(
@@ -39,7 +46,13 @@ class InviteFriendsViewModel @Inject constructor(
             when (val info = repository.getInviteInfo()) {
                 is ApiResult.Success -> {
                     val code = info.data.code.orEmpty()
-                    _state.update { it.copy(code = code, invitesPerMonth = info.data.remainingInvites) }
+                    _state.update {
+                        it.copy(
+                            code = code,
+                            invitesPerMonth = info.data.remainingInvites,
+                            invitesMonthlyCap = info.data.invitesMonthlyCap,
+                        )
+                    }
                     // Only fetch the invitee list when there's a usable code (null for agent users).
                     val invitees = if (code.isNotBlank()) loadInvitees(code) else emptyList()
                     _state.update { it.copy(invitees = invitees, isLoading = false) }

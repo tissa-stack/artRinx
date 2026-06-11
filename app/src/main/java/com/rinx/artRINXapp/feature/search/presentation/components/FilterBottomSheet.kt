@@ -27,10 +27,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -43,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.SearchableDropdownField
 import com.rinx.artRINXapp.feature.profile.domain.model.Medium
 import com.rinx.artRINXapp.feature.search.domain.model.SearchFilter
 
@@ -57,6 +61,11 @@ fun FilterBottomSheet(
     onReset: () -> Unit,
     onViewResults: () -> Unit,
     onDismiss: () -> Unit,
+    countryOptions: List<String> = emptyList(),
+    stateOptions: List<String> = emptyList(),
+    onCountrySelected: (String?) -> Unit = {},
+    onStateSelected: (String?) -> Unit = {},
+    onCityChanged: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val divider = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
@@ -177,6 +186,59 @@ fun FilterBottomSheet(
                 }
             }
 
+            Spacer(Modifier.height(Spacing.xl))
+            HorizontalDivider(color = divider)
+            Spacer(Modifier.height(Spacing.xl))
+
+            // ── Location ─────────────────────────────────────────────────
+            Text(
+                text = "Location",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(Spacing.md))
+
+            SearchableDropdownField(
+                label = "Country",
+                value = filter.country.orEmpty(),
+                options = countryOptions,
+                onValueChange = { onCountrySelected(it) },
+            )
+
+            if (!filter.country.isNullOrBlank()) {
+                Spacer(Modifier.height(Spacing.md))
+                if (stateOptions.isNotEmpty()) {
+                    SearchableDropdownField(
+                        label = "State",
+                        value = filter.state.orEmpty(),
+                        options = stateOptions,
+                        onValueChange = { onStateSelected(it) },
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = filter.state.orEmpty(),
+                        onValueChange = { onStateSelected(it) },
+                        label = { Text("State") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(Spacing.md),
+                        colors = locationFieldColors(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                Spacer(Modifier.height(Spacing.md))
+                OutlinedTextField(
+                    value = filter.city.orEmpty(),
+                    onValueChange = { onCityChanged(it) },
+                    label = { Text("City") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(Spacing.md),
+                    colors = locationFieldColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             Spacer(Modifier.height(Spacing.lg))
         }
 
@@ -248,6 +310,22 @@ private fun MediumOptionRow(
         FilterCheckbox(checked = checked)
     }
 }
+
+// ── Themed colors for the free-text location fields ───────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun locationFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    focusedBorderColor = BrandPrimary,
+    unfocusedBorderColor = Color.Transparent,
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    focusedLabelColor = BrandPrimary,
+    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    cursorColor = BrandPrimary,
+)
 
 // ── Custom checkbox — visible in both light and dark themes ────────────────────
 

@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -215,6 +216,7 @@ fun NewArtScreen(
                         value   = state.selectedArtist?.displayName,
                         onClick = onNavigateToArtist,
                         isError = state.isArtistError,
+                        required = true,
                     )
                     if (state.isArtistError) {
                         Spacer(Modifier.height(Spacing.xs))
@@ -230,6 +232,7 @@ fun NewArtScreen(
                         value   = state.selectedMedium,
                         onClick = viewModel::onShowMediumPicker,
                         isError = state.isMediumError,
+                        required = true,
                     )
                     if (state.isMediumError) {
                         Spacer(Modifier.height(Spacing.xs))
@@ -238,35 +241,30 @@ fun NewArtScreen(
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Tags
+                // Tags — inline editor (type a tag, tap Add)
                 item(key = "tags") {
-                    TagsRow(state.tags, viewModel::onRemoveTag, onNavigateToTags)
+                    TagsEditor(
+                        tags          = state.tags,
+                        input         = state.currentTagInput,
+                        onInputChange = viewModel::onTagInputChange,
+                        onAdd         = viewModel::onAddTag,
+                        onRemove      = viewModel::onRemoveTag,
+                    )
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Shop link (gated by role×plan) + price (only when a shop link is entered)
-                when (state.shopLinkVisibility) {
-                    ShopLinkVisibility.HIDDEN -> Unit
-                    ShopLinkVisibility.LOCKED -> item(key = "shop") {
-                        LockedShopLinkField(onTap = {
-                            Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
-                        })
-                        Spacer(Modifier.height(Spacing.md))
+                // Shop link — a normal editable field for everyone; price shows once a link is entered.
+                item(key = "shop") {
+                    ShopLinkPlainField(state.shopLink, viewModel::onShopLinkChange)
+                    Spacer(Modifier.height(Spacing.md))
+                }
+                if (state.shopLink.isNotBlank()) item(key = "price") {
+                    PriceField(state.price, state.isPriceError, viewModel::onPriceChange)
+                    if (state.isPriceError) {
+                        Spacer(Modifier.height(Spacing.xs))
+                        FieldErrorText("Enter a price for your shop link")
                     }
-                    ShopLinkVisibility.VISIBLE -> {
-                        item(key = "shop") {
-                            ShopLinkField(state.shopLink, viewModel::onShopLinkChange)
-                            Spacer(Modifier.height(Spacing.md))
-                        }
-                        if (state.shopLink.isNotBlank()) item(key = "price") {
-                            PriceField(state.price, state.isPriceError, viewModel::onPriceChange)
-                            if (state.isPriceError) {
-                                Spacer(Modifier.height(Spacing.xs))
-                                FieldErrorText("Enter a price for your shop link")
-                            }
-                            Spacer(Modifier.height(Spacing.md))
-                        }
-                    }
+                    Spacer(Modifier.height(Spacing.md))
                 }
 
                 // Privacy
@@ -357,10 +355,12 @@ private fun TitleField(title: String, hasError: Boolean, onChange: (String) -> U
             Column(Modifier.fillMaxWidth()) {
                 if (title.isNotEmpty()) {
                     Row(Modifier.fillMaxWidth()) {
-                        Text("Title",
-                            style    = MaterialTheme.typography.labelSmall,
-                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f))
+                        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Title",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            RequiredStar()
+                        }
                         Text("${title.length}/40 characters",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -381,7 +381,7 @@ private fun TitleField(title: String, hasError: Boolean, onChange: (String) -> U
                     ),
                     decorationBox   = { inner ->
                         Box {
-                            if (title.isEmpty()) FieldHint("Title")
+                            if (title.isEmpty()) FieldHint("Title", required = true)
                             inner()
                         }
                     },
@@ -438,7 +438,7 @@ private fun DescriptionField(description: String, hasError: Boolean, onChange: (
                 ),
                 decorationBox   = { inner ->
                     Box {
-                        if (description.isEmpty()) FieldHint("Description")
+                        if (description.isEmpty()) FieldHint("Description", required = true)
                         inner()
                     }
                 },
@@ -455,7 +455,13 @@ private fun DescriptionField(description: String, hasError: Boolean, onChange: (
 // ── Navigation row ────────────────────────────────────────────────────────────
 
 @Composable
-private fun NavRow(label: String, value: String?, onClick: () -> Unit, isError: Boolean = false) {
+private fun NavRow(
+    label: String,
+    value: String?,
+    onClick: () -> Unit,
+    isError: Boolean = false,
+    required: Boolean = false,
+) {
     val d = LocalDimens.current
     Row(
         modifier          = Modifier
@@ -467,15 +473,17 @@ private fun NavRow(label: String, value: String?, onClick: () -> Unit, isError: 
             .padding(horizontal = Spacing.md, vertical = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text     = value ?: label,
-            style    = MaterialTheme.typography.bodyMedium,
-            color    = if (value != null) MaterialTheme.colorScheme.onBackground
-                       else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text     = value ?: label,
+                style    = MaterialTheme.typography.bodyMedium,
+                color    = if (value != null) MaterialTheme.colorScheme.onBackground
+                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (required && value == null) RequiredStar()
+        }
         Icon(
             painter            = painterResource(R.drawable.ic_arrow_right),
             contentDescription = null,
@@ -518,6 +526,123 @@ private fun TagsRow(tags: List<String>, onRemoveTag: (String) -> Unit, onClick: 
                     InlineTagChip(tag) { onRemoveTag(tag) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Inline tags editor: type a tag and an "Add" button appears; tap it (or press Done) to add a chip.
+ * No separate screen. Added tags render as removable chips below the input.
+ */
+@Composable
+private fun TagsEditor(
+    tags: List<String>,
+    input: String,
+    onInputChange: (String) -> Unit,
+    onAdd: () -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    val d = LocalDimens.current
+    Box(
+        modifier = Modifier
+            .padding(horizontal = Spacing.md)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = Spacing.md, vertical = Spacing.lg),
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicTextField(
+                    value = input,
+                    onValueChange = onInputChange,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onBackground,
+                    ),
+                    cursorBrush = SolidColor(BrandPrimary),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onAdd() }),
+                    decorationBox = { inner ->
+                        Box {
+                            if (input.isEmpty()) FieldHint("Tags")
+                            inner()
+                        }
+                    },
+                )
+                if (input.isNotBlank()) {
+                    Spacer(Modifier.width(Spacing.sm))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(BrandPrimary)
+                            .clickable { onAdd() }
+                            .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "Add",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                        )
+                    }
+                }
+            }
+            if (tags.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.sm))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items(tags, key = { it }) { tag ->
+                        InlineTagChip(tag) { onRemove(tag) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Plain editable shop-link field (no premium gating) — available to all users. */
+@Composable
+private fun ShopLinkPlainField(value: String, onChange: (String) -> Unit) {
+    val d = LocalDimens.current
+    Box(
+        modifier = Modifier
+            .padding(horizontal = Spacing.md)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = Spacing.md, vertical = Spacing.lg),
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            if (value.isNotEmpty()) {
+                Text(
+                    "Shop link",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(Spacing.xs))
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onChange,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onBackground,
+                ),
+                cursorBrush = SolidColor(BrandPrimary),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                decorationBox = { inner ->
+                    Box {
+                        if (value.isEmpty()) FieldHint("Shop link")
+                        inner()
+                    }
+                },
+            )
         }
     }
 }
@@ -760,10 +885,28 @@ private fun PreviewButton(enabled: Boolean, onClick: () -> Unit) {
 // ── Placeholder hint ──────────────────────────────────────────────────────────
 
 @Composable
-private fun FieldHint(text: String) {
-    Text(text,
+private fun FieldHint(text: String, required: Boolean = false) {
+    if (required) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            RequiredStar()
+        }
+    } else {
+        Text(text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Small red asterisk denoting a mandatory field. */
+@Composable
+private fun RequiredStar() {
+    Text(" *",
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+        color = ErrorDark,
+        fontWeight = FontWeight.SemiBold)
 }
 
 /** Inline validation error shown beneath a required field. */

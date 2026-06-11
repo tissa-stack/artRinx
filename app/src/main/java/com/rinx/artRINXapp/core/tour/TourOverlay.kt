@@ -65,11 +65,13 @@ fun TourOverlay(
     val d = LocalDimens.current
 
     val scrim = Color.Black.copy(alpha = 0.78f)
-    val padPx = with(density) { Spacing.sm.toPx() }
+    // Highlight hugs the target itself — no padding gap between the ring and the icon (per design).
+    val padPx = 0f
     val cornerPx = with(density) { Spacing.md.toPx() }
     val ringStrokePx = with(density) { 2.dp.toPx() }
     val sideMarginPx = with(density) { Spacing.lg.toPx() }
-    val gapPx = padPx * 2f
+    // Spacing between the highlighted target and the tooltip below/above it.
+    val gapPx = with(density) { Spacing.md.toPx() }
 
     BoxWithConstraints(
         modifier = Modifier

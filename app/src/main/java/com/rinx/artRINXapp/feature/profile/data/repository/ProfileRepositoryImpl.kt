@@ -8,6 +8,7 @@ import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.CurationDto
 import com.rinx.artRINXapp.feature.profile.data.remote.ProfileApiService
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.BlockRequest
+import com.rinx.artRINXapp.feature.profile.data.remote.dto.FeedbackRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.FollowRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.FollowUserDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportArtworkRequest
@@ -313,6 +314,7 @@ class ProfileRepositoryImpl @Inject constructor(
                         remainingInvites = dto.peerInvites?.remaining ?: dto.remainingInvites,
                         remainingChatInvites = dto.messageRequests?.remaining ?: dto.remainingChatInvites,
                         chatInvitesMonthlyCap = dto.messageRequests?.monthlyCap,
+                        invitesMonthlyCap = dto.peerInvites?.monthlyCap ?: dto.totalUserInvites,
                     ),
                 )
             } else {
@@ -569,6 +571,17 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun blockArtwork(artworkId: Int, message: String): ApiResult<Unit> {
         return try {
             val response = apiService.block(BlockRequest(artId = artworkId, message = message))
+            if (response.isSuccessful) ApiResult.Success(Unit) else response.toApiError()
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun submitFeedback(review: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.submitFeedback(FeedbackRequest(review = review))
             if (response.isSuccessful) ApiResult.Success(Unit) else response.toApiError()
         } catch (e: IOException) {
             ApiResult.Error.Network(e)

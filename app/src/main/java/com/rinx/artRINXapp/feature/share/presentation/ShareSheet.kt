@@ -321,6 +321,7 @@ private fun FollowerCell(
                 url = follower.avatarUrl,
                 contentDescription = follower.name,
                 size = d.avatarSizeLg,
+                name = follower.name,
                 modifier = if (selected) {
                     Modifier.border(2.dp, BrandPrimary, CircleShape)
                 } else {

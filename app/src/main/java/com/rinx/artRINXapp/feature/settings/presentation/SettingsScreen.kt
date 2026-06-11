@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material3.AlertDialog
@@ -59,6 +60,7 @@ fun SettingsScreen(
     onChangePhone: () -> Unit,
     onProfileTitleAndPlan: () -> Unit,
     onInviteFriends: () -> Unit,
+    onAppTutorial: () -> Unit,
     onBlockedAccounts: () -> Unit,
     onPhonePermissions: () -> Unit,
     onTermsAndConditions: () -> Unit,
@@ -143,6 +145,7 @@ fun SettingsScreen(
             }
             SettingsRow(painter = R.drawable.ic_profile_title_and_plan, label = "Profile title and plan", onClick = onProfileTitleAndPlan)
             SettingsRow(painter = R.drawable.ic_invite_friends, label = "Invite Friends", onClick = onInviteFriends)
+            SettingsRow(imageVector = Icons.Outlined.Info, label = "App tutorial", onClick = onAppTutorial)
 
             SectionHeader("Privacy")
             SettingsRow(painter = R.drawable.ic_blocked_accounts, label = "Blocked accounts", onClick = onBlockedAccounts)

@@ -30,9 +30,13 @@ val ResultTab.category: String
 data class SearchFilter(
     val shopArtOnly: Boolean = false,
     val mediumIds: Set<Int> = emptySet(),
+    val country: String? = null,
+    val state: String? = null,
+    val city: String? = null,
 ) {
     val hasAnySelection: Boolean
-        get() = shopArtOnly || mediumIds.isNotEmpty()
+        get() = shopArtOnly || mediumIds.isNotEmpty() ||
+            !country.isNullOrBlank() || !state.isNullOrBlank() || !city.isNullOrBlank()
 }
 
 @Immutable

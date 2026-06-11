@@ -20,6 +20,7 @@ data class MyProfileDto(
     @SerializedName(value = "marketing_sms_consent", alternate = ["marketingSmsConsent"]) val marketingSmsConsent: Boolean? = null,
     @SerializedName("invitation_code") val invitationCode: String? = null,
     @SerializedName("remaining_invites") val remainingInvites: Int? = null,
+    @SerializedName("total_user_invites") val totalUserInvites: Int? = null,
     @SerializedName("subscription") val subscription: SubscriptionDto? = null,
     // Role name + active-artwork cap (handout Upload gate). Optional — confirm wire names w/ backend.
     @SerializedName(value = "profile_type_name", alternate = ["profileTypeName"]) val profileTypeName: String? = null,

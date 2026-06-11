@@ -2,6 +2,7 @@ package com.rinx.artRINXapp.feature.search.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rinx.artRINXapp.core.location.LocationRepository
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.model.ResultTab
@@ -23,6 +24,7 @@ import javax.inject.Inject
 class SearchViewModel @Inject constructor(
     private val searchRepository: SearchRepository,
     private val profileRepository: ProfileRepository,
+    private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
     // Seed idle content synchronously from cache so re-entering the tab shows it instantly (SWR).
@@ -39,6 +41,7 @@ class SearchViewModel @Inject constructor(
     init {
         loadIdleContent()
         loadMediums()
+        _uiState.update { it.copy(countryOptions = locationRepository.countryNames()) }
     }
 
     // ── Idle / empty screen ────────────────────────────────────────────────
@@ -107,21 +110,22 @@ class SearchViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, isError = false) }
             val mediumIds = state.filter.mediumIds.toList()
+            val f = state.filter
             when (state.selectedTab) {
                 ResultTab.ART -> {
-                    when (val res = searchRepository.searchArtworks(query, mediumIds, state.filter.shopArtOnly, state.sortOption)) {
+                    when (val res = searchRepository.searchArtworks(query, mediumIds, f.shopArtOnly, state.sortOption, f.country, f.state, f.city)) {
                         is ApiResult.Success -> _uiState.update { it.copy(isLoading = false, isError = false, artResults = res.data) }
                         is ApiResult.Error -> _uiState.update { it.copy(isLoading = false, isError = true) }
                     }
                 }
                 ResultTab.CURATIONS -> {
-                    when (val res = searchRepository.searchCurations(query, mediumIds, state.sortOption)) {
+                    when (val res = searchRepository.searchCurations(query, mediumIds, state.sortOption, f.country, f.state, f.city)) {
                         is ApiResult.Success -> _uiState.update { it.copy(isLoading = false, isError = false, curationResults = res.data) }
                         is ApiResult.Error -> _uiState.update { it.copy(isLoading = false, isError = true) }
                     }
                 }
                 ResultTab.USERS -> {
-                    when (val res = searchRepository.searchUsers(query)) {
+                    when (val res = searchRepository.searchUsers(query, f.country, f.state, f.city)) {
                         is ApiResult.Success -> _uiState.update { it.copy(isLoading = false, isError = false, userResults = res.data) }
                         is ApiResult.Error -> _uiState.update { it.copy(isLoading = false, isError = true) }
                     }
@@ -206,8 +210,27 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    /** Country picked — clears state/city since they depend on the country, and refreshes state options. */
+    fun onCountrySelected(country: String?) {
+        val c = country?.ifBlank { null }
+        _uiState.update {
+            it.copy(
+                filter = it.filter.copy(country = c, state = null, city = null),
+                stateOptions = if (c != null) locationRepository.statesOf(c) else emptyList(),
+            )
+        }
+    }
+
+    fun onStateSelected(state: String?) {
+        _uiState.update { it.copy(filter = it.filter.copy(state = state?.ifBlank { null }, city = null)) }
+    }
+
+    fun onCityChanged(city: String?) {
+        _uiState.update { it.copy(filter = it.filter.copy(city = city?.ifBlank { null })) }
+    }
+
     fun onResetFilter() {
-        _uiState.update { it.copy(filter = SearchFilter(), isStyleExpanded = false) }
+        _uiState.update { it.copy(filter = SearchFilter(), isStyleExpanded = false, stateOptions = emptyList()) }
     }
 
     private companion object {

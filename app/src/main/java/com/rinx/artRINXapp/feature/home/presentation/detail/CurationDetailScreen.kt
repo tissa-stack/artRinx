@@ -73,6 +73,7 @@ import com.rinx.artRINXapp.feature.upload.presentation.components.DeleteConfirmD
 fun CurationDetailScreen(
     onBack: () -> Unit,
     onNavigateToCuration: (String) -> Unit = {},
+    onNavigateToArtDetail: (String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
@@ -244,6 +245,7 @@ fun CurationDetailScreen(
                     uiState              = uiState,
                     onLike               = viewModel::onLikeToggled,
                     onNavigateToCuration = onNavigateToCuration,
+                    onNavigateToArtDetail = onNavigateToArtDetail,
                     onAddToCuration      = { showAddToCuration = true },
                     onOpenProfile        = onOpenProfile,
                     onInviteSheetOpened  = viewModel::onInviteSheetOpened,
@@ -272,6 +274,7 @@ private fun CurationDetailContent(
     uiState: CurationDetailUiState,
     onLike: () -> Unit,
     onNavigateToCuration: (String) -> Unit,
+    onNavigateToArtDetail: (String) -> Unit = {},
     onAddToCuration: () -> Unit = {},
     onOpenProfile: (Int) -> Unit = {},
     onInviteSheetOpened: () -> Unit = {},
@@ -319,6 +322,11 @@ private fun CurationDetailContent(
                 artworks           = curation.artworkUrls,
                 modifier           = Modifier.fillMaxWidth(),
                 onTopIndexChanged  = { currentArtworkIndex = it },
+                onCardClick        = { index ->
+                    curation.artworkIds.getOrNull(index)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let(onNavigateToArtDetail)
+                },
             )
         }
 

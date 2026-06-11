@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -42,8 +45,11 @@ fun RinxAvatar(
     size: Dp,
     modifier: Modifier = Modifier,
     @DrawableRes fallbackRes: Int? = null,
+    /** When set, the no-picture fallback shows the person's initials (e.g. "SK") instead of an icon. */
+    name: String? = null,
 ) {
     val shaped = modifier.size(size).clip(CircleShape)
+    val initials = remember(name) { com.rinx.artRINXapp.core.util.initialsOf(name) }
     // Track a load/decode failure so a 404 / corrupt CDN image falls back to the icon, not a
     // broken-image placeholder (handout §Chat list row → avatar).
     var loadFailed by remember(url) { mutableStateOf(false) }
@@ -70,6 +76,17 @@ fun RinxAvatar(
             contentScale       = ContentScale.Crop,
             modifier           = shaped,
         )
+        initials != null -> Box(
+            modifier         = shaped.background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text       = initials,
+                color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                fontSize   = with(LocalDensity.current) { (size * 0.38f).toSp() },
+            )
+        }
         else -> Box(
             modifier         = shaped.background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,

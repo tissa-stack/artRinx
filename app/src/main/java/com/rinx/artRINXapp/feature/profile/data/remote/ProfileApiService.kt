@@ -14,6 +14,7 @@ import com.rinx.artRINXapp.feature.profile.data.remote.dto.MediumsResponseDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.MyProfileDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ProfileTypesResponseDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.PublicUserProfileDto
+import com.rinx.artRINXapp.feature.profile.data.remote.dto.FeedbackRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportArtworkRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportCurationRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportMessageRequest
@@ -68,6 +69,10 @@ interface ProfileApiService {
     /** Report an artwork (§3.9). */
     @POST("api/report-artwork")
     suspend fun reportArtwork(@Body body: ReportArtworkRequest): Response<ResponseBody>
+
+    /** Submit free-text app feedback. */
+    @POST("api/feedbacks/")
+    suspend fun submitFeedback(@Body body: FeedbackRequest): Response<ResponseBody>
 
     /** Report a curation. */
     @POST("api/report-curation")

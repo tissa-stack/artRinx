@@ -103,9 +103,9 @@ data class ArtFormState(
     val isPriceValidForShopLink: Boolean
         get() = !isShopLinkEntered || (price.toDoubleOrNull()?.let { it > 0.0 } == true)
 
-    /** A shop link only counts when the field is actually shown to this user (role×plan gating). */
+    /** The shop link is a normal field available to everyone — it counts whenever non-blank. */
     val isShopLinkEntered: Boolean
-        get() = shopLinkVisibility == ShopLinkVisibility.VISIBLE && shopLink.isNotBlank()
+        get() = shopLink.isNotBlank()
 
     val isEditing: Boolean get() = editArtworkId != null || isLoadingEdit
 }
