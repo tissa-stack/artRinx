@@ -160,6 +160,8 @@ fun NotificationsScreen(
                         onOpenCuration = onOpenCurationDetail,
                         error          = state.notificationsError,
                         onRetry       = viewModel::retryNotifications,
+                        isRefreshing  = state.isRefreshingNotifications,
+                        onRefresh     = viewModel::refreshNotifications,
                         modifier      = Modifier.weight(1f),
                     )
                     NotifTab.MESSAGES -> MessagesContent(

@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,11 +41,21 @@ fun ExpandingPagerIndicator(
 ) {
     if (pageCount <= 1) return
     val d = LocalDimens.current
-
     val window = minOf(maxDots, pageCount)
-    val start = (currentPage - window / 2).coerceIn(0, (pageCount - window).coerceAtLeast(0))
-    val end = start + window   // exclusive
     val ash = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+
+    // Stateful sliding window: the active dot MOVES across the visible dots, and the window only
+    // scrolls once the active dot reaches an edge — so every banner change shows real progress.
+    var windowStart by remember { mutableIntStateOf(0) }
+    LaunchedEffect(currentPage, pageCount, window) {
+        val maxStart = (pageCount - window).coerceAtLeast(0)
+        windowStart = when {
+            currentPage < windowStart -> currentPage
+            currentPage > windowStart + window - 1 -> currentPage - window + 1
+            else -> windowStart
+        }.coerceIn(0, maxStart)
+    }
+    val end = (windowStart + window).coerceAtMost(pageCount)
 
     Row(
         modifier = modifier
@@ -50,11 +64,11 @@ fun ExpandingPagerIndicator(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        for (index in start until end) {
+        for (index in windowStart until end) {
             val isActive = index == currentPage
+            // Dots at the window edge that still have pages beyond them shrink to hint "there's more".
             val isOverflowEdge =
-                (index == start && start > 0) || (index == end - 1 && end < pageCount)
-
+                (index == windowStart && windowStart > 0) || (index == end - 1 && end < pageCount)
             val targetSize = when {
                 isActive -> d.indicatorDotActive
                 isOverflowEdge -> d.indicatorDotSmall

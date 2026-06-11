@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DangerRed
@@ -194,17 +196,20 @@ private fun NavIconSlot(
 private fun NotificationBadge(count: Int, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .padding(top = Spacing.sm, end = Spacing.lg)
+            .padding(top = Spacing.xs, end = Spacing.sm)
+            .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp) // clean circle for 1–2 digits
             .clip(CircleShape)
-            .background(DangerRed)
-            .padding(horizontal = Spacing.xs, vertical = 1.dp),
+            .background(DangerRed),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = if (count > 99) "99+" else count.toString(),
             color = Color.White,
-            fontWeight = FontWeight.SemiBold,
-            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            fontSize = 9.sp,
+            lineHeight = 10.sp,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 3.dp),
         )
     }
 }

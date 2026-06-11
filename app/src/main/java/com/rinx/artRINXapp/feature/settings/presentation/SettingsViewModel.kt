@@ -16,6 +16,9 @@ import javax.inject.Inject
 data class SettingsUiState(
     val isLoggingOut: Boolean = false,
     val loggedOut: Boolean = false,
+    val isDeleting: Boolean = false,
+    val deleted: Boolean = false,
+    val deleteError: String? = null,
     /** False for phone-only accounts → the account row reads "Add email" instead of "Change email". */
     val hasEmail: Boolean = true,
     /** True when the account has a phone → show the "Change phone number" row (hidden for email-only). */
@@ -64,4 +67,21 @@ class SettingsViewModel @Inject constructor(
             _state.update { it.copy(isLoggingOut = false, loggedOut = true) }
         }
     }
+
+    fun deleteAccount() {
+        if (_state.value.isDeleting) return
+        _state.update { it.copy(isDeleting = true, deleteError = null) }
+        viewModelScope.launch {
+            when (authRepository.deleteAccount()) {
+                is com.rinx.artRINXapp.core.network.ApiResult.Success ->
+                    _state.update { it.copy(isDeleting = false, deleted = true) }
+                is com.rinx.artRINXapp.core.network.ApiResult.Error ->
+                    _state.update {
+                        it.copy(isDeleting = false, deleteError = "Couldn't delete your account. Please try again.")
+                    }
+            }
+        }
+    }
+
+    fun onDeleteErrorShown() = _state.update { it.copy(deleteError = null) }
 }

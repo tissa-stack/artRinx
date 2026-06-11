@@ -8,6 +8,10 @@ data class BannerItem(
     val imageUrl: String,
     val title: String,
     val artistName: String,
+    /** Secondary line under the title (art description / subtitle). */
+    val subtitle: String = "",
+    /** Destination opened when the banner is tapped, when present. */
+    val url: String? = null,
     val isSponsored: Boolean = false,
 )
 
@@ -95,8 +99,8 @@ sealed class ForYouItem {
 object MockHomeData {
 
     val bannerItems = listOf(
-        BannerItem("b1", "", "afrodroids", "by awo", true),
-        BannerItem("b2", "", "Cosmic Swirl", "by lena", true),
+        BannerItem("b1", "", "afrodroids", "by awo", isSponsored = true),
+        BannerItem("b2", "", "Cosmic Swirl", "by lena", isSponsored = true),
     )
 
     val newArtItems = listOf(

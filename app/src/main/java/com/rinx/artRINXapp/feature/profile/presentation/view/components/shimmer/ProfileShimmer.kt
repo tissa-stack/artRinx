@@ -47,12 +47,17 @@ fun ProfileShimmer(modifier: Modifier = Modifier) {
                     .clip(RoundedCornerShape(Spacing.xs))
                     .background(shimmer),
             )
-            Box(
-                modifier = Modifier
-                    .size(Spacing.xl)
-                    .clip(RoundedCornerShape(Spacing.sm))
-                    .background(shimmer),
-            )
+            // Two header icons (invite + settings) to match the real header.
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                repeat(2) {
+                    Box(
+                        modifier = Modifier
+                            .size(Spacing.xl)
+                            .clip(CircleShape)
+                            .background(shimmer),
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(Spacing.md))

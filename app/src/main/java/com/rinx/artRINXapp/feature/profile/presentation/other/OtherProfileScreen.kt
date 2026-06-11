@@ -443,12 +443,19 @@ private fun OtherProfileHeader(
                 } else {
                     val initials = com.rinx.artRINXapp.core.util.initialsOf(profile.displayName)
                     if (initials != null) {
-                        Text(
-                            text = initials,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(com.rinx.artRINXapp.core.util.pastelColorFor(profile.displayName)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = initials,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = androidx.compose.ui.graphics.Color(0xFF1D1D1D),
+                            )
+                        }
                     } else {
                         Icon(
                             Icons.Filled.Person,

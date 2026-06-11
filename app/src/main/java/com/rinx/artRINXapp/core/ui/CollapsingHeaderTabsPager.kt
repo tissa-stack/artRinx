@@ -49,6 +49,11 @@ fun CollapsingHeaderTabsPager(
 
     val maxCollapse = headerHeightPx.toFloat()
 
+    // Each tab manages the header independently: when the user swipes to another tab, reset the
+    // shared header to fully expanded so one tab's scroll never "carries over" the collapsed header
+    // (and its perceived scroll length) into another tab.
+    androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) { headerOffsetPx = 0f }
+
     // Collapse the header before the list scrolls (scroll up); expand it from the list's leftover
     // when it's already at the top (scroll down).
     val connection = remember(maxCollapse) {

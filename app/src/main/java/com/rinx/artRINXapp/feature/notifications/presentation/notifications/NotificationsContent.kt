@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
@@ -23,6 +25,7 @@ import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsContent(
     notifications: List<NotificationItem>,
@@ -36,6 +39,8 @@ fun NotificationsContent(
     modifier: Modifier = Modifier,
     error: String? = null,
     onRetry: () -> Unit = {},
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when {
@@ -58,7 +63,12 @@ fun NotificationsContent(
                 color    = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.Center).padding(Spacing.xl),
             )
-            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+            else -> PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+              LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(notifications, key = { it.id }) { item ->
                     // Auto-mark-read on appear (handout §7): the first time an unread row is
                     // composed (i.e. scrolled into view), clear it server-side + locally.
@@ -83,6 +93,7 @@ fun NotificationsContent(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                     )
                 }
+              }
             }
         }
     }

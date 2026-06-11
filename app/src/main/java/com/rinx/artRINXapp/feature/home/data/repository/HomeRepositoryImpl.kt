@@ -159,6 +159,8 @@ class HomeRepositoryImpl @Inject constructor(
         imageUrl = imageUrl.orEmpty(),
         title = title.orEmpty(),
         artistName = artist?.let { "by $it" } ?: subtitle.orEmpty(),
+        subtitle = subtitle.orEmpty(),
+        url = link?.takeIf { it.isNotBlank() },
         isSponsored = true,
     )
 

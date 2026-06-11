@@ -281,12 +281,13 @@ private fun SearchResultsContent(
                 }
             }
 
-            // Filter button
+            // Filter button — tinted primary when any filter is active.
             IconButton(onClick = onShowFilter) {
                 Icon(
                     painter = painterResource(R.drawable.ic_filter),
                     contentDescription = "Filter",
-                    tint = MaterialTheme.colorScheme.onBackground,
+                    tint = if (uiState.filter.hasAnySelection) BrandPrimary
+                           else MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(Spacing.xl),
                 )
             }

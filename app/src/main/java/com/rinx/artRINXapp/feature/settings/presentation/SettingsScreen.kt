@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.PhoneAndroid
@@ -50,6 +51,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.settings.presentation.components.DeleteAccountDialog
 import com.rinx.artRINXapp.feature.settings.presentation.components.LogoutDialog
 
 @Composable
@@ -73,6 +75,10 @@ fun SettingsScreen(
     val dimens = LocalDimens.current
     val state by viewModel.state.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Account deletion succeeded → drop to the auth flow (same exit as logout).
+    LaunchedEffect(state.deleted) { if (state.deleted) onLogout() }
     // Shown when a phone-login user with no email taps "Change phone number": adding an email is
     // required first, so an email stays as a login/recovery path once phone login is retired.
     var showAddEmailPrompt by remember { mutableStateOf(false) }
@@ -150,6 +156,7 @@ fun SettingsScreen(
             SectionHeader("Privacy")
             SettingsRow(painter = R.drawable.ic_blocked_accounts, label = "Blocked accounts", onClick = onBlockedAccounts)
             SettingsRow(imageVector = Icons.Outlined.PhoneAndroid, label = "Phone Permissions", onClick = onPhonePermissions)
+            SettingsRow(imageVector = Icons.Outlined.DeleteOutline, label = "Delete account", onClick = { showDeleteDialog = true })
 
             SectionHeader("Resources")
             SettingsRow(painter = R.drawable.ic_terms_and_conditions, label = "Terms and conditions", onClick = onTermsAndConditions)
@@ -208,6 +215,20 @@ fun SettingsScreen(
                 viewModel.logout()
             },
             onDismiss = { showLogoutDialog = false },
+        )
+    }
+
+    if (showDeleteDialog) {
+        DeleteAccountDialog(
+            onConfirm = { viewModel.deleteAccount() },
+            onDismiss = {
+                if (!state.isDeleting) {
+                    showDeleteDialog = false
+                    viewModel.onDeleteErrorShown()
+                }
+            },
+            isDeleting = state.isDeleting,
+            errorText = state.deleteError,
         )
     }
 

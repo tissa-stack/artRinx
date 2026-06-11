@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.home.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,6 +14,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -20,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.util.lerp
 import coil.compose.AsyncImage
@@ -36,7 +39,18 @@ fun FeaturedCarousel(
     if (items.isEmpty()) return
     val d = LocalDimens.current
     val pagerState = rememberPagerState(pageCount = { items.size })
-    // Auto-scroll removed — user swipes manually
+
+    // Auto-advance every few seconds (paused while the user is interacting).
+    if (items.size > 1) {
+        LaunchedEffect(pagerState, items.size) {
+            while (true) {
+                kotlinx.coroutines.delay(4000)
+                if (!pagerState.isScrollInProgress) {
+                    pagerState.animateScrollToPage((pagerState.currentPage + 1) % items.size)
+                }
+            }
+        }
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -78,10 +92,18 @@ fun FeaturedCarouselItem(
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
+    val uriHandler = LocalUriHandler.current
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(d.bannerHeight),
+            .height(d.bannerHeight)
+            .then(
+                if (!item.url.isNullOrBlank()) {
+                    Modifier.clickable { runCatching { uriHandler.openUri(item.url) } }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         AsyncImage(
             model = item.imageUrl,
@@ -116,13 +138,15 @@ fun FeaturedCarouselItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = item.artistName,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.78f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (item.subtitle.isNotBlank()) {
+                Text(
+                    text = item.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.78f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

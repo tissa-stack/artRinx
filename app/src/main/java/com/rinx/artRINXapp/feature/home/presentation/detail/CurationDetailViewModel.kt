@@ -123,14 +123,15 @@ class CurationDetailViewModel @Inject constructor(
 
             if (detailRes is ApiResult.Success) {
                 val fetched = detailRes.data
-                // Open with the SAME first images as the home preview deck (matched by URL),
-                // then the curation's remaining artworks in their own order.
-                val reordered = fetched.copy(
-                    artworkUrls = reorderByPreview(
-                        detailUrls = fetched.artworkUrls,
-                        previewUrls = curationPreviewStore.orderFor(fetched.id),
-                    ),
+                // Open with the SAME images the user saw on the home card (preview deck) first, then
+                // the curation's remaining artworks. Reorder urls + ids together so a card tap opens
+                // the right artwork.
+                val (orderedUrls, orderedIds) = reorderArtworks(
+                    detailUrls = fetched.artworkUrls,
+                    detailIds = fetched.artworkIds,
+                    previewUrls = curationPreviewStore.orderFor(fetched.id),
                 )
+                val reordered = fetched.copy(artworkUrls = orderedUrls, artworkIds = orderedIds)
                 // Never let a stale server read overwrite the user's just-made like.
                 val isLiked = pendingLike ?: reordered.isLiked
                 val likeCount = if (pendingLike != null) _uiState.value.likeCount else reordered.likeCount
@@ -208,16 +209,28 @@ class CurationDetailViewModel @Inject constructor(
     }
 
     /**
-     * Puts the [previewUrls] that exist in [detailUrls] first (in preview order), then the rest of
-     * [detailUrls] in their own order. Falls back to the detail's natural order if no preview.
+     * Orders the curation's artworks to match the home preview deck: the tapped card's images
+     * ([previewUrls]) first (in that order), then the rest of the detail's artworks — so the detail
+     * always leads with what the user tapped. Keeps ids aligned with urls (preview-only urls not in
+     * the detail set get an empty id → not tap-navigable). Empty preview → detail's natural order.
      */
-    private fun reorderByPreview(detailUrls: List<String>, previewUrls: List<String>): List<String> {
-        if (previewUrls.isEmpty()) return detailUrls
-        val detailSet = detailUrls.toHashSet()
-        val front = previewUrls.filter { it in detailSet }
-        if (front.isEmpty()) return detailUrls
-        val frontSet = front.toHashSet()
-        return front + detailUrls.filterNot { it in frontSet }
+    private fun reorderArtworks(
+        detailUrls: List<String>,
+        detailIds: List<String>,
+        previewUrls: List<String>,
+    ): Pair<List<String>, List<String>> {
+        val urlToId = detailUrls.zip(detailIds).toMap()
+        val seen = LinkedHashSet<String>()
+        val urls = mutableListOf<String>()
+        val ids = mutableListOf<String>()
+        fun add(url: String) {
+            if (url.isBlank() || !seen.add(url)) return
+            urls += url
+            ids += urlToId[url].orEmpty()
+        }
+        previewUrls.forEach(::add)   // tapped-card images first
+        detailUrls.forEach(::add)    // then the canonical remainder
+        return urls to ids
     }
 
     fun onLikeToggled() {

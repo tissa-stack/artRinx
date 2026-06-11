@@ -158,13 +158,11 @@ fun SwipeableNotificationItem(
                         .clip(RoundedCornerShape(Spacing.xs)),
                 )
             } else if (avatarModel != null) {
-                AsyncImage(
-                    model              = avatarModel,
+                // Circular actor avatar — shimmer while loading, graceful fallback otherwise.
+                com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar(
+                    url = item.avatarUrl,
                     contentDescription = null,
-                    contentScale       = ContentScale.Crop,
-                    modifier           = Modifier
-                        .size(d.avatarSizeLg)
-                        .clip(CircleShape),
+                    size = d.avatarSizeLg,
                 )
             } else {
                 Box(

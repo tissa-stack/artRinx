@@ -55,21 +55,6 @@ fun ProfileTitleAndPlanScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val dimens = LocalDimens.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    // Account deleted → leave Settings and land on the invite-code entry screen.
-    LaunchedEffect(state.deleted) {
-        if (state.deleted) onDeleteAccount()
-    }
-
-    if (showDeleteDialog) {
-        DeleteAccountDialog(
-            onConfirm = viewModel::deleteAccount,
-            onDismiss = { if (!state.isDeleting) showDeleteDialog = false },
-            isDeleting = state.isDeleting,
-            errorText = state.deleteError,
-        )
-    }
 
     Column(
         modifier = Modifier
@@ -185,19 +170,7 @@ fun ProfileTitleAndPlanScreen(
                 .padding(horizontal = dimens.screenPaddingHorizontal, vertical = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
-            Button(
-                onClick = { showDeleteDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(dimens.authButtonHeight),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DangerRed,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                ),
-            ) {
-                Text("Delete my account", style = MaterialTheme.typography.labelLarge)
-            }
+            // Delete account moved to Settings → Privacy.
             // "Edit" leads to the Change-Role/plan editor — hidden when role changes aren't allowed.
             if (state.canChangeRole) {
                 Button(

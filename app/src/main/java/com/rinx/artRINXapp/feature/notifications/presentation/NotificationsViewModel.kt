@@ -33,6 +33,8 @@ data class NotificationsUiState(
     val isLoadingConversations: Boolean = true,
     val isLoadingNotifications: Boolean = true,
     val isRefreshing: Boolean = false,
+    /** Pull-to-refresh spinner for the Notifications tab (separate from the Messages one). */
+    val isRefreshingNotifications: Boolean = false,
     // Set when a load fails AND there is nothing cached to show; cleared on the next success.
     // The UI surfaces these only when the matching list is empty, so a flaky refresh never
     // blanks an already-populated tab (SWR).
@@ -110,6 +112,27 @@ class NotificationsViewModel @Inject constructor(
                 is ApiResult.Error -> _state.update {
                     it.copy(isLoadingNotifications = false, notificationsError = res.userMessage())
                 }
+            }
+        }
+    }
+
+    /** Pull-to-refresh on the Notifications tab — keeps the list visible (SWR) with a spinner. */
+    fun refreshNotifications() {
+        _state.update { it.copy(isRefreshingNotifications = true) }
+        viewModelScope.launch {
+            when (val res = notificationsRepository.getNotifications()) {
+                is ApiResult.Success -> {
+                    _state.update {
+                        it.copy(
+                            notifications = res.data,
+                            isRefreshingNotifications = false,
+                            isLoadingNotifications = false,
+                            notificationsError = null,
+                        )
+                    }
+                    unreadStore.set(res.data.count { !it.isRead })
+                }
+                is ApiResult.Error -> _state.update { it.copy(isRefreshingNotifications = false) }
             }
         }
     }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -130,23 +131,6 @@ private fun UserProfileContent(
                 },
             )
         },
-        floatingActionButton = {
-            Box(
-                modifier = Modifier
-                    .size(Spacing.giant)
-                    .clip(CircleShape)
-                    .background(BrandPrimary)
-                    .clickable { showFeedback = true },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_feedback),
-                    contentDescription = "Leave feedback",
-                    tint = Color.White,
-                    modifier = Modifier.size(Spacing.xl),
-                )
-            }
-        },
         contentWindowInsets = WindowInsets(0),
     ) { innerPadding ->
         if (uiState.isLoading) {
@@ -191,15 +175,35 @@ private fun UserProfileContent(
                     .padding(bottom = innerPadding.calculateBottomPadding())
                     .statusBarsPadding(),
                 header = {
-                    ProfileHeaderSection(
-                        profile = uiState.profile,
-                        isBioExpanded = uiState.isBioExpanded,
-                        onExpandBio = onBioExpandToggle,
-                        onSettingsClick = onNavigateToSettings,
-                        onInviteFriendsClick = onNavigateToInviteFriends,
-                        onFollowersClick = onOpenFollowers,
-                        onFollowingClick = onOpenFollowing,
-                    )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        ProfileHeaderSection(
+                            profile = uiState.profile,
+                            isBioExpanded = uiState.isBioExpanded,
+                            onExpandBio = onBioExpandToggle,
+                            onSettingsClick = onNavigateToSettings,
+                            onInviteFriendsClick = onNavigateToInviteFriends,
+                            onFollowersClick = onOpenFollowers,
+                            onFollowingClick = onOpenFollowing,
+                        )
+                        // Feedback button — mid/bottom-right of the header, just above the tabs.
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = Spacing.lg, bottom = Spacing.md)
+                                .size(Spacing.giant)
+                                .clip(CircleShape)
+                                .background(BrandPrimary)
+                                .clickable { showFeedback = true },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_feedback),
+                                contentDescription = "Leave feedback",
+                                tint = Color.White,
+                                modifier = Modifier.size(Spacing.xl),
+                            )
+                        }
+                    }
                 },
                 tabBar = {
                     ProfileTabBar(
