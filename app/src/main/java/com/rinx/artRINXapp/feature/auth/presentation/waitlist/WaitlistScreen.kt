@@ -414,12 +414,15 @@ private fun WaitlistSuccessContent(onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(Spacing.xxxl))
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xl),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SocialIconButton(iconRes = null, label = "𝕏")
                 SocialIconButton(iconRes = R.drawable.ic_instagram, contentDescription = "Instagram")
                 SocialIconButton(iconRes = R.drawable.ic_linkedin, contentDescription = "LinkedIn")
+                SocialIconButton(iconRes = R.drawable.ic_facebook, contentDescription = "Facebook")
+                SocialIconButton(iconRes = R.drawable.ic_tiktok, contentDescription = "TikTok")
             }
         }
     }
