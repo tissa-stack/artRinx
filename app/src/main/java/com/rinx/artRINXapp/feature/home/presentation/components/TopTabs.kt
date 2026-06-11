@@ -133,7 +133,9 @@ fun TopTabs(
                             val pageSize = pagerState.layoutInfo.pageSize.takeIf { it > 0 }
                                 ?: return@rememberDraggableState
                             if (cellWidthPx <= 0f) return@rememberDraggableState
-                            scope.launch { pagerState.scrollBy(-delta * (pageSize / cellWidthPx)) }
+                            // Positive delta = finger moving right → advance to the next page so
+                            // the pill follows the finger (drag right → Shop, drag left → Discover).
+                            scope.launch { pagerState.scrollBy(delta * (pageSize / cellWidthPx)) }
                         },
                         onDragStopped = {
                             scope.launch {
