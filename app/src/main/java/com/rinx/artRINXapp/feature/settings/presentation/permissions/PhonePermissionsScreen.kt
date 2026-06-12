@@ -63,6 +63,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
+import com.rinx.artRINXapp.core.theme.ToggleTrackOff
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.util.LegalLinks
 import com.rinx.artRINXapp.core.util.appendLegalLink
@@ -221,6 +222,14 @@ private fun ToggleRow(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = BrandPrimary,
+                checkedBorderColor = Color.Transparent,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = ToggleTrackOff,
+                uncheckedBorderColor = Color.Transparent,
+                disabledCheckedThumbColor = Color.White,
+                disabledCheckedTrackColor = BrandPrimary.copy(alpha = 0.5f),
+                disabledUncheckedThumbColor = Color.White,
+                disabledUncheckedTrackColor = ToggleTrackOff.copy(alpha = 0.5f),
             ),
         )
     }

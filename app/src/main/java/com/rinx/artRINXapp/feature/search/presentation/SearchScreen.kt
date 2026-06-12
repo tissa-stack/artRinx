@@ -281,13 +281,15 @@ private fun SearchResultsContent(
                 }
             }
 
-            // Filter button — tinted primary when any filter is active.
+            // Filter button — filled funnel tinted primary when any filter is active; outline otherwise.
+            val filterActive = uiState.filter.hasAnySelection
             IconButton(onClick = onShowFilter) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_filter),
+                    painter = painterResource(
+                        if (filterActive) R.drawable.ic_filter_filled else R.drawable.ic_filter,
+                    ),
                     contentDescription = "Filter",
-                    tint = if (uiState.filter.hasAnySelection) BrandPrimary
-                           else MaterialTheme.colorScheme.onBackground,
+                    tint = if (filterActive) BrandPrimary else MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(Spacing.xl),
                 )
             }

@@ -14,6 +14,7 @@ import com.rinx.artRINXapp.feature.upload.domain.model.CurationProgress
 import com.rinx.artRINXapp.feature.upload.domain.model.UploadProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,7 +65,21 @@ class UserProfileViewModel @Inject constructor(
 
     private fun load() {
         // Cache already on screen → this is a silent revalidate (isLoading stays false, no shimmer).
+        viewModelScope.launch { fetchAll() }
+    }
+
+    /** Manual pull-to-refresh: revalidate everything and drive the refresh spinner until done. */
+    fun refresh() {
+        if (_uiState.value.isRefreshing) return
+        _uiState.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
+            fetchAll()
+            _uiState.update { it.copy(isRefreshing = false) }
+        }
+    }
+
+    private suspend fun fetchAll() {
+        coroutineScope {
             // Fetch header, art, curations and liked concurrently.
             val profileDeferred = async { profileRepository.getProfileData() }
             val artworksDeferred = async { profileRepository.getMyArtworks(PAGE, SIZE) }

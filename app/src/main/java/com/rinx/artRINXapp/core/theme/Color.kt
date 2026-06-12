@@ -28,6 +28,9 @@ val DarkBorder = Color(0xFF2A2A2A)
 val DarkFieldBackground = Color(0xFF1D1D1D)
 val DarkFieldText = Color(0xFFA7A7A7)
 
+// ── Switch / toggle (theme-independent: on = brand blue, off = grey, white thumb) ──
+val ToggleTrackOff = Color(0xFFA6A6A6)
+
 // ── Chat bubbles (theme-independent: sent = brand blue, received = light grey) ──
 val ChatBubbleReceived = Color(0xFFE6E6E6)
 val ChatBubbleReceivedText = Color(0xFF1D1D1D)

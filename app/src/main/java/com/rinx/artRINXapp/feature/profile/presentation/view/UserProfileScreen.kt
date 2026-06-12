@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -85,9 +86,11 @@ fun UserProfileScreen(
         onOpenFollowers = onOpenFollowers,
         onOpenFollowing = onOpenFollowing,
         onLoadMore = viewModel::loadMore,
+        onRefresh = viewModel::refresh,
     )
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun UserProfileContent(
     uiState: UserProfileUiState,
@@ -108,6 +111,7 @@ private fun UserProfileContent(
     onOpenFollowers: () -> Unit = {},
     onOpenFollowing: () -> Unit = {},
     onLoadMore: () -> Unit = {},
+    onRefresh: () -> Unit = {},
 ) {
     var showFeedback by remember { mutableStateOf(false) }
     if (showFeedback) {
@@ -165,13 +169,18 @@ private fun UserProfileContent(
                 snapshotFlow { activeListState.canScrollForward }
                     .collect { canScroll -> if (!canScroll) onLoadMore() }
             }
-            ProfileHeaderTabsPager(
-                pagerState = pagerState,
-                listStateFor = { listStateFor(tabs[it]) },
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = onRefresh,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = innerPadding.calculateBottomPadding())
                     .statusBarsPadding(),
+            ) {
+            ProfileHeaderTabsPager(
+                pagerState = pagerState,
+                listStateFor = { listStateFor(tabs[it]) },
+                modifier = Modifier.fillMaxSize(),
                 header = {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         ProfileHeaderSection(
@@ -281,6 +290,7 @@ private fun UserProfileContent(
                         }
                     }
                 }
+            }
             }
         }
     }

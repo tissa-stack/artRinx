@@ -21,6 +21,8 @@ data class UserProfileUiState(
     val curationProgress: CurationProgress? = null,
     val isBioExpanded: Boolean = false,
     val isLoading: Boolean = true,
+    /** True while a manual pull-to-refresh is in flight (drives the refresh spinner). */
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     // ── Pagination (per tab) ──
     val isLoadingMore: Boolean = false,
