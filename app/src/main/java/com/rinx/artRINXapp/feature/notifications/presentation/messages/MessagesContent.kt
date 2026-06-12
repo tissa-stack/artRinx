@@ -49,6 +49,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CloudOff
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ConfirmDialog
@@ -105,7 +106,7 @@ fun MessagesContent(
                     decorationBox = { inner ->
                         Box {
                             if (messageQuery.isEmpty()) {
-                                Text("Search messages",
+                                Text("Search",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -113,6 +114,17 @@ fun MessagesContent(
                         }
                     },
                 )
+                if (messageQuery.isNotEmpty()) {
+                    Spacer(Modifier.width(Spacing.xs))
+                    Icon(
+                        imageVector        = Icons.Default.Close,
+                        contentDescription = "Clear search",
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier           = Modifier
+                            .size(Spacing.lg)
+                            .clickable { onQueryChange("") },
+                    )
+                }
             }
             Spacer(Modifier.width(Spacing.sm))
             Icon(

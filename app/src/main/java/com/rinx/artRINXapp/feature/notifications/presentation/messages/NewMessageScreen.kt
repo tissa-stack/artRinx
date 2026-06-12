@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -112,6 +112,17 @@ fun NewMessageScreen(
                     }
                 },
             )
+            if (query.isNotEmpty()) {
+                Spacer(Modifier.width(Spacing.xs))
+                Icon(
+                    imageVector        = Icons.Default.Close,
+                    contentDescription = "Clear search",
+                    tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier           = Modifier
+                        .size(Spacing.lg)
+                        .clickable { viewModel.onQueryChange("") },
+                )
+            }
         }
 
         // ── User list ─────────────────────────────────────────────────────
