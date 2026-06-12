@@ -189,6 +189,7 @@ class HomeRepositoryImpl @Inject constructor(
         likeCount = likesCount ?: 0,
         isLiked = isLiked ?: false,
         ownerId = userId ?: artist?.artistId,
+        ownerName = displayName?.takeIf { it.isNotBlank() } ?: artistDisplay(),
     )
 
     private fun ArtworkDto.toShoppablePost() = ShoppablePost(

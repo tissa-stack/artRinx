@@ -54,8 +54,10 @@ data class FeedPost(
     val likeCount: Int = 0,
     val commentCount: Int = 0,
     val isLiked: Boolean = false,
-    /** Artist's user id, for opening their profile. */
+    /** Uploader's user id, for opening their profile. */
     val ownerId: Int? = null,
+    /** Uploader's display name (the profile that owns this art — may differ from the credited artist). */
+    val ownerName: String = "",
 )
 
 @Immutable

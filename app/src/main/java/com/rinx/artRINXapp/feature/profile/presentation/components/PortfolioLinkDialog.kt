@@ -13,11 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,11 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 
@@ -74,21 +74,15 @@ fun PortfolioLinkDialog(
                         .clickable { onDismiss() },
                 )
 
-                // Globe icon
-                Box(
+                // Globe icon (shared shop/portfolio-link hero icon — matches ShopLinkDialog)
+                Icon(
+                    painter = painterResource(R.drawable.ic_shop_globe),
+                    contentDescription = null,
+                    tint = BrandPrimary,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .size(Spacing.giant)
-                        .clip(CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Public,
-                        contentDescription = null,
-                        tint = BrandPrimary,
-                        modifier = Modifier.size(Spacing.giant),
-                    )
-                }
+                        .size(Spacing.giant + Spacing.xxl),
+                )
 
                 Spacer(Modifier.height(Spacing.md))
                 Text(

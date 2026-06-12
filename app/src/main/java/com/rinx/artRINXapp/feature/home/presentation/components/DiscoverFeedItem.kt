@@ -60,16 +60,18 @@ fun DiscoverFeedItem(
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Header = the UPLOADER (the profile this row navigates to), NOT the credited artist.
+            val uploaderName = post.ownerName.ifBlank { post.artistName }
             RinxAvatar(
                 url = post.artistAvatarUrl,
-                contentDescription = post.artistName,
+                contentDescription = uploaderName,
                 size = d.avatarSize,
-                name = post.artistName,
+                name = uploaderName,
             )
             Spacer(Modifier.width(Spacing.sm))
             Column {
                 Text(
-                    text = post.artistName,
+                    text = uploaderName,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
