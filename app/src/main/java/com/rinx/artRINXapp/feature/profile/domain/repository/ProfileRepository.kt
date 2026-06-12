@@ -73,6 +73,8 @@ interface ProfileRepository {
     suspend fun createProfile(draft: ProfileDraft, pictureUri: Uri?): ApiResult<Unit>
 
     // ── In-memory SWR cache for the Profile tab (first page only; cleared on logout/delete) ───
+    /** The logged-in user's numeric id, cached from the last successful [getMyProfile]; null until then. */
+    fun cachedCurrentUserId(): Int?
     fun cachedProfileData(): UserProfileData?
     fun cachedMyArtworks(): List<ProfileArtItem>?
     fun cachedMyCurations(): List<ProfileCurationItem>?

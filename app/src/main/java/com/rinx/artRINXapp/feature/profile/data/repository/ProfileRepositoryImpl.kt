@@ -61,7 +61,10 @@ class ProfileRepositoryImpl @Inject constructor(
     @Volatile private var myArtworksCache: List<ProfileArtItem>? = null
     @Volatile private var myCurationsCache: List<ProfileCurationItem>? = null
     @Volatile private var likedArtworksCache: List<ProfileArtItem>? = null
+    // Logged-in user's numeric id — cached from getMyProfile so "is this my profile?" is instant.
+    @Volatile private var currentUserIdCache: Int? = null
 
+    override fun cachedCurrentUserId(): Int? = currentUserIdCache
     override fun cachedProfileData(): UserProfileData? = profileDataCache
     override fun cachedMyArtworks(): List<ProfileArtItem>? = myArtworksCache
     override fun cachedMyCurations(): List<ProfileCurationItem>? = myCurationsCache
@@ -71,6 +74,7 @@ class ProfileRepositoryImpl @Inject constructor(
         myArtworksCache = null
         myCurationsCache = null
         likedArtworksCache = null
+        currentUserIdCache = null
     }
 
     private val gson = Gson()
@@ -97,6 +101,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getMyProfile()
             val dto = response.body()?.data
             if (response.isSuccessful && dto?.id != null) {
+                currentUserIdCache = dto.id
                 ApiResult.Success(
                     CurrentUser(
                         id = dto.id,

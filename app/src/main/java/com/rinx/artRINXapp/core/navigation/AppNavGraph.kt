@@ -386,6 +386,7 @@ fun AppNavGraph(
                 onNavigateToSearch        = { navController.navigateToTab(NavRoutes.SEARCH) },
                 onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
                 onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
+                onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToSettings      = { navController.navigate(NavRoutes.SETTINGS) },
                 onNavigateToInviteFriends = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, NavRoutes.PROFILE)) },
@@ -403,18 +404,52 @@ fun AppNavGraph(
             ),
         ) { entry ->
             val source = entry.arguments?.getString("source") ?: NavRoutes.HOME
-            OtherProfileScreen(
-                onBack                    = { navController.popBackStack() },
-                onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, source)) },
-                onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, source)) },
-                onMessage                 = { uid -> navController.navigate(NavRoutes.chat(uid.toString(), source)) },
-                onNavigateToHome          = { navController.navigateToTab(NavRoutes.HOME) },
-                onNavigateToSearch        = { navController.navigateToTab(NavRoutes.SEARCH) },
-                onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
-                onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
-                onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
-                activeRoute               = source,
-            )
+            val targetUserId = entry.arguments?.getString("userId")?.toIntOrNull()
+
+            // If the opened profile is the logged-in user's own, show the OWN-profile layout
+            // (Liked tab, settings/invite/feedback, edit) as a pushed screen — Back returns to the
+            // originating screen and the bottom nav keeps the source tab highlighted. Otherwise show
+            // the stranger view. The decision waits for the current-user id to resolve (usually warm).
+            val routeVm: com.rinx.artRINXapp.feature.profile.presentation.ProfileRouteViewModel = hiltViewModel()
+            val myId by routeVm.currentUserId.collectAsState()
+
+            when {
+                myId == null -> Box(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = com.rinx.artRINXapp.core.theme.BrandPrimary,
+                    )
+                }
+                myId == targetUserId -> UserProfileScreen(
+                    onBack                    = { navController.popBackStack() },
+                    activeRoute               = source,
+                    onNavigateToHome          = { navController.navigateToTab(NavRoutes.HOME) },
+                    onNavigateToSearch        = { navController.navigateToTab(NavRoutes.SEARCH) },
+                    onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
+                    onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
+                    onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
+                    onNavigateToSettings      = { navController.navigate(NavRoutes.SETTINGS) },
+                    onNavigateToInviteFriends = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
+                    onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, source)) },
+                    onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, source)) },
+                    onOpenFollowers           = { navController.navigate(NavRoutes.followList("followers")) },
+                    onOpenFollowing           = { navController.navigate(NavRoutes.followList("following")) },
+                )
+                else -> OtherProfileScreen(
+                    onBack                    = { navController.popBackStack() },
+                    onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, source)) },
+                    onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, source)) },
+                    onMessage                 = { uid -> navController.navigate(NavRoutes.chat(uid.toString(), source)) },
+                    onNavigateToHome          = { navController.navigateToTab(NavRoutes.HOME) },
+                    onNavigateToSearch        = { navController.navigateToTab(NavRoutes.SEARCH) },
+                    onNavigateToCreate        = { navController.navigateToTab(NavRoutes.CREATE) },
+                    onNavigateToNotifications = { navController.navigateToTab(NavRoutes.NOTIFICATIONS) },
+                    onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
+                    activeRoute               = source,
+                )
+            }
         }
 
         composable(

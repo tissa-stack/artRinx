@@ -58,17 +58,25 @@ fun UserProfileScreen(
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToInviteFriends: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onOpenFollowers: () -> Unit = {},
     onOpenFollowing: () -> Unit = {},
+    /** Non-null when shown as a pushed screen (e.g. tapping your own avatar elsewhere) — renders a
+     *  Back affordance and keeps [activeRoute] highlighted in the bottom nav. Null = the Profile tab. */
+    onBack: (() -> Unit)? = null,
+    activeRoute: String = NavRoutes.PROFILE,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     UserProfileContent(
         uiState = uiState,
+        onBack = onBack,
+        activeRoute = activeRoute,
+        onNavigateToProfile = onNavigateToProfile,
         onTabSelected = viewModel::onTabSelected,
         onBioExpandToggle = viewModel::onBioExpandToggle,
         onRetryUpload = viewModel::onRetryUpload,
@@ -94,6 +102,8 @@ fun UserProfileScreen(
 @Composable
 private fun UserProfileContent(
     uiState: UserProfileUiState,
+    onBack: (() -> Unit)? = null,
+    activeRoute: String = NavRoutes.PROFILE,
     onTabSelected: (ProfileTab) -> Unit,
     onBioExpandToggle: () -> Unit,
     onRetryUpload: () -> Unit,
@@ -104,6 +114,7 @@ private fun UserProfileContent(
     onNavigateToSearch: () -> Unit,
     onNavigateToCreate: () -> Unit,
     onNavigateToNotifications: () -> Unit,
+    onNavigateToProfile: () -> Unit = {},
     onNavigateToSettings: () -> Unit,
     onNavigateToInviteFriends: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit,
@@ -120,25 +131,29 @@ private fun UserProfileContent(
     Scaffold(
         bottomBar = {
             BottomNavBar(
-                activeRoute = NavRoutes.PROFILE,
+                activeRoute = activeRoute,
                 onNavigate = { route ->
                     when (route) {
                         NavRoutes.HOME          -> onNavigateToHome()
                         NavRoutes.SEARCH        -> onNavigateToSearch()
                         NavRoutes.CREATE        -> onNavigateToCreate()
                         NavRoutes.NOTIFICATIONS -> onNavigateToNotifications()
+                        NavRoutes.PROFILE       -> onNavigateToProfile()
                     }
                 },
             )
         },
         contentWindowInsets = WindowInsets(0),
     ) { innerPadding ->
+      Column(
+          modifier = Modifier
+              .fillMaxSize()
+              .padding(bottom = innerPadding.calculateBottomPadding())
+              .statusBarsPadding(),
+      ) {
         if (uiState.isLoading) {
             ProfileShimmer(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
-                    .statusBarsPadding(),
+                modifier = Modifier.fillMaxSize(),
             )
         } else if (uiState.profile != null) {
             val tabs = ProfileTab.entries
@@ -172,10 +187,7 @@ private fun UserProfileContent(
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = onRefresh,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
-                    .statusBarsPadding(),
+                modifier = Modifier.fillMaxSize(),
             ) {
             ProfileHeaderTabsPager(
                 pagerState = pagerState,
@@ -191,6 +203,7 @@ private fun UserProfileContent(
                             onInviteFriendsClick = onNavigateToInviteFriends,
                             onFollowersClick = onOpenFollowers,
                             onFollowingClick = onOpenFollowing,
+                            onBack = onBack,
                         )
                         // Feedback button — mid/bottom-right of the header, just above the tabs.
                         Box(
@@ -293,5 +306,6 @@ private fun UserProfileContent(
             }
             }
         }
+      }
     }
 }

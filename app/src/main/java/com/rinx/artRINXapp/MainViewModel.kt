@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.navigation.NavRoutes
 import com.rinx.artRINXapp.core.network.TokenRefreshCoordinator
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
+import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ class MainViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val authRepository: AuthRepository,
     private val tokenRefreshCoordinator: TokenRefreshCoordinator,
+    private val profileRepository: ProfileRepository,
 ) : ViewModel() {
 
     // null = still resolving, String = resolved start destination
@@ -32,7 +34,13 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            _startDestination.value = resolveStartDestination()
+            val dest = resolveStartDestination()
+            _startDestination.value = dest
+            // Authenticated → warm the current-user id cache so "is this my profile?" is instant the
+            // first time the user taps an avatar (the profile route reads ProfileRepository's cache).
+            if (dest == NavRoutes.HOME || dest == NavRoutes.PROFILE_COMPLETION) {
+                runCatching { profileRepository.getMyProfile() }
+            }
         }
     }
 

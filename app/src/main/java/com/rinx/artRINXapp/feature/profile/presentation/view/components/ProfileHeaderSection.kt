@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,6 +53,9 @@ fun ProfileHeaderSection(
     onInviteFriendsClick: () -> Unit = {},
     onFollowersClick: () -> Unit = {},
     onFollowingClick: () -> Unit = {},
+    /** When non-null (own profile opened as a pushed screen), a Back arrow renders inline at the
+     *  start of the username row — same line as the name + invite/settings icons. */
+    onBack: (() -> Unit)? = null,
 ) {
     val d = LocalDimens.current
     var showPortfolio by remember { mutableStateOf(false) }
@@ -75,6 +79,23 @@ fun ProfileHeaderSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (onBack != null) {
+                IconButton(
+                    onClick = onBack,
+                    // Pull the button left by its own icon-centering inset so the arrow glyph aligns
+                    // vertically with the avatar circle's left edge (both at the screen padding edge).
+                    modifier = Modifier
+                        .offset(x = -((Spacing.huge - Spacing.xl) / 2))
+                        .size(Spacing.huge),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_back),
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                }
+            }
             Text(
                 text = profile.handle.removePrefix("@"),
                 style = MaterialTheme.typography.headlineSmall,
