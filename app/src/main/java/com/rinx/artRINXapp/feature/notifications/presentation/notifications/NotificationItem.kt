@@ -147,7 +147,6 @@ fun SwipeableNotificationItem(
         ) {
             // Thumbnail (square art) takes priority over the actor avatar (circle).
             val thumbModel:  Any? = item.thumbnailUrl ?: item.thumbnailRes
-            val avatarModel: Any? = item.avatarUrl ?: item.avatarRes
             if (thumbModel != null) {
                 AsyncImage(
                     model              = thumbModel,
@@ -157,25 +156,15 @@ fun SwipeableNotificationItem(
                         .size(d.avatarSizeLg)
                         .clip(RoundedCornerShape(Spacing.xs)),
                 )
-            } else if (avatarModel != null) {
-                // Circular actor avatar — shimmer while loading, graceful fallback otherwise.
+            } else {
+                // Circular actor avatar — image, then initials-on-pastel, then person icon.
                 com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar(
                     url = item.avatarUrl,
+                    fallbackRes = item.avatarRes,
                     contentDescription = null,
                     size = d.avatarSizeLg,
+                    name = item.actorName,
                 )
-            } else {
-                Box(
-                    modifier         = Modifier
-                        .size(d.avatarSizeLg)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Default.Person, null,
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(d.avatarSizeLg * 0.6f))
-                }
             }
 
             Spacer(Modifier.width(Spacing.md))

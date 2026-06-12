@@ -131,6 +131,7 @@ fun SwipeableMessageItem(
                 fallbackRes        = item.avatarRes,
                 contentDescription = item.userName,
                 size               = d.avatarSizeLg,
+                name               = item.userName,
             )
 
             Spacer(Modifier.width(Spacing.md))

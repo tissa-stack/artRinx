@@ -50,6 +50,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
 import com.rinx.artRINXapp.feature.upload.presentation.components.CreationStatusOverlay
 import androidx.compose.animation.animateColorAsState
@@ -276,17 +277,12 @@ fun NewArtPreviewScreen(
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(
-                        modifier         = Modifier
-                            .size(d.avatarSizeLg)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Default.Person, null,
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(d.avatarSizeLg * 0.6f))
-                    }
+                    RinxAvatar(
+                        url                = state.selectedArtist?.avatarUrl,
+                        contentDescription = state.selectedArtist?.displayName,
+                        size               = d.avatarSizeLg,
+                        name               = state.selectedArtist?.displayName,
+                    )
                     Spacer(Modifier.width(Spacing.sm))
                     Column {
                         Text(

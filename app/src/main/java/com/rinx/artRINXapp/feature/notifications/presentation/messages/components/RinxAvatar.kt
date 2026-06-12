@@ -59,9 +59,14 @@ fun RinxAvatar(
     }
 
     val key = remember(url) { url.substringBefore("?") }
+    // Pin an explicit pixel size on the request. Without it, Coil derives the target size from the
+    // painter's draw pass — but while loading we render a shimmer instead of the Image, so the painter
+    // is never drawn and the request would hang in Loading forever (perpetual shimmer).
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
     val painter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(LocalContext.current)
             .data(url)
+            .size(sizePx)
             .memoryCacheKey(key)
             .diskCacheKey(key)
             .placeholderMemoryCacheKey(key)

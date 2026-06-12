@@ -50,6 +50,8 @@ data class NotificationItem(
     val avatarUrl: String? = null,                     // circular person avatar (from API actor)
     val type: String? = null,                          // raw API type
     val kind: NotificationKind = NotificationKind.UNKNOWN,
+    // Actor display name — used for the initials fallback when the actor has no avatar.
+    val actorName: String? = null,
     // Tap-routing ids (Phase 2): actor → profile, target → art/curation detail.
     val actorId: Long? = null,
     val targetId: Long? = null,

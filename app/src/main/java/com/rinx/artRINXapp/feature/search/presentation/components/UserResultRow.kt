@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import androidx.compose.foundation.clickable
 import com.rinx.artRINXapp.feature.search.domain.model.UserSearchItem
 
@@ -42,29 +43,12 @@ fun UserResultRow(
             .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(d.avatarSize)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (!user.profilePictureUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = user.profilePictureUrl,
-                    contentDescription = user.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(d.avatarSize).clip(CircleShape),
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(d.avatarSize * 0.6f),
-                )
-            }
-        }
+        RinxAvatar(
+            url = user.profilePictureUrl,
+            contentDescription = user.displayName,
+            size = d.avatarSize,
+            name = user.displayName.ifBlank { user.username },
+        )
         Spacer(Modifier.width(Spacing.md))
         Column(modifier = Modifier.weight(1f)) {
             Text(

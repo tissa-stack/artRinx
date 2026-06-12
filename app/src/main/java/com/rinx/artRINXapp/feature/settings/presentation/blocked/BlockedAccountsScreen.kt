@@ -48,6 +48,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.settings.domain.model.BlockedAccount
 
 @Composable
@@ -181,29 +182,12 @@ private fun BlockedRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Avatar
-        Box(
-            modifier = Modifier
-                .size(avatarSize)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (account.avatarUrl != null) {
-                AsyncImage(
-                    model = account.avatarUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(avatarSize).clip(CircleShape),
-                )
-            } else {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(avatarSize * 0.6f),
-                )
-            }
-        }
+        RinxAvatar(
+            url = account.avatarUrl,
+            contentDescription = account.name,
+            size = avatarSize,
+            name = account.name,
+        )
         Spacer(Modifier.size(Spacing.md))
 
         // Name + role

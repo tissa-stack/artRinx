@@ -60,6 +60,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import androidx.compose.foundation.clickable
 
 private const val MAX_CHARS = 1000
@@ -204,29 +205,12 @@ private fun InvitationForm(
 
         // Artist row
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier         = Modifier
-                    .size(d.avatarSize)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!artistAvatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model              = artistAvatarUrl,
-                        contentDescription = artistName,
-                        contentScale       = ContentScale.Crop,
-                        modifier           = Modifier.fillMaxSize().clip(CircleShape),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint        = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier    = Modifier.size(d.avatarSize * 0.6f),
-                    )
-                }
-            }
+            RinxAvatar(
+                url                = artistAvatarUrl,
+                contentDescription = artistName,
+                size               = d.avatarSize,
+                name               = artistName,
+            )
             Spacer(Modifier.width(Spacing.sm))
             Column {
                 Text(

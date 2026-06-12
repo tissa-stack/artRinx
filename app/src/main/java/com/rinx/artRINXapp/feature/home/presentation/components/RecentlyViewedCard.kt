@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
 
 @Composable
@@ -78,21 +79,12 @@ fun RecentlyViewedCard(
                 .background(MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center,
         ) {
-            if (!item.artistAvatarUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = item.artistAvatarUrl,
-                    contentDescription = item.artistName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(d.avatarSize * 0.6f),
-                )
-            }
+            RinxAvatar(
+                url = item.artistAvatarUrl,
+                contentDescription = item.artistName,
+                size = d.avatarSize,
+                name = item.artistName,
+            )
         }
         // Title + artist overlaid bottom-left
         Column(

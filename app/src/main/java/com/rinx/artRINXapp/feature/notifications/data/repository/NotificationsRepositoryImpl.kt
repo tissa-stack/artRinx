@@ -51,6 +51,7 @@ class NotificationsRepositoryImpl @Inject constructor(
             // actor avatar. The UI prefers the thumbnail when present, else the avatar.
             thumbnailUrl = if (resolvedKind.isEvent) eventImageUrl else target?.thumbnailUrl,
             avatarUrl = actor?.profileImageUrl,
+            actorName = actor?.name,
             type = type,
             kind = resolvedKind,
             actorId = actor?.id,

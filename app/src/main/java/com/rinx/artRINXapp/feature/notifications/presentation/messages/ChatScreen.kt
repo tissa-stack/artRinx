@@ -396,6 +396,7 @@ fun ChatScreen(
                 ChatBubble(
                     message            = msg,
                     partnerAvatarUrl   = state.partnerAvatarUrl,
+                    partnerName        = state.partnerName,
                     bubbleReceived     = bubbleReceived,
                     bubbleSent         = bubbleSent,
                     sentTextColor      = sentTextColor,
@@ -704,6 +705,7 @@ private fun MenuRow(label: String, onClick: () -> Unit) {
 private fun ChatBubble(
     message: ChatMessage,
     partnerAvatarUrl: String?,
+    partnerName: String,
     bubbleReceived: Color,
     bubbleSent: Color,
     sentTextColor: Color,
@@ -763,6 +765,7 @@ private fun ChatBubble(
                 url                = partnerAvatarUrl ?: message.sharedArtistAvatarUrl,
                 contentDescription = null,
                 size               = avatarSize,
+                name               = partnerName.ifBlank { message.sharedArtistName },
             )
             Spacer(Modifier.width(Spacing.xs))
             Column(horizontalAlignment = Alignment.Start) {

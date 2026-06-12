@@ -22,8 +22,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,13 +48,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.rinx.artRINXapp.feature.home.presentation.detail.components.ZoomableImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
@@ -557,30 +555,13 @@ private fun ArtDetailContent(
                 val artistClick = Modifier.then(
                     if (artistId != null) Modifier.clickable { onOpenProfile(artistId) } else Modifier,
                 )
-                Box(
-                    modifier = Modifier
-                        .size(d.avatarSizeLg)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .then(artistClick),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (!post.artistAvatarUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = post.artistAvatarUrl,
-                            contentDescription = post.ownerName,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(d.avatarSizeLg * 0.6f),
-                        )
-                    }
-                }
+                RinxAvatar(
+                    url = post.artistAvatarUrl,
+                    contentDescription = post.ownerName,
+                    size = d.avatarSizeLg,
+                    name = post.ownerName.ifBlank { post.artistName },
+                    modifier = artistClick,
+                )
                 Spacer(Modifier.width(Spacing.sm))
                 Column(modifier = Modifier.weight(1f).then(artistClick)) {
                     Text(

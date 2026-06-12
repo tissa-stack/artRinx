@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -31,6 +32,8 @@ import coil.compose.AsyncImage
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.util.initialsOf
+import com.rinx.artRINXapp.core.util.pastelColorFor
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
 
 /**
@@ -66,19 +69,33 @@ fun EventNotificationRow(
                     .clip(RoundedCornerShape(Spacing.sm)),
             )
         } else {
+            // No banner/avatar → show the organizer's initials on a pastel tint (square, to match
+            // the event banner shape); fall back to a person icon only when no name is known.
+            val orgInitials = initialsOf(item.organizerName)
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .size(d.eventThumbnailSize)
                     .clip(RoundedCornerShape(Spacing.sm))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(
+                        if (orgInitials != null) pastelColorFor(item.organizerName)
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(d.eventThumbnailSize * 0.55f),
-                )
+                if (orgInitials != null) {
+                    Text(
+                        text = orgInitials,
+                        color = Color(0xFF1D1D1D),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(d.eventThumbnailSize * 0.55f),
+                    )
+                }
             }
         }
 

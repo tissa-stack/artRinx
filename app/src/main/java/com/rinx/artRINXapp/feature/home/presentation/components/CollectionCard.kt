@@ -35,6 +35,7 @@ import coil.compose.AsyncImage
 import com.rinx.artRINXapp.core.theme.DarkCardSurface
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 
 @Composable
@@ -116,29 +117,12 @@ fun CollectionCard(
                 )
             }
             Spacer(Modifier.width(Spacing.sm))
-            Box(
-                modifier = Modifier
-                    .size(d.avatarSize)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (!item.curatorAvatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = item.curatorAvatarUrl,
-                        contentDescription = item.curatorHandle,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(d.avatarSize * 0.6f),
-                    )
-                }
-            }
+            RinxAvatar(
+                url = item.curatorAvatarUrl,
+                contentDescription = item.curatorHandle,
+                size = d.avatarSize,
+                name = item.curatorName,
+            )
         }
     }
 }

@@ -40,6 +40,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.notifications.domain.model.UserContact
 
 @Composable
@@ -123,24 +124,13 @@ fun NewMessageScreen(
                         .padding(horizontal = Spacing.lg, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val avatarModel: Any? = user.avatarUrl ?: user.avatarRes
-                    if (avatarModel != null) {
-                        AsyncImage(model = avatarModel, contentDescription = user.name,
-                            contentScale = ContentScale.Crop,
-                            modifier     = Modifier.size(d.avatarSizeLg).clip(CircleShape))
-                    } else {
-                        Box(
-                            modifier         = Modifier
-                                .size(d.avatarSizeLg)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Default.Person, null,
-                                tint     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(d.avatarSizeLg * 0.6f))
-                        }
-                    }
+                    RinxAvatar(
+                        url                = user.avatarUrl,
+                        fallbackRes        = user.avatarRes,
+                        contentDescription = user.name,
+                        size               = d.avatarSizeLg,
+                        name               = user.name,
+                    )
                     Spacer(Modifier.width(Spacing.md))
                     Column {
                         Text(user.name,

@@ -53,6 +53,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.upload.domain.model.ArtistResult
 import com.rinx.artRINXapp.feature.upload.presentation.newart.NewArtViewModel
 
@@ -203,29 +204,13 @@ private fun ArtistRow(artist: ArtistResult, onClick: () -> Unit) {
             .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier         = Modifier
-                .size(d.avatarSizeLg)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (artist.avatarUrl != null || artist.avatarRes != null) {
-                AsyncImage(
-                    model              = artist.avatarUrl ?: artist.avatarRes,
-                    contentDescription = artist.displayName,
-                    contentScale       = ContentScale.Crop,
-                    modifier           = Modifier.fillMaxSize().clip(CircleShape),
-                )
-            } else {
-                Icon(
-                    imageVector        = Icons.Default.Person,
-                    contentDescription = null,
-                    tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier           = Modifier.size(d.avatarSizeLg * 0.6f),
-                )
-            }
-        }
+        RinxAvatar(
+            url                = artist.avatarUrl,
+            fallbackRes        = artist.avatarRes,
+            contentDescription = artist.displayName,
+            size               = d.avatarSizeLg,
+            name               = artist.displayName,
+        )
 
         Spacer(Modifier.width(Spacing.md))
 

@@ -50,6 +50,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.core.util.shareText
 import com.rinx.artRINXapp.feature.settings.domain.model.Invitee
 
@@ -261,29 +262,12 @@ private fun InviteeRow(invitee: Invitee, avatarSize: Dp) {
             .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(avatarSize)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (invitee.avatarUrl != null) {
-                AsyncImage(
-                    model = invitee.avatarUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(avatarSize).clip(CircleShape),
-                )
-            } else {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(avatarSize * 0.6f),
-                )
-            }
-        }
+        RinxAvatar(
+            url = invitee.avatarUrl,
+            contentDescription = invitee.name,
+            size = avatarSize,
+            name = invitee.name,
+        )
         Spacer(Modifier.size(Spacing.md))
         Column(modifier = Modifier.weight(1f)) {
             Text(

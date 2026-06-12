@@ -48,6 +48,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.domain.model.FollowUser
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchTopBar
 
@@ -203,29 +204,12 @@ private fun FollowUserRow(user: FollowUser, onClick: () -> Unit) {
             .padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(d.avatarSize)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (user.avatarUrl != null) {
-                AsyncImage(
-                    model = user.avatarUrl,
-                    contentDescription = user.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(d.avatarSize).clip(CircleShape),
-                )
-            } else {
-                Icon(
-                    Icons.Filled.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(d.avatarSize * 0.6f),
-                )
-            }
-        }
+        RinxAvatar(
+            url = user.avatarUrl,
+            contentDescription = user.name,
+            size = d.avatarSize,
+            name = user.name,
+        )
         Spacer(Modifier.size(Spacing.md))
         Column(modifier = Modifier.weight(1f)) {
             Text(

@@ -54,6 +54,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
@@ -466,30 +467,13 @@ private fun CurationDetailContent(
                 val authorClick = Modifier.then(
                     if (authorId != null) Modifier.clickable { onOpenProfile(authorId) } else Modifier,
                 )
-                Box(
-                    modifier         = Modifier
-                        .size(d.avatarSizeLg)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .then(authorClick),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (!curation.curatorAvatarUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model              = curation.curatorAvatarUrl,
-                            contentDescription = curation.curatorName,
-                            contentScale       = ContentScale.Crop,
-                            modifier           = Modifier.fillMaxSize().clip(CircleShape),
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint        = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier    = Modifier.size(d.avatarSizeLg * 0.6f),
-                        )
-                    }
-                }
+                RinxAvatar(
+                    url                = curation.curatorAvatarUrl,
+                    contentDescription = curation.curatorName,
+                    size               = d.avatarSizeLg,
+                    name               = curation.curatorName,
+                    modifier           = authorClick,
+                )
                 Spacer(Modifier.width(Spacing.sm))
                 Column(modifier = Modifier.weight(1f).then(authorClick)) {
                     Text(
