@@ -28,6 +28,11 @@ val DarkBorder = Color(0xFF2A2A2A)
 val DarkFieldBackground = Color(0xFF1D1D1D)
 val DarkFieldText = Color(0xFFA7A7A7)
 
+// ── Chat bubbles (theme-independent: sent = brand blue, received = light grey) ──
+val ChatBubbleReceived = Color(0xFFE6E6E6)
+val ChatBubbleReceivedText = Color(0xFF1D1D1D)
+val ChatBubbleSentText = Color(0xFFFFFFFF)
+
 // ── Decorative brand gradient (premium "Shop link" card) ────────────────────
 val ShopLinkGradientStart = Color(0xFF1C6C8C)
 val ShopLinkGradientEnd = Color(0xFF0C1A22)

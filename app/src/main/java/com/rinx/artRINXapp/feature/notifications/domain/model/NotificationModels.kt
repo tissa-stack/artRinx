@@ -119,6 +119,8 @@ data class ChatMessage(
     val artworkImageUrl: String? = null,
     val sharedArtistName: String? = null,
     val sharedArtistAvatarUrl: String? = null,
+    // Artwork (post) id of the shared piece — used to open its detail screen on tap.
+    val sharedArtworkId: Int? = null,
     // Legacy flags kept for the mock data; no longer drive UI.
     val isInvitation: Boolean = false,
     val isInvitationAccepted: Boolean = false,

@@ -71,6 +71,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.ChatBubbleReceived
+import com.rinx.artRINXapp.core.theme.ChatBubbleReceivedText
+import com.rinx.artRINXapp.core.theme.ChatBubbleSentText
 import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -95,6 +98,7 @@ fun ChatScreen(
     onViewProfile: () -> Unit,
     onChatDeleted: () -> Unit,
     onBlocked: () -> Unit,
+    onOpenArtwork: (Int) -> Unit,
     viewModel: ChatViewModel = hiltViewModel(),
     menuViewModel: ChatMenuViewModel = hiltViewModel(),
 ) {
@@ -105,9 +109,12 @@ fun ChatScreen(
     val context   = LocalContext.current
 
     val chatBg         = if (isDark) Color(0xFF0A0A0A) else MaterialTheme.colorScheme.background
-    // Dark theme: received bubbles are a lighter gray, sent bubbles a near-black (matches reference).
-    val bubbleReceived = if (isDark) Color(0xFF2E2E2E) else MaterialTheme.colorScheme.surfaceVariant
-    val bubbleSent     = if (isDark) Color(0xFF1C1C1C) else Color(0xFFE0E0E0)
+    // Both themes: sent bubbles are brand blue, received bubbles a light grey (matches reference).
+    val bubbleSent     = BrandPrimary
+    val bubbleReceived = ChatBubbleReceived
+    val sentTextColor      = ChatBubbleSentText
+    val receivedTextColor  = ChatBubbleReceivedText
+    // Screen chrome (timestamps, status labels, errors) follows the active theme.
     val textColor      = if (isDark) Color.White      else MaterialTheme.colorScheme.onBackground
     val inputBg        = if (isDark) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surfaceVariant
     val hintColor      = if (isDark) Color.White.copy(alpha = 0.4f)
@@ -387,19 +394,22 @@ fun ChatScreen(
                         .padding(vertical = Spacing.sm),
                 )
                 ChatBubble(
-                    message        = msg,
-                    partnerAvatarUrl = state.partnerAvatarUrl,
-                    bubbleReceived = bubbleReceived,
-                    bubbleSent     = bubbleSent,
-                    textColor      = textColor,
-                    maxWidth       = dimens.chatBubbleMaxWidth,
-                    avatarSize     = dimens.chatAvatarSize,
-                    showInviteSent = msg.isSent && index == lastSentIndex &&
-                                     state.gate == ChatGate.INVITE_SENT_WAITING,
-                    onLongPress    = {
+                    message            = msg,
+                    partnerAvatarUrl   = state.partnerAvatarUrl,
+                    bubbleReceived     = bubbleReceived,
+                    bubbleSent         = bubbleSent,
+                    sentTextColor      = sentTextColor,
+                    receivedTextColor  = receivedTextColor,
+                    statusColor        = textColor,
+                    maxWidth           = dimens.chatBubbleMaxWidth,
+                    avatarSize         = dimens.chatAvatarSize,
+                    showInviteSent     = msg.isSent && index == lastSentIndex &&
+                                         state.gate == ChatGate.INVITE_SENT_WAITING,
+                    onLongPress        = {
                         if (msg.isSent && !msg.isDeleted && msg.sendStatus == SendStatus.SENT) menuTarget = msg
                     },
-                    onRetry        = { if (msg.sendStatus == SendStatus.FAILED) viewModel.retryMessage(msg) },
+                    onRetry            = { if (msg.sendStatus == SendStatus.FAILED) viewModel.retryMessage(msg) },
+                    onOpenArtwork      = onOpenArtwork,
                 )
                 Spacer(Modifier.height(Spacing.sm))
             }
@@ -696,12 +706,15 @@ private fun ChatBubble(
     partnerAvatarUrl: String?,
     bubbleReceived: Color,
     bubbleSent: Color,
-    textColor: Color,
+    sentTextColor: Color,
+    receivedTextColor: Color,
+    statusColor: Color,
     maxWidth: Dp,
     avatarSize: Dp,
     showInviteSent: Boolean,
     onLongPress: () -> Unit,
     onRetry: () -> Unit,
+    onOpenArtwork: (Int) -> Unit,
 ) {
     if (message.isSent) {
         Row(
@@ -725,7 +738,7 @@ private fun ChatBubble(
                         )
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 ) {
-                    BubbleContent(message, textColor)
+                    BubbleContent(message, sentTextColor, onOpenArtwork)
                 }
                 Icon(
                     painter            = painterResource(R.drawable.ic_message_send),
@@ -734,10 +747,10 @@ private fun ChatBubble(
                     modifier           = Modifier.size(width = Spacing.lg, height = Spacing.md),
                 )
                 when {
-                    message.sendStatus == SendStatus.SENDING -> StatusLabel("Sending…", textColor)
+                    message.sendStatus == SendStatus.SENDING -> StatusLabel("Sending…", statusColor)
                     message.sendStatus == SendStatus.FAILED  -> StatusLabel("Failed — tap to retry", BrandPrimary)
-                    showInviteSent                           -> StatusLabel("Invite sent!", textColor)
-                    message.isRead                           -> StatusLabel("Read", textColor)
+                    showInviteSent                           -> StatusLabel("Invite sent!", statusColor)
+                    message.isRead                           -> StatusLabel("Read", statusColor)
                 }
             }
         }
@@ -765,7 +778,7 @@ private fun ChatBubble(
                         .background(bubbleReceived)
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 ) {
-                    BubbleContent(message, textColor)
+                    BubbleContent(message, receivedTextColor, onOpenArtwork)
                 }
                 Icon(
                     painter            = painterResource(R.drawable.ic_message_received),
@@ -779,15 +792,41 @@ private fun ChatBubble(
 }
 
 @Composable
-private fun BubbleContent(message: ChatMessage, textColor: Color) {
+private fun BubbleContent(
+    message: ChatMessage,
+    contentColor: Color,
+    onOpenArtwork: (Int) -> Unit,
+) {
     Column {
-        // Shared-artwork card (share-an-artwork message).
-        if (!message.artworkImageUrl.isNullOrBlank()) {
+        // Message text first (matches reference layout: text above the shared item card).
+        when {
+            message.isDeleted -> Text(
+                "Message deleted",
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor.copy(alpha = 0.6f),
+                fontStyle = FontStyle.Italic,
+            )
+            message.content.isNotBlank() -> Text(
+                message.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor,
+            )
+        }
+
+        // Shared-artwork card (share-an-artwork message). Tapping opens its detail screen.
+        if (!message.isDeleted && !message.artworkImageUrl.isNullOrBlank()) {
+            if (message.content.isNotBlank()) Spacer(Modifier.height(Spacing.sm))
+            val artworkId = message.sharedArtworkId
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(Spacing.sm))
-                    .background(textColor.copy(alpha = 0.06f))
+                    .background(Color.Black.copy(alpha = 0.12f))
+                    .then(
+                        if (artworkId != null)
+                            Modifier.clickable { onOpenArtwork(artworkId) }
+                        else Modifier
+                    )
                     .padding(Spacing.xs),
             ) {
                 AsyncImage(
@@ -801,41 +840,27 @@ private fun BubbleContent(message: ChatMessage, textColor: Color) {
                 Spacer(Modifier.width(Spacing.sm))
                 Column {
                     Text(
-                        text = message.artworkTitle?.let { "\"$it\"" } ?: "Artwork",
+                        text = message.artworkTitle ?: "Artwork",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = textColor,
+                        color = contentColor,
                     )
                     if (!message.sharedArtistName.isNullOrBlank()) {
                         Text(
-                            text = "by ${message.sharedArtistName}",
+                            text = "By ${message.sharedArtistName}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = textColor.copy(alpha = 0.7f),
+                            color = contentColor.copy(alpha = 0.8f),
                         )
                     }
                 }
             }
-            if (message.content.isNotBlank() && !message.isDeleted) Spacer(Modifier.height(Spacing.xs))
         }
 
-        when {
-            message.isDeleted -> Text(
-                "Message deleted",
-                style = MaterialTheme.typography.bodyMedium,
-                color = textColor.copy(alpha = 0.5f),
-                fontStyle = FontStyle.Italic,
-            )
-            else -> Text(
-                message.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = textColor,
-            )
-        }
         if (message.isEdited && !message.isDeleted) {
             Text(
                 "edited",
                 style = MaterialTheme.typography.labelSmall,
-                color = textColor.copy(alpha = 0.45f),
+                color = contentColor.copy(alpha = 0.55f),
             )
         }
     }

@@ -184,6 +184,7 @@ class MessagesRepositoryImpl @Inject constructor(
         artworkImageUrl = imageUrl?.takeIf { imageId != null },
         sharedArtistName = mediaUserDisplayName,
         sharedArtistAvatarUrl = mediaUserProfilePictureUrl,
+        sharedArtworkId = imageId,
     )
 
     private fun ChatroomPreviewDto.toConversationItem(): ConversationItem? {
