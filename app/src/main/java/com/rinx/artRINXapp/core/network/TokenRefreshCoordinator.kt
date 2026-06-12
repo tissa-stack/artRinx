@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.core.network
 
+import com.rinx.artRINXapp.core.auth.SessionEventBus
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.RefreshTokenRequest
 import kotlinx.coroutines.sync.Mutex
@@ -20,6 +21,7 @@ import javax.inject.Singleton
 class TokenRefreshCoordinator @Inject constructor(
     private val session: SessionDataSource,
     private val refreshApi: TokenRefreshApi,
+    private val sessionEventBus: SessionEventBus,
 ) {
     private val mutex = Mutex()
 
@@ -62,8 +64,12 @@ class TokenRefreshCoordinator @Inject constructor(
                     true
                 }
                 response.code() == 401 -> {
-                    // refresh_invalid / refresh_reused → the session is dead.
+                    // refresh_invalid / refresh_reused → the session is dead. This is the SINGLE
+                    // authoritative sign-out point: wipe the session and signal the UI to route to
+                    // login. Network/timeout errors fall to the catch below and do NOT signal, so a
+                    // transient outage never forces an unwanted logout.
                     session.clearSession()
+                    sessionEventBus.signalSessionExpired()
                     false
                 }
                 else -> false

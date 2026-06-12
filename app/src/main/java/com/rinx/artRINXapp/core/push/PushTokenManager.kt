@@ -53,6 +53,18 @@ class PushTokenManager @Inject constructor(
         scope.launch(Dispatchers.IO) { post(token) }
     }
 
+    /**
+     * Invalidate this device's FCM token on logout so it stops being a valid push target. Fire-and-
+     * forget; deliberately NOT gated on a valid session (logout clears it first). The backend has no
+     * delete endpoint yet, so this relies on FCM reporting the old token as unregistered when the
+     * server next tries to deliver — add a server DELETE call here once that endpoint exists.
+     */
+    fun deleteToken() {
+        scope.launch(Dispatchers.IO) {
+            runCatching { Tasks.await(FirebaseMessaging.getInstance().deleteToken()) }
+        }
+    }
+
     private suspend fun post(token: String) {
         try {
             pushApiService.registerToken(FcmTokenRequest(token = token, deviceId = deviceId))

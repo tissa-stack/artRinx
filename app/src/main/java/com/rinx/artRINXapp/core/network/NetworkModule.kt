@@ -38,11 +38,15 @@ object NetworkModule {
         logging: HttpLoggingInterceptor,
         appVersionInterceptor: AppVersionInterceptor,
         authTokenInterceptor: AuthTokenInterceptor,
+        sessionInvalidationInterceptor: SessionInvalidationInterceptor,
         tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(appVersionInterceptor)
             .addInterceptor(authTokenInterceptor)
+            // After authToken (so the token is already attached) — recovers the backend's 403
+            // "Not authenticated" via a refresh+retry, complementing the 401-only authenticator.
+            .addInterceptor(sessionInvalidationInterceptor)
             .authenticator(tokenAuthenticator)
             .addInterceptor(logging)
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)

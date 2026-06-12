@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.core.auth
 
 import com.rinx.artRINXapp.core.offline.LiveMutationQueue
+import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
@@ -41,6 +42,7 @@ class LocalDataCleaner @Inject constructor(
     private val chatCache: ChatCache,
     private val blockedUsersStore: BlockedUsersStore,
     private val unreadNotificationsStore: UnreadNotificationsStore,
+    private val pushTokenManager: PushTokenManager,
 ) {
     /** Wipe in-memory caches + transient upload/curation state. Keeps the session. */
     fun clearCaches() {
@@ -61,6 +63,8 @@ class LocalDataCleaner @Inject constructor(
         session.clearSession()
         profileDraft.clearDraft()
         liveMutationQueue.clear()
+        // Invalidate the device's FCM token so a signed-out device stops being a push target.
+        pushTokenManager.deleteToken()
         clearCaches()
     }
 }
