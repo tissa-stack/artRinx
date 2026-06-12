@@ -269,8 +269,8 @@ fun NewArtPreviewScreen(
                 )
             }
 
-            // Artist card
-            item(key = "artist-card") {
+            // Uploader card — this is the posting user's profile (NOT the credited artist).
+            item(key = "uploader-card") {
                 Row(
                     modifier          = Modifier
                         .fillMaxWidth()
@@ -278,15 +278,15 @@ fun NewArtPreviewScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RinxAvatar(
-                        url                = state.selectedArtist?.avatarUrl,
-                        contentDescription = state.selectedArtist?.displayName,
+                        url                = state.selfArtist?.avatarUrl,
+                        contentDescription = state.selfArtist?.displayName,
                         size               = d.avatarSizeLg,
-                        name               = state.selectedArtist?.displayName,
+                        name               = state.selfArtist?.displayName,
                     )
                     Spacer(Modifier.width(Spacing.sm))
                     Column {
                         Text(
-                            text       = state.selectedArtist?.displayName ?: "Artist",
+                            text       = state.selfArtist?.displayName ?: "You",
                             style      = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color      = MaterialTheme.colorScheme.onBackground,
