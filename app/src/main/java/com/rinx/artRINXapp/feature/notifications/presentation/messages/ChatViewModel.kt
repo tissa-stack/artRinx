@@ -7,6 +7,8 @@ import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.ChatEvent
 import com.rinx.artRINXapp.core.network.ChatWebSocketManager
 import com.rinx.artRINXapp.core.network.WsConnectionState
+import com.rinx.artRINXapp.feature.notifications.domain.OutgoingMessageStore
+import com.rinx.artRINXapp.feature.notifications.domain.SendOutcome
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatGate
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatMessage
 import com.rinx.artRINXapp.feature.notifications.domain.model.SendStatus
@@ -20,6 +22,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -68,6 +72,7 @@ class ChatViewModel @Inject constructor(
     private val webSocket: ChatWebSocketManager,
     private val chatCache: com.rinx.artRINXapp.feature.notifications.data.local.ChatCache,
     private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
+    private val outgoingStore: OutgoingMessageStore,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -76,6 +81,13 @@ class ChatViewModel @Inject constructor(
     private var currentUserId: Int = 0
     private var chatroomId: String? = null
     private var nextCursor: String? = null
+
+    /**
+     * Server/WS-confirmed messages (the durable list). The displayed list = [confirmed] merged with
+     * the app-scoped [outgoingStore]'s unconfirmed (SENDING/FAILED) bubbles for this partner, so an
+     * in-flight or failed send survives leaving and returning to the screen. See [displayMessages].
+     */
+    private var confirmed: List<ChatMessage> = emptyList()
 
     // Server-driven gate inputs (handout 5-state tree), updated from thread / resolution / send.
     private var invitationStatus: Boolean = false
@@ -101,16 +113,40 @@ class ChatViewModel @Inject constructor(
         canMessage = snap.canMessage
         chatroomId = snap.chatroomId
         nextCursor = snap.nextCursor
+        // Split the cached display list: confirmed (server) messages vs optimistic (SENDING/FAILED)
+        // bubbles. Re-own the unconfirmed ones in the app-scoped outbox as retryable FAILED, unless an
+        // in-flight send for the same cid is already tracked there (an in-session reopen).
+        confirmed = snap.messages.filter { it.sendStatus == SendStatus.SENT }
+        outgoingStore.restoreAsFailed(partnerUserId, snap.messages.filter { it.sendStatus != SendStatus.SENT })
+        val msgs = displayMessages()
         return ChatUiState(
             partnerName = snap.partnerName,
             partnerRole = snap.partnerRole,
             partnerAvatarUrl = snap.partnerAvatarUrl,
-            messages = snap.messages,
-            gate = if (iBlocked) ChatGate.BLOCKED_BY_ME else snap.gate,
+            messages = msgs,
+            gate = deriveGate(msgs),
             remainingInvites = snap.remainingInvites,
             isLoading = false,
             canLoadEarlier = snap.nextCursor != null,
         )
+    }
+
+    /** The displayed list: [confirmed] server messages merged with the outbox's unconfirmed bubbles
+     *  for this partner, deduped by client/server id (a confirmed message always wins its echo). */
+    private fun displayMessages(): List<ChatMessage> {
+        val pending = outgoingStore.pendingFor(partnerUserId)
+        if (pending.isEmpty()) return confirmed.sortedBy { it.createdAtEpochMs }
+        val confirmedCids = confirmed.mapNotNull { it.clientMessageId }.toSet()
+        val confirmedIds = confirmed.map { it.id }.toSet()
+        val extras = pending.filter { it.clientMessageId !in confirmedCids && it.id !in confirmedIds }
+        return (confirmed + extras).sortedBy { it.createdAtEpochMs }
+    }
+
+    /** Recompute the merged list + gate from [confirmed] + the outbox, and write through to cache. */
+    private fun publishMessages() {
+        val msgs = displayMessages()
+        _state.update { it.copy(messages = msgs, gate = deriveGate(msgs)) }
+        cacheSnapshot(_state.value)
     }
 
     private fun cacheSnapshot(st: ChatUiState) {
@@ -156,6 +192,20 @@ class ChatViewModel @Inject constructor(
                     backfill()
                 }
                 lastConnState = st
+            }
+        }
+        // The outbox owns in-flight/failed sends (app-scoped → survives leaving the screen).
+        // Re-render whenever this partner's pending bubbles change, and react to send outcomes.
+        viewModelScope.launch {
+            outgoingStore.outgoing
+                .map { it[partnerUserId].orEmpty() }
+                .distinctUntilChanged()
+                .collect { publishMessages() }
+        }
+        viewModelScope.launch {
+            outgoingStore.outcomes.collect { outcome ->
+                if (outcome.partnerId != partnerUserId) return@collect
+                handleSendOutcome(outcome)
             }
         }
     }
@@ -234,13 +284,18 @@ class ChatViewModel @Inject constructor(
             val remaining = res?.remainingInvites ?: threadData?.remainingInvites
             nextCursor = threadData?.nextCursor
 
+            // Server thread is the confirmed list; drop any outbox bubble it now confirms (by client id)
+            // and merge the rest so an in-flight/failed send isn't clobbered by the reload.
+            confirmed = messages
+            outgoingStore.removeConfirmed(partnerUserId, messages.mapNotNull { it.clientMessageId }.toSet())
+            val merged = displayMessages()
             _state.update {
                 it.copy(
                     partnerName = pub?.displayName?.ifBlank { it.partnerName } ?: it.partnerName,
                     partnerRole = pub?.role?.ifBlank { "Artist" } ?: "Artist",
                     partnerAvatarUrl = pub?.avatarUrl,
-                    messages = messages,
-                    gate = deriveGate(messages),
+                    messages = merged,
+                    gate = deriveGate(merged),
                     remainingInvites = remaining ?: it.remainingInvites,
                     isLoading = false,
                     isRefreshing = false,
@@ -279,8 +334,10 @@ class ChatViewModel @Inject constructor(
             blockReason = server.blockReason
             canMessage = server.canMessage
             if (server.nextCursor != null) nextCursor = server.nextCursor
+            confirmed = mergeById(confirmed, server.messages)
+            outgoingStore.removeConfirmed(partnerUserId, server.messages.mapNotNull { it.clientMessageId }.toSet())
+            val merged = displayMessages()
             _state.update { st ->
-                val merged = mergeById(st.messages, server.messages)
                 st.copy(
                     messages = merged,
                     gate = deriveGate(merged),
@@ -326,10 +383,10 @@ class ChatViewModel @Inject constructor(
                 return@launch
             }
             nextCursor = res.data.nextCursor
+            val existing = confirmed.associateBy { it.id }
+            confirmed = (res.data.messages.filter { it.id !in existing } + confirmed).sortedBy { it.createdAtEpochMs }
+            val merged = displayMessages()
             _state.update { stt ->
-                val existing = stt.messages.associateBy { it.id }
-                val older = res.data.messages.filter { it.id !in existing }
-                val merged = (older + stt.messages).sortedBy { it.createdAtEpochMs }
                 stt.copy(
                     messages = merged,
                     isLoadingEarlier = false,
@@ -365,67 +422,45 @@ class ChatViewModel @Inject constructor(
         val text = _state.value.inputText.trim()
         if (text.isEmpty() || !_state.value.canSend || partnerUserId == 0) return
 
+        // Hand the send to the app-scoped outbox so it survives leaving the screen. The optimistic
+        // bubble appears via the outgoing observer; clear the input now.
         val cid = UUID.randomUUID().toString()
-        val optimistic = ChatMessage(
-            id = cid,
-            content = text,
-            isSent = true,
-            timestamp = "",
-            clientMessageId = cid,
-            sendStatus = SendStatus.SENDING,
-            createdAtEpochMs = System.currentTimeMillis(),
-        )
-        _state.update {
-            val msgs = it.messages + optimistic
-            it.copy(messages = msgs, inputText = "", gate = deriveGate(msgs))
-        }
-        sendInternal(cid, text)
+        _state.update { it.copy(inputText = "") }
+        outgoingStore.send(partnerUserId, currentUserId, cid, text)
     }
 
     fun retryMessage(message: ChatMessage) {
         val cid = message.clientMessageId ?: return
-        _state.update {
-            it.copy(messages = it.messages.map { m -> if (m.clientMessageId == cid) m.copy(sendStatus = SendStatus.SENDING) else m })
-        }
-        sendInternal(cid, message.content)
+        outgoingStore.retry(partnerUserId, currentUserId, cid)
     }
 
-    private fun sendInternal(cid: String, text: String) {
-        viewModelScope.launch {
-            when (val res = messagesRepository.sendMessage(partnerUserId, currentUserId, text, clientMessageId = cid)) {
-                is ApiResult.Success -> {
-                    chatroomId = res.data.chatroomId ?: chatroomId
-                    // Adopt the authoritative gate inputs from the send response.
-                    invitationStatus = res.data.invitationStatus
-                    isActive = res.data.isActive
-                    iBlocked = res.data.iBlocked
-                    theyBlocked = res.data.theyBlocked
-                    _state.update { st ->
-                        val replaced = st.messages.map {
-                            if (it.clientMessageId == cid) res.data.message.copy(clientMessageId = cid) else it
-                        }
-                        st.copy(messages = replaced, gate = deriveGate(replaced))
-                    }
+    /** React to a send result from the outbox (the bubble's SENDING/FAILED state is owned there). */
+    private fun handleSendOutcome(outcome: SendOutcome) {
+        when (outcome) {
+            is SendOutcome.Success -> {
+                val data = outcome.result
+                chatroomId = data.chatroomId ?: chatroomId
+                // Adopt the authoritative gate inputs from the send response.
+                invitationStatus = data.invitationStatus
+                isActive = data.isActive
+                iBlocked = data.iBlocked
+                theyBlocked = data.theyBlocked
+                // Adopt the confirmed message immediately (dedup by id / client id); the WS echo or a
+                // later thread fetch would otherwise be the only source.
+                val msg = data.message.copy(clientMessageId = outcome.cid)
+                if (confirmed.none { it.id == msg.id || (it.clientMessageId != null && it.clientMessageId == msg.clientMessageId) }) {
+                    confirmed = (confirmed + msg).sortedBy { it.createdAtEpochMs }
                 }
-                is ApiResult.Error.Blocked -> {
-                    // 403 (block / waiting-for-accept / invite-limit). Drop the optimistic bubble,
-                    // show the server's actual reason (e.g. "Cannot message blocked user"), and refetch
-                    // so the gate reflects the true state (BLOCKED_BY_THEM, INVITE_SENT_WAITING, …).
-                    // Never sign out.
-                    _state.update { st ->
-                        st.copy(messages = st.messages.filterNot { it.clientMessageId == cid })
-                    }
-                    _toasts.trySend(res.message)
-                    backfill()
-                }
-                else -> {
-                    _state.update { st ->
-                        st.copy(messages = st.messages.map {
-                            if (it.clientMessageId == cid) it.copy(sendStatus = SendStatus.FAILED) else it
-                        })
-                    }
-                    _toasts.trySend("Couldn't send message. Tap the message to retry.")
-                }
+                publishMessages()
+            }
+            is SendOutcome.Blocked -> {
+                // 403 (block / waiting-for-accept / invite-limit). The outbox already dropped the
+                // bubble; show the server's reason and refetch so the gate reflects the true state.
+                _toasts.trySend(outcome.message)
+                backfill()
+            }
+            is SendOutcome.Failed -> {
+                _toasts.trySend("Couldn't send message. Tap the message to retry.")
             }
         }
     }
@@ -435,8 +470,9 @@ class ChatViewModel @Inject constructor(
         if (trimmed.isEmpty() || trimmed == message.content) return
         viewModelScope.launch {
             when (val res = messagesRepository.editMessage(message.id, currentUserId, trimmed)) {
-                is ApiResult.Success -> _state.update { st ->
-                    st.copy(messages = st.messages.map { if (it.id == message.id) res.data else it })
+                is ApiResult.Success -> {
+                    confirmed = confirmed.map { if (it.id == message.id) res.data else it }
+                    publishMessages()
                 }
                 is ApiResult.Error.Validation -> _toasts.trySend(res.message)
                 else -> _toasts.trySend("Couldn't edit message.")
@@ -447,8 +483,9 @@ class ChatViewModel @Inject constructor(
     fun onDeleteMessage(message: ChatMessage) {
         viewModelScope.launch {
             when (messagesRepository.deleteMessage(message.id)) {
-                is ApiResult.Success -> _state.update { st ->
-                    st.copy(messages = st.messages.map { if (it.id == message.id) it.copy(isDeleted = true) else it })
+                is ApiResult.Success -> {
+                    confirmed = confirmed.map { if (it.id == message.id) it.copy(isDeleted = true) else it }
+                    publishMessages()
                 }
                 else -> _toasts.trySend("Couldn't delete message.")
             }
@@ -462,32 +499,31 @@ class ChatViewModel @Inject constructor(
             is ChatEvent.NewMessage -> onIncomingMessage(event.data)
             is ChatEvent.Edit -> if (hasMessage(event.messageId)) {
                 val incomingEditedAt = parseIsoMs(event.editedAt)
-                _state.update { st ->
-                    st.copy(messages = st.messages.map {
-                        when {
-                            it.id != event.messageId -> it
-                            // Monotonic guard: ignore an edit that isn't newer than what we have.
-                            incomingEditedAt != 0L && it.editedAtEpochMs != 0L &&
-                                incomingEditedAt <= it.editedAtEpochMs -> it
-                            else -> it.copy(
-                                content = event.text ?: it.content,
-                                isEdited = true,
-                                editedAtEpochMs = if (incomingEditedAt != 0L) incomingEditedAt else it.editedAtEpochMs,
-                            )
-                        }
-                    })
+                confirmed = confirmed.map {
+                    when {
+                        it.id != event.messageId -> it
+                        // Monotonic guard: ignore an edit that isn't newer than what we have.
+                        incomingEditedAt != 0L && it.editedAtEpochMs != 0L &&
+                            incomingEditedAt <= it.editedAtEpochMs -> it
+                        else -> it.copy(
+                            content = event.text ?: it.content,
+                            isEdited = true,
+                            editedAtEpochMs = if (incomingEditedAt != 0L) incomingEditedAt else it.editedAtEpochMs,
+                        )
+                    }
                 }
+                publishMessages()
             }
-            is ChatEvent.Delete -> if (hasMessage(event.messageId)) _state.update { st ->
-                st.copy(messages = st.messages.map {
-                    if (it.id == event.messageId) it.copy(isDeleted = true) else it
-                })
+            is ChatEvent.Delete -> if (hasMessage(event.messageId)) {
+                confirmed = confirmed.map { if (it.id == event.messageId) it.copy(isDeleted = true) else it }
+                publishMessages()
             }
-            is ChatEvent.Read -> _state.update { st ->
-                // A message I sent was read — mark it (and everything older I sent) read.
-                st.copy(messages = st.messages.map {
+            is ChatEvent.Read -> {
+                // A message I sent was read — mark it read.
+                confirmed = confirmed.map {
                     if (it.id == event.messageId && it.isSent) it.copy(isRead = true) else it
-                })
+                }
+                publishMessages()
             }
             is ChatEvent.IncomingNotification -> Unit // handled elsewhere
         }
@@ -522,23 +558,23 @@ class ChatViewModel @Inject constructor(
             blockReason = null
             canMessage = true
         }
-        _state.update { st ->
-            // Dedup: reconcile our own optimistic/echoed message, skip duplicates by id.
-            val byClient = msg.clientMessageId
-            if (byClient != null && st.messages.any { it.clientMessageId == byClient }) {
-                val replaced = st.messages.map { if (it.clientMessageId == byClient) msg.copy(clientMessageId = byClient) else it }
-                return@update st.copy(messages = replaced, gate = deriveGate(replaced))
-            }
-            if (st.messages.any { it.id == msg.id }) return@update st
-            val msgs = (st.messages + msg).sortedBy { it.createdAtEpochMs }
-            st.copy(messages = msgs, gate = deriveGate(msgs))
+        // Dedup: reconcile our own optimistic/echoed message, skip duplicates by id.
+        val byClient = msg.clientMessageId
+        val matchedClient = byClient != null && confirmed.any { it.clientMessageId == byClient }
+        confirmed = when {
+            matchedClient -> confirmed.map { if (it.clientMessageId == byClient) msg.copy(clientMessageId = byClient) else it }
+            confirmed.any { it.id == msg.id } -> confirmed
+            else -> (confirmed + msg).sortedBy { it.createdAtEpochMs }
         }
+        // If this echoes one of our outbox bubbles, drop it there so it isn't shown twice.
+        if (byClient != null) outgoingStore.removeConfirmed(partnerUserId, setOf(byClient))
+        publishMessages()
         if (!msg.isSent) markReadFireAndForget(msg.id)
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    private fun hasMessage(id: String): Boolean = _state.value.messages.any { it.id == id }
+    private fun hasMessage(id: String): Boolean = confirmed.any { it.id == id }
 
     private fun markReadFireAndForget(messageId: String) {
         viewModelScope.launch { messagesRepository.markRead(messageId) }

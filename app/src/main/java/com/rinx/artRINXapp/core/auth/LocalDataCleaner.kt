@@ -7,6 +7,7 @@ import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.notifications.data.local.ChatCache
+import com.rinx.artRINXapp.feature.notifications.domain.OutgoingMessageStore
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
 import com.rinx.artRINXapp.feature.notifications.domain.UnreadNotificationsStore
 import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
@@ -40,6 +41,7 @@ class LocalDataCleaner @Inject constructor(
     private val detailCache: DetailCache,
     private val curationPreviewStore: CurationPreviewStore,
     private val chatCache: ChatCache,
+    private val outgoingMessageStore: OutgoingMessageStore,
     private val blockedUsersStore: BlockedUsersStore,
     private val unreadNotificationsStore: UnreadNotificationsStore,
     private val pushTokenManager: PushTokenManager,
@@ -54,6 +56,7 @@ class LocalDataCleaner @Inject constructor(
         detailCache.clear()
         curationPreviewStore.clear()
         chatCache.clear()
+        outgoingMessageStore.clear()
         blockedUsersStore.clear()
         unreadNotificationsStore.reset()
     }

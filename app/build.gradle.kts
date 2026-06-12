@@ -74,7 +74,7 @@ dependencies {
     implementation(libs.squareup.retrofit.core)
     implementation(libs.squareup.retrofit.converter.gson)
     implementation(libs.squareup.retrofit.converter.scalars)
-implementation(libs.squareup.okhttp.core)
+    implementation(libs.squareup.okhttp.core)
     implementation(libs.squareup.okhttp.logging)
     implementation(libs.androidx.security.crypto)
 
