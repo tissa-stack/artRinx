@@ -24,6 +24,7 @@ object NavRoutes {
     const val PROFILE_TITLE_PLAN     = "profile_title_plan"
     const val PROFILE_TITLE_PLAN_EDIT = "profile_title_plan_edit?step={step}"
     const val BLOCKED_ACCOUNTS       = "blocked_accounts"
+    const val BLOCKED_ARTWORKS       = "blocked_artworks"
     const val INVITE_FRIENDS         = "invite_friends"
     const val PHONE_PERMISSIONS      = "phone_permissions"
 

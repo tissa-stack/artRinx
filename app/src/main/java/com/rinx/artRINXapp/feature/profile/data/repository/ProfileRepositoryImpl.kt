@@ -14,6 +14,7 @@ import com.rinx.artRINXapp.feature.profile.data.remote.dto.FollowUserDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportArtworkRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportCurationRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportMessageRequest
+import com.rinx.artRINXapp.feature.profile.domain.model.BlockedArtwork
 import com.rinx.artRINXapp.feature.profile.domain.model.BlockedUser
 import com.rinx.artRINXapp.feature.profile.domain.model.CurrentUser
 import com.rinx.artRINXapp.feature.profile.domain.model.EditableProfile
@@ -402,6 +403,44 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.unblockUser(userId)
             if (response.isSuccessful) {
                 blockedUsersStore.markUnblocked(userId)
+                ApiResult.Success(Unit)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun getBlockedArtworks(page: Int, size: Int): ApiResult<List<BlockedArtwork>> {
+        return try {
+            val response = apiService.getBlockedArtworks(page, size)
+            if (response.isSuccessful) {
+                val items = response.body()?.data?.items.orEmpty().mapNotNull { dto ->
+                    val artId = dto.id ?: return@mapNotNull null
+                    BlockedArtwork(
+                        artId = artId,
+                        title = dto.title.orEmpty(),
+                        thumbnailUrl = dto.thumbnailUrl ?: dto.webpUrl ?: dto.imageUrl,
+                    )
+                }
+                ApiResult.Success(items)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun unblockArtwork(artworkId: Int): ApiResult<Unit> {
+        return try {
+            val response = apiService.unblockArtwork(artworkId)
+            if (response.isSuccessful) {
                 ApiResult.Success(Unit)
             } else {
                 profileError(response.code())

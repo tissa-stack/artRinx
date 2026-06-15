@@ -2,6 +2,7 @@ package com.rinx.artRINXapp.feature.profile.domain.repository
 
 import android.net.Uri
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.feature.profile.domain.model.BlockedArtwork
 import com.rinx.artRINXapp.feature.profile.domain.model.BlockedUser
 import com.rinx.artRINXapp.feature.profile.domain.model.CurrentUser
 import com.rinx.artRINXapp.feature.profile.domain.model.EditableProfile
@@ -38,6 +39,10 @@ interface ProfileRepository {
     suspend fun getBlockedUsers(page: Int, size: Int): ApiResult<List<BlockedUser>>
     /** Unblock the user with [userId]. */
     suspend fun unblockUser(userId: Int): ApiResult<Unit>
+    /** The current user's blocked artworks. */
+    suspend fun getBlockedArtworks(page: Int, size: Int): ApiResult<List<BlockedArtwork>>
+    /** Unblock the artwork with [artworkId]. */
+    suspend fun unblockArtwork(artworkId: Int): ApiResult<Unit>
     /** Report an artwork with a free-text [message]. */
     suspend fun reportArtwork(artworkId: Int, message: String): ApiResult<Unit>
     /** Report a curation with a free-text [message]. */

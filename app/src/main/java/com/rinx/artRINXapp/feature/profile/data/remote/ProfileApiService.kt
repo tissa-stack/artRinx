@@ -5,6 +5,7 @@ import com.rinx.artRINXapp.feature.home.data.remote.dto.CurationDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.EnvelopeDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.PageDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.BlockRequest
+import com.rinx.artRINXapp.feature.profile.data.remote.dto.BlockedArtworkDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.BlockedUserDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.CreateProfileResponseDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.FollowRequest
@@ -61,6 +62,17 @@ interface ProfileApiService {
     /** Unblock a user (§3.8). */
     @DELETE("api/unblock")
     suspend fun unblockUser(@Query("user_id") userId: Int): Response<ResponseBody>
+
+    /** The current user's blocked artworks (§3.8). */
+    @GET("api/blocked/artworks")
+    suspend fun getBlockedArtworks(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<BlockedArtworkDto>>>
+
+    /** Unblock an artwork — same endpoint as unblockUser, keyed by art_id (§3.8). */
+    @DELETE("api/unblock")
+    suspend fun unblockArtwork(@Query("art_id") artId: Int): Response<ResponseBody>
 
     /** Block a user or an artwork (§3.8). */
     @POST("api/block")

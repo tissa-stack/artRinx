@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MailOutline
@@ -64,6 +65,7 @@ fun SettingsScreen(
     onInviteFriends: () -> Unit,
     onAppTutorial: () -> Unit,
     onBlockedAccounts: () -> Unit,
+    onBlockedArtworks: () -> Unit,
     onPhonePermissions: () -> Unit,
     onTermsAndConditions: () -> Unit,
     onCommunityGuidelines: () -> Unit,
@@ -155,6 +157,7 @@ fun SettingsScreen(
 
             SectionHeader("Privacy")
             SettingsRow(painter = R.drawable.ic_blocked_accounts, label = "Blocked accounts", onClick = onBlockedAccounts)
+            SettingsRow(imageVector = Icons.Outlined.Block, label = "Blocked artworks", onClick = onBlockedArtworks)
             SettingsRow(imageVector = Icons.Outlined.PhoneAndroid, label = "Phone Permissions", onClick = onPhonePermissions)
             SettingsRow(imageVector = Icons.Outlined.DeleteOutline, label = "Delete account", onClick = { showDeleteDialog = true })
 

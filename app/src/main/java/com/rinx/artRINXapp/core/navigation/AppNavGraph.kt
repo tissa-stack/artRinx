@@ -48,6 +48,7 @@ import com.rinx.artRINXapp.feature.notifications.presentation.messages.NewMessag
 import com.rinx.artRINXapp.feature.search.presentation.SearchScreen
 import com.rinx.artRINXapp.feature.settings.presentation.SettingsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedAccountsScreen
+import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedArtworksScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changeemail.ChangeEmailScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changephone.ChangePhoneScreen
 import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileScreen
@@ -476,6 +477,7 @@ fun AppNavGraph(
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onAppTutorial         = { tour.restart(); navController.navigateToTab(NavRoutes.HOME) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
+                onBlockedArtworks     = { navController.navigate(NavRoutes.BLOCKED_ARTWORKS) },
                 onPhonePermissions    = { navController.navigate(NavRoutes.PHONE_PERMISSIONS) },
                 onTermsAndConditions  = { runCatching { uriHandler.openUri(LegalLinks.TERMS_OF_USE) } },
                 onCommunityGuidelines = { runCatching { uriHandler.openUri(LegalLinks.COMMUNITY_GUIDELINES) } },
@@ -540,6 +542,10 @@ fun AppNavGraph(
 
         composable(NavRoutes.BLOCKED_ACCOUNTS) {
             BlockedAccountsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(NavRoutes.BLOCKED_ARTWORKS) {
+            BlockedArtworksScreen(onBack = { navController.popBackStack() })
         }
 
         composable(NavRoutes.INVITE_FRIENDS) {

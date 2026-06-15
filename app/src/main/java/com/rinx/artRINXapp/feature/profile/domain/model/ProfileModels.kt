@@ -114,6 +114,13 @@ data class BlockedUser(
     val avatarUrl: String?,
 )
 
+/** An artwork the current user has blocked (§3.8). */
+data class BlockedArtwork(
+    val artId: Int,
+    val title: String,
+    val thumbnailUrl: String?,
+)
+
 /** A user who joined via the current user's invite code (§2.3). */
 data class InvitedUser(
     val id: String,
