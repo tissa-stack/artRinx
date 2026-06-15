@@ -170,11 +170,12 @@ class OtherProfileViewModel @Inject constructor(
         if (p.isFollowing || _uiState.value.isFollowPending) return
         _uiState.update { it.copy(isFollowPending = true, profile = p.copy(isFollowing = true, followerCount = p.followerCount + 1)) }
         viewModelScope.launch {
-            if (repository.followUser(id) is ApiResult.Error) {
+            val r = repository.followUser(id)
+            if (r is ApiResult.Error) {
                 // revert
                 _uiState.update { s ->
                     val cur = s.profile ?: return@update s.copy(isFollowPending = false)
-                    s.copy(isFollowPending = false, profile = cur.copy(isFollowing = false, followerCount = (cur.followerCount - 1).coerceAtLeast(0)), actionError = "Couldn't follow. Please try again.")
+                    s.copy(isFollowPending = false, profile = cur.copy(isFollowing = false, followerCount = (cur.followerCount - 1).coerceAtLeast(0)), actionError = r.userMessage("Couldn't follow. Please try again."))
                 }
             } else {
                 _uiState.update { s ->
@@ -190,7 +191,7 @@ class OtherProfileViewModel @Inject constructor(
         if (_uiState.value.isActioning) return
         _uiState.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
-            when (repository.unfollowUser(id)) {
+            when (val r = repository.unfollowUser(id)) {
                 is ApiResult.Success -> _uiState.update { s ->
                     val cur = s.profile
                     val name = cur?.displayName?.takeIf { it.isNotBlank() }
@@ -200,7 +201,7 @@ class OtherProfileViewModel @Inject constructor(
                         actionMessage = if (name != null) "Unfollowed $name" else "Unfollowed",
                     )
                 }
-                is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = "Couldn't unfollow. Please try again.") }
+                is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = r.userMessage("Couldn't unfollow. Please try again.")) }
             }
         }
     }

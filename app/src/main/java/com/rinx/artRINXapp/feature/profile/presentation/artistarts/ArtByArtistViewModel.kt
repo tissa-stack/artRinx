@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.PublicProfile
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -82,9 +83,10 @@ class ArtByArtistViewModel @Inject constructor(
         if (_state.value.isFollowing) return
         _state.update { it.copy(isFollowing = true) }
         viewModelScope.launch {
-            if (profileRepository.followUser(id) is ApiResult.Error) {
+            val r = profileRepository.followUser(id)
+            if (r is ApiResult.Error) {
                 _state.update { it.copy(isFollowing = false) }
-                _message.send("Couldn't follow — try again")
+                _message.send(r.userMessage("Couldn't follow — try again"))
             } else {
                 _message.send("Following ${displayName()}")
             }
@@ -97,9 +99,10 @@ class ArtByArtistViewModel @Inject constructor(
         if (!_state.value.isFollowing) return
         _state.update { it.copy(isFollowing = false) }
         viewModelScope.launch {
-            if (profileRepository.unfollowUser(id) is ApiResult.Error) {
+            val r = profileRepository.unfollowUser(id)
+            if (r is ApiResult.Error) {
                 _state.update { it.copy(isFollowing = true) }
-                _message.send("Couldn't unfollow — try again")
+                _message.send(r.userMessage("Couldn't unfollow — try again"))
             } else {
                 _message.send("Unfollowed ${displayName()}")
             }

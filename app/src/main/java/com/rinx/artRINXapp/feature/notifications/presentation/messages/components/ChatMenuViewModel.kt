@@ -104,10 +104,10 @@ class ChatMenuViewModel @Inject constructor(
         if (userId == 0 || _state.value.isActioning) return
         _state.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
-            when (profileRepository.unfollowUser(userId)) {
+            when (val r = profileRepository.unfollowUser(userId)) {
                 is ApiResult.Success -> _state.update { it.copy(isActioning = false, unfollowedSuccess = true) }
                 is ApiResult.Error -> _state.update {
-                    it.copy(isActioning = false, actionError = "Couldn't unfollow. Please try again.")
+                    it.copy(isActioning = false, actionError = r.userMessage("Couldn't unfollow. Please try again."))
                 }
             }
         }

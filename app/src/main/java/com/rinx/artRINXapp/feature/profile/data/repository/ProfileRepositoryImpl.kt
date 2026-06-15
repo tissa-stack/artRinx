@@ -405,7 +405,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 blockedUsersStore.markUnblocked(userId)
                 ApiResult.Success(Unit)
             } else {
-                profileError(response.code())
+                response.toApiError() // carry the server's reason (e.g. business-rule 400) to the UI
             }
         } catch (e: IOException) {
             ApiResult.Error.Network(e)
@@ -443,7 +443,7 @@ class ProfileRepositoryImpl @Inject constructor(
             if (response.isSuccessful) {
                 ApiResult.Success(Unit)
             } else {
-                profileError(response.code())
+                response.toApiError() // carry the server's reason to the UI
             }
         } catch (e: IOException) {
             ApiResult.Error.Network(e)
