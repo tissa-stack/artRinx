@@ -24,7 +24,7 @@ class ProfileDraftDataSource @Inject constructor(
         val KEY_USERNAME = stringPreferencesKey("profile_draft_username")
         val KEY_DISPLAY_NAME = stringPreferencesKey("profile_draft_display_name")
         val KEY_BIO = stringPreferencesKey("profile_draft_bio")
-        val KEY_AGE = stringPreferencesKey("profile_draft_age")
+        val KEY_DOB = stringPreferencesKey("profile_draft_dob")
         val KEY_COUNTRY = stringPreferencesKey("profile_draft_country")
         val KEY_STATE = stringPreferencesKey("profile_draft_state")
         val KEY_CITY = stringPreferencesKey("profile_draft_city")
@@ -40,7 +40,7 @@ class ProfileDraftDataSource @Inject constructor(
             username = prefs[KEY_USERNAME] ?: "",
             displayName = prefs[KEY_DISPLAY_NAME] ?: "",
             bio = prefs[KEY_BIO] ?: "",
-            age = prefs[KEY_AGE] ?: "",
+            dob = prefs[KEY_DOB] ?: "",
             country = prefs[KEY_COUNTRY] ?: "",
             state = prefs[KEY_STATE] ?: "",
             city = prefs[KEY_CITY] ?: "",
@@ -66,7 +66,7 @@ class ProfileDraftDataSource @Inject constructor(
 
     suspend fun saveBio(value: String) = dataStore.edit { it[KEY_BIO] = value }
 
-    suspend fun saveAge(value: String) = dataStore.edit { it[KEY_AGE] = value }
+    suspend fun saveDob(value: String) = dataStore.edit { it[KEY_DOB] = value }
 
     suspend fun saveCountry(value: String) = dataStore.edit { it[KEY_COUNTRY] = value }
 
@@ -81,7 +81,7 @@ class ProfileDraftDataSource @Inject constructor(
     suspend fun clearDraft() = dataStore.edit { prefs ->
         listOf(
             KEY_STEP, KEY_GROUND_RULES, KEY_TYPE_ID, KEY_FULL_NAME, KEY_USERNAME,
-            KEY_DISPLAY_NAME, KEY_BIO, KEY_AGE, KEY_COUNTRY, KEY_STATE, KEY_CITY, KEY_MEDIUM_IDS,
+            KEY_DISPLAY_NAME, KEY_BIO, KEY_DOB, KEY_COUNTRY, KEY_STATE, KEY_CITY, KEY_MEDIUM_IDS,
         ).forEach { prefs.remove(it) }
     }
 }

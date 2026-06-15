@@ -201,7 +201,7 @@ class ProfileRepositoryImpl @Inject constructor(
                         fullName = dto.fullName.orEmpty(),
                         displayName = dto.displayName ?: dto.fullName ?: dto.username.orEmpty(),
                         bio = dto.bio.orEmpty(),
-                        age = numericAgeToRange(dto.age),
+                        dob = dto.dob.orEmpty(),
                         country = dto.country.orEmpty(),
                         state = dto.state.orEmpty(),
                         city = dto.city.orEmpty(),
@@ -270,8 +270,8 @@ class ProfileRepositoryImpl @Inject constructor(
                 changes.fullName?.let { parts["full_name"] = it.toRequestBody(textPlain) }
                 changes.displayName?.let { parts["display_name"] = it.toRequestBody(textPlain) }
                 changes.bio?.let { parts["bio"] = it.toRequestBody(textPlain) }
-                // UI collects an age range ("18-25"); backend expects digits — send the lower bound.
-                changes.age?.let { range -> ageToNumeric(range)?.let { parts["age"] = it.toRequestBody(textPlain) } }
+                // Date of birth as ISO YYYY-MM-DD; the server derives age and enforces a 13+ minimum.
+                changes.dob?.let { dob -> dob.ifBlank { null }?.let { parts["dob"] = it.toRequestBody(textPlain) } }
                 changes.country?.let { parts["country"] = it.toRequestBody(textPlain) }
                 changes.state?.let { parts["state"] = it.toRequestBody(textPlain) }
                 changes.city?.let { parts["city"] = it.toRequestBody(textPlain) }
@@ -295,7 +295,10 @@ class ProfileRepositoryImpl @Inject constructor(
                     val rawError = response.errorBody()?.string()
                     when (response.code()) {
                         422 -> ApiResult.Error.Validation(parseValidationError(rawError))
-                        in 400..499 -> ApiResult.Error.Validation("Couldn't save changes. Please check your details.")
+                        in 400..499 -> ApiResult.Error.Validation(
+                            if (isUnderMinimumAge(rawError)) UNDER_MIN_AGE_MESSAGE
+                            else "Couldn't save changes. Please check your details.",
+                        )
                         in 500..599 -> ApiResult.Error.Server(response.code())
                         else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
                     }
@@ -750,9 +753,8 @@ class ProfileRepositoryImpl @Inject constructor(
                 parts["account_notification_sms"] = "false".toRequestBody(textPlain)
                 parts["marketing_sms_consent"] = "false".toRequestBody(textPlain)
                 if (draft.bio.isNotBlank()) parts["bio"] = draft.bio.toRequestBody(textPlain)
-                // Backend requires a numeric age; the UI collects a range ("18-25", "65+",
-                // "Under 18"). Send the range's lower bound as digits only.
-                ageToNumeric(draft.age)?.let { parts["age"] = it.toRequestBody(textPlain) }
+                // Date of birth as ISO YYYY-MM-DD; the server derives age and enforces a 13+ minimum.
+                if (draft.dob.isNotBlank()) parts["dob"] = draft.dob.toRequestBody(textPlain)
                 if (draft.country.isNotBlank()) parts["country"] = draft.country.toRequestBody(textPlain)
                 if (draft.state.isNotBlank()) parts["state"] = draft.state.toRequestBody(textPlain)
                 if (draft.city.isNotBlank()) parts["city"] = draft.city.toRequestBody(textPlain)
@@ -780,7 +782,10 @@ class ProfileRepositoryImpl @Inject constructor(
                         // "already exists". iOS treats 409 as success and advances; do the same.
                         409 -> ApiResult.Success(Unit)
                         422 -> ApiResult.Error.Validation(parseValidationError(rawError))
-                        in 400..499 -> ApiResult.Error.Validation("Profile creation failed. Please check your details.")
+                        in 400..499 -> ApiResult.Error.Validation(
+                            if (isUnderMinimumAge(rawError)) UNDER_MIN_AGE_MESSAGE
+                            else "Profile creation failed. Please check your details.",
+                        )
                         in 500..599 -> ApiResult.Error.Server(response.code())
                         else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
                     }
@@ -791,35 +796,6 @@ class ProfileRepositoryImpl @Inject constructor(
                 ApiResult.Error.Unknown(e)
             }
         }
-
-    /**
-     * Converts the UI's age-range label into the digits-only value the backend expects.
-     * Sends the range's lower bound: "18-25" -> "18", "26-35" -> "26", "65+" -> "65",
-     * "Under 18" -> "17". Returns null for a blank/unparseable value so the field is omitted.
-     * If the input is already numeric (e.g. a future numeric input field) it passes through.
-     */
-    private fun ageToNumeric(age: String): String? {
-        if (age.isBlank()) return null
-        if (age.contains("under", ignoreCase = true)) return "17"
-        val firstNumber = age.dropWhile { !it.isDigit() }.takeWhile { it.isDigit() }
-        return firstNumber.ifBlank { null }
-    }
-
-    /**
-     * Inverse of [ageToNumeric]: maps the backend's numeric age into the UI's range label.
-     * Buckets MUST match the Edit Profile screen's AGE_RANGES exactly so the dropdown prefills
-     * correctly. Returns "" for a null/absent age (field shows empty).
-     */
-    private fun numericAgeToRange(age: Int?): String = when {
-        age == null -> ""
-        age < 18 -> "Under 18"
-        age <= 25 -> "18-25"
-        age <= 35 -> "26-35"
-        age <= 45 -> "36-45"
-        age <= 55 -> "46-55"
-        age <= 65 -> "56-65"
-        else -> "65+"
-    }
 
     private fun profileError(code: Int): ApiResult.Error = when (code) {
         in 400..499 -> ApiResult.Error.Validation("Request failed ($code)")
@@ -840,4 +816,10 @@ class ProfileRepositoryImpl @Inject constructor(
             "Validation failed"
         }
     }
+
+    /** The server flags an under-13 DOB with `detail.code = under_minimum_age` on a 400. */
+    private fun isUnderMinimumAge(body: String?): Boolean =
+        body?.contains("under_minimum_age", ignoreCase = true) == true
 }
+
+private const val UNDER_MIN_AGE_MESSAGE = "You must be at least 13 years old to use ArtRINX."

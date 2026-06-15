@@ -10,7 +10,7 @@ data class MyProfileDto(
     @SerializedName("display_name") val displayName: String? = null,
     @SerializedName("profile_title") val profileTitle: String? = null,
     @SerializedName("bio") val bio: String? = null,
-    @SerializedName("age") val age: Int? = null,
+    @SerializedName("dob") val dob: String? = null,
     @SerializedName("country") val country: String? = null,
     @SerializedName("state") val state: String? = null,
     @SerializedName("city") val city: String? = null,

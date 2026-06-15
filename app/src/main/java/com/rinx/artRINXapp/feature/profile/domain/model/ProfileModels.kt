@@ -27,7 +27,7 @@ data class ProfileDraft(
     val username: String = "",
     val displayName: String = "",
     val bio: String = "",
-    val age: String = "",
+    val dob: String = "", // ISO YYYY-MM-DD
     val country: String = "",
     val state: String = "",
     val city: String = "",
@@ -129,7 +129,7 @@ data class EditableProfile(
     val fullName: String,
     val displayName: String,
     val bio: String,
-    val age: String, // range label (e.g. "18-25"), already mapped from the numeric wire value
+    val dob: String, // ISO YYYY-MM-DD (empty when the user has no DOB on record)
     val country: String,
     val state: String,
     val city: String,
@@ -148,7 +148,7 @@ data class ProfileUpdate(
     val fullName: String? = null,
     val displayName: String? = null,
     val bio: String? = null,
-    val age: String? = null, // range label; repo converts to numeric via ageToNumeric
+    val dob: String? = null, // ISO YYYY-MM-DD; sent as the `dob` multipart field
     val country: String? = null,
     val state: String? = null,
     val city: String? = null,
@@ -156,6 +156,6 @@ data class ProfileUpdate(
     val marketingSmsConsent: Boolean? = null, // sent as marketing_sms_consent
 ) {
     val hasAnyField: Boolean
-        get() = listOf(username, fullName, displayName, bio, age, country, state, city)
+        get() = listOf(username, fullName, displayName, bio, dob, country, state, city)
             .any { it != null } || profileTypeId != null || marketingSmsConsent != null
 }

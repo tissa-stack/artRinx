@@ -13,7 +13,7 @@ data class EditProfileData(
     val shopLink: String,
     val displayName: String,
     val gender: String,
-    val age: String,
+    val dob: String, // ISO YYYY-MM-DD
     val country: String,
     val state: String,
     val city: String,
@@ -126,7 +126,7 @@ object MockSettingsData {
         shopLink    = "www.artsmart.com",
         displayName = "Vinay Pabba",
         gender      = "Male",
-        age         = "18-25",
+        dob         = "2000-06-15",
         country     = "India",
         state       = "Telangana",
         city        = "Khammam",

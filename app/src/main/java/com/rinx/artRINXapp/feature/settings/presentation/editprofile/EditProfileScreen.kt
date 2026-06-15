@@ -62,11 +62,10 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.ShopLinkGradientEnd
 import com.rinx.artRINXapp.core.theme.ShopLinkGradientStart
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.DobPickerField
 import com.rinx.artRINXapp.core.ui.SearchableDropdownField
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
-
-private val AGE_RANGES = listOf("Under 18", "18-25", "26-35", "36-45", "46-55", "56-65", "65+")
 
 @Composable
 fun EditProfileScreen(
@@ -325,12 +324,11 @@ private fun ColumnScope.EditProfileContent(
             )
             Spacer(Modifier.height(Spacing.md))
 
-            // Age
-            LabeledDropdownField(
-                label = "Age",
-                value = state.age,
-                options = AGE_RANGES,
-                onValueChange = viewModel::onAgeChange,
+            // Date of birth
+            DobPickerField(
+                label = "Date of birth",
+                value = state.dob,
+                onDobSelected = viewModel::onDobChange,
             )
             Spacer(Modifier.height(Spacing.md))
 

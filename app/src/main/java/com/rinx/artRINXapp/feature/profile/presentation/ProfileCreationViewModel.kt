@@ -57,11 +57,11 @@ data class ProfileCreationUiState(
     val showDisplayNameTooltip: Boolean = false,
 
     // Step 2 – Personal Info
-    val age: String = "",
+    val dob: String = "", // ISO YYYY-MM-DD
     val country: String = "",
     val state: String = "",
     val city: String = "",
-    val ageError: Boolean = false,
+    val dobError: Boolean = false,
     val countryError: Boolean = false,
     val stateError: Boolean = false,
     val cityError: Boolean = false,
@@ -110,7 +110,7 @@ class ProfileCreationViewModel @Inject constructor(
                     username = draft.username,
                     displayName = draft.displayName,
                     bio = draft.bio,
-                    age = draft.age,
+                    dob = draft.dob,
                     country = draft.country,
                     state = draft.state,
                     city = draft.city,
@@ -241,9 +241,9 @@ class ProfileCreationViewModel @Inject constructor(
 
     // ── Personal Info ─────────────────────────────────────────────────────────
 
-    fun onAgeChange(value: String) {
-        _uiState.update { it.copy(age = value, ageError = false) }
-        viewModelScope.launch { draftDataSource.saveAge(value) }
+    fun onDobChange(value: String) {
+        _uiState.update { it.copy(dob = value, dobError = false) }
+        viewModelScope.launch { draftDataSource.saveDob(value) }
     }
 
     fun onCountryChange(value: String) {
@@ -337,19 +337,19 @@ class ProfileCreationViewModel @Inject constructor(
 
     fun onNextFromPersonalInfo(): Boolean {
         val state = _uiState.value
-        val ageOk = state.age.isNotBlank()
+        val dobOk = state.dob.isNotBlank()
         val countryOk = state.country.isNotBlank()
         val stateOk = state.state.isNotBlank()
         val cityOk = state.city.isNotBlank()
         _uiState.update {
             it.copy(
-                ageError = !ageOk,
+                dobError = !dobOk,
                 countryError = !countryOk,
                 stateError = !stateOk,
                 cityError = !cityOk,
             )
         }
-        if (!ageOk || !countryOk || !stateOk || !cityOk) return false
+        if (!dobOk || !countryOk || !stateOk || !cityOk) return false
         goToStep(3)
         return true
     }
@@ -380,7 +380,7 @@ class ProfileCreationViewModel @Inject constructor(
                 username = state.username,
                 displayName = state.displayName,
                 bio = state.bio,
-                age = state.age,
+                dob = state.dob,
                 country = state.country,
                 state = state.state,
                 city = state.city,

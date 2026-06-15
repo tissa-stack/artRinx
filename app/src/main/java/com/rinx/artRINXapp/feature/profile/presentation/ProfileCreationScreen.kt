@@ -89,7 +89,7 @@ fun ProfileCreationScreen(
             onBioChange = viewModel::onBioChange,
             onFullNameTooltipToggle = viewModel::onFullNameTooltipToggle,
             onDisplayNameTooltipToggle = viewModel::onDisplayNameTooltipToggle,
-            onAgeChange = viewModel::onAgeChange,
+            onDobChange = viewModel::onDobChange,
             onCountryChange = viewModel::onCountryChange,
             onStateChange = viewModel::onStateChange,
             onCityChange = viewModel::onCityChange,
@@ -124,7 +124,7 @@ private fun ProfileCreationContent(
     onBioChange: (String) -> Unit,
     onFullNameTooltipToggle: () -> Unit,
     onDisplayNameTooltipToggle: () -> Unit,
-    onAgeChange: (String) -> Unit,
+    onDobChange: (String) -> Unit,
     onCountryChange: (String) -> Unit,
     onStateChange: (String) -> Unit,
     onCityChange: (String) -> Unit,
@@ -162,7 +162,7 @@ private fun ProfileCreationContent(
         1 -> uiState.fullName.isNotBlank() &&
             uiState.usernameCheckState is UsernameCheckState.Available &&
             uiState.displayName.isNotBlank()
-        2 -> uiState.age.isNotBlank() && uiState.country.isNotBlank() &&
+        2 -> uiState.dob.isNotBlank() && uiState.country.isNotBlank() &&
             uiState.state.isNotBlank() && uiState.city.isNotBlank()
         3 -> uiState.selectedMediumIds.size == ProfileCreationViewModel.REQUIRED_MEDIUM_COUNT
         4 -> true // informational plan step — always proceedable
@@ -261,16 +261,16 @@ private fun ProfileCreationContent(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     2 -> PersonalInfoStep(
-                        age = uiState.age,
+                        dob = uiState.dob,
                         country = uiState.country,
                         state = uiState.state,
                         city = uiState.city,
-                        ageError = uiState.ageError,
+                        dobError = uiState.dobError,
                         countryError = uiState.countryError,
                         stateError = uiState.stateError,
                         cityError = uiState.cityError,
                         showTooltip = uiState.showPersonalInfoTooltip,
-                        onAgeChange = onAgeChange,
+                        onDobChange = onDobChange,
                         onCountryChange = onCountryChange,
                         onStateChange = onStateChange,
                         onCityChange = onCityChange,

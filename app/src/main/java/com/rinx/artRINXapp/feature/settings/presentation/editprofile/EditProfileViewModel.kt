@@ -26,7 +26,7 @@ data class EditProfileUiState(
     val bio: String = "",
     val shopLink: String = "",
     val displayName: String = "",
-    val age: String = "",
+    val dob: String = "", // ISO YYYY-MM-DD
     val country: String = "",
     val state: String = "",
     val city: String = "",
@@ -46,7 +46,7 @@ data class EditProfileUiState(
 ) {
     val canSave: Boolean
         get() = !isSaving && username.isNotBlank() && fullName.isNotBlank() && displayName.isNotBlank() &&
-            age.isNotBlank() && country.isNotBlank() && state.isNotBlank() && city.isNotBlank()
+            dob.isNotBlank() && country.isNotBlank() && state.isNotBlank() && city.isNotBlank()
 }
 
 @HiltViewModel
@@ -78,7 +78,7 @@ class EditProfileViewModel @Inject constructor(
                             fullName = p.fullName,
                             displayName = p.displayName,
                             bio = p.bio,
-                            age = p.age,
+                            dob = p.dob,
                             country = p.country,
                             state = p.state,
                             city = p.city,
@@ -108,7 +108,7 @@ class EditProfileViewModel @Inject constructor(
             fullName = s.fullName.trim().takeIf { it != o.fullName },
             displayName = s.displayName.trim().takeIf { it != o.displayName },
             bio = s.bio.trim().takeIf { it != o.bio },
-            age = s.age.takeIf { it != o.age },
+            dob = s.dob.takeIf { it != o.dob },
             country = s.country.trim().takeIf { it != o.country },
             state = s.state.trim().takeIf { it != o.state },
             city = s.city.trim().takeIf { it != o.city },
@@ -170,7 +170,7 @@ class EditProfileViewModel @Inject constructor(
     }
     fun onBioChange(v: String) = _state.update { it.copy(bio = v) }
     fun onDisplayNameChange(v: String) = _state.update { it.copy(displayName = v) }
-    fun onAgeChange(v: String) = _state.update { it.copy(age = v) }
+    fun onDobChange(v: String) = _state.update { it.copy(dob = v) }
     fun onCountryChange(v: String) = _state.update {
         // Country changed → refresh state options and clear the previously-picked state.
         it.copy(country = v, state = "", stateOptions = locationRepository.statesOf(v))
