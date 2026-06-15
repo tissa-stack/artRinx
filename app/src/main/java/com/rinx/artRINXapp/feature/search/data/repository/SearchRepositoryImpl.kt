@@ -5,6 +5,7 @@ import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.CurationDto
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 import com.rinx.artRINXapp.feature.search.data.remote.SearchApiService
+import com.rinx.artRINXapp.feature.search.data.remote.dto.LocationItemsDataDto
 import com.rinx.artRINXapp.feature.search.data.remote.dto.SearchUserDto
 import com.rinx.artRINXapp.feature.search.domain.model.CardHeight
 import com.rinx.artRINXapp.feature.search.domain.model.SearchResultItem
@@ -24,11 +25,16 @@ class SearchRepositoryImpl @Inject constructor(
     @Volatile private var trendingCache: List<String>? = null
     @Volatile private var recommendedCache: List<SearchResultItem>? = null
 
+    // Countries rarely change → cache the list for the session. States/cities are param-scoped, so
+    // they're fetched fresh each time.
+    @Volatile private var countriesCache: List<String>? = null
+
     override fun cachedTrendingTags(): List<String>? = trendingCache
     override fun cachedRecommended(): List<SearchResultItem>? = recommendedCache
     override fun clearCache() {
         trendingCache = null
         recommendedCache = null
+        countriesCache = null
     }
 
     override suspend fun searchArtworks(
@@ -126,6 +132,43 @@ class SearchRepositoryImpl @Inject constructor(
             errorFor(response)
         }
     }
+
+    // ── Location filter options ────────────────────────────────────────────────
+
+    override suspend fun getCountries(): ApiResult<List<String>> {
+        countriesCache?.let { return ApiResult.Success(it) }
+        return safeCall {
+            val response = apiService.getCountries()
+            if (response.isSuccessful) {
+                val names = response.body()?.data.toNames()
+                countriesCache = names
+                ApiResult.Success(names)
+            } else {
+                errorFor(response)
+            }
+        }
+    }
+
+    override suspend fun getStates(country: String): ApiResult<List<String>> = safeCall {
+        val response = apiService.getStates(country = country)
+        if (response.isSuccessful) {
+            ApiResult.Success(response.body()?.data.toNames())
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun getCities(country: String, state: String, query: String?): ApiResult<List<String>> = safeCall {
+        val response = apiService.getCities(country = country, state = state, q = query?.ifBlank { null })
+        if (response.isSuccessful) {
+            ApiResult.Success(response.body()?.data.toNames())
+        } else {
+            errorFor(response)
+        }
+    }
+
+    private fun LocationItemsDataDto?.toNames(): List<String> =
+        this?.items.orEmpty().mapNotNull { it.name?.trim()?.ifBlank { null } }
 
     // ── Mappers ──────────────────────────────────────────────────────────────
 

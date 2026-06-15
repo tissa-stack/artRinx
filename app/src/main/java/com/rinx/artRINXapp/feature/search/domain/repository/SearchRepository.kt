@@ -37,6 +37,11 @@ interface SearchRepository {
 
     suspend fun getRecommended(): ApiResult<List<SearchResultItem>>
 
+    // ── Location filter options (places with ≥1 searchable user, ranked by count) ───
+    suspend fun getCountries(): ApiResult<List<String>>
+    suspend fun getStates(country: String): ApiResult<List<String>>
+    suspend fun getCities(country: String, state: String, query: String?): ApiResult<List<String>>
+
     // ── In-memory SWR cache for the idle screen (cleared on logout/delete) ───
     fun cachedTrendingTags(): List<String>?
     fun cachedRecommended(): List<SearchResultItem>?

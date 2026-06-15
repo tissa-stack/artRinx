@@ -178,9 +178,11 @@ fun SearchScreen(
                 onDismiss = viewModel::onDismissFilter,
                 countryOptions = uiState.countryOptions,
                 stateOptions = uiState.stateOptions,
+                cityOptions = uiState.cityOptions,
                 onCountrySelected = viewModel::onCountrySelected,
                 onStateSelected = viewModel::onStateSelected,
                 onCityChanged = viewModel::onCityChanged,
+                onCitySelected = viewModel::onCitySelected,
                 modifier = Modifier.fillMaxSize(),
             )
         }

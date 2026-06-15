@@ -30,6 +30,7 @@ data class SearchUiState(
     val mediums: List<Medium> = emptyList(),
     val countryOptions: List<String> = emptyList(),
     val stateOptions: List<String> = emptyList(),
+    val cityOptions: List<String> = emptyList(),
 
     // Active-tab search status
     val isLoading: Boolean = false,

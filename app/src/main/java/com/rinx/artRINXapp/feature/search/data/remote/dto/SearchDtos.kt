@@ -15,6 +15,20 @@ data class SearchDataDto(
     @SerializedName("users") val users: List<SearchUserDto>? = null,
 )
 
+/**
+ * `GET /api/search/locations/{countries|states|cities}` → `data`. Each endpoint returns places that
+ * contain at least one searchable user, ranked by `count` (number of users) or alphabetically.
+ */
+data class LocationItemsDataDto(
+    @SerializedName("items") val items: List<LocationItemDto>? = null,
+    @SerializedName("total") val total: Int = 0,
+)
+
+data class LocationItemDto(
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("count") val count: Int = 0,
+)
+
 /** A user/artist result. Defensive (all-nullable) — the exact shape isn't pinned in the contract. */
 data class SearchUserDto(
     @SerializedName("id") val id: Int? = null,

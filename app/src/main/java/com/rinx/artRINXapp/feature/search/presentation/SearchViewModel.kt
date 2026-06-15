@@ -2,7 +2,6 @@ package com.rinx.artRINXapp.feature.search.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rinx.artRINXapp.core.location.LocationRepository
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.model.ResultTab
@@ -24,7 +23,6 @@ import javax.inject.Inject
 class SearchViewModel @Inject constructor(
     private val searchRepository: SearchRepository,
     private val profileRepository: ProfileRepository,
-    private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
     // Seed idle content synchronously from cache so re-entering the tab shows it instantly (SWR).
@@ -32,6 +30,8 @@ class SearchViewModel @Inject constructor(
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+    // Separate job for cascading location lookups so a new country/state/city query cancels the prior one.
+    private var locationJob: Job? = null
 
     private fun seedFromCache(): SearchUiState = SearchUiState(
         trendingTags = searchRepository.cachedTrendingTags().orEmpty(),
@@ -41,7 +41,17 @@ class SearchViewModel @Inject constructor(
     init {
         loadIdleContent()
         loadMediums()
-        _uiState.update { it.copy(countryOptions = locationRepository.countryNames()) }
+        loadCountries()
+    }
+
+    /** Load the country filter options (places with ≥1 searchable user, ranked by count). */
+    private fun loadCountries() {
+        viewModelScope.launch {
+            val result = searchRepository.getCountries()
+            if (result is ApiResult.Success) {
+                _uiState.update { it.copy(countryOptions = result.data) }
+            }
+        }
     }
 
     // ── Idle / empty screen ────────────────────────────────────────────────
@@ -210,27 +220,78 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    /** Country picked — clears state/city since they depend on the country, and refreshes state options. */
+    /** Country picked — clears state/city (they depend on the country) and loads its state options. */
     fun onCountrySelected(country: String?) {
         val c = country?.ifBlank { null }
+        locationJob?.cancel()
         _uiState.update {
             it.copy(
                 filter = it.filter.copy(country = c, state = null, city = null),
-                stateOptions = if (c != null) locationRepository.statesOf(c) else emptyList(),
+                stateOptions = emptyList(),
+                cityOptions = emptyList(),
             )
+        }
+        if (c == null) return
+        locationJob = viewModelScope.launch {
+            val result = searchRepository.getStates(c)
+            if (result is ApiResult.Success) {
+                _uiState.update { it.copy(stateOptions = result.data) }
+            }
         }
     }
 
+    /** State picked — clears city and pre-loads the first page of cities for the country+state. */
     fun onStateSelected(state: String?) {
-        _uiState.update { it.copy(filter = it.filter.copy(state = state?.ifBlank { null }, city = null)) }
+        val s = state?.ifBlank { null }
+        val country = _uiState.value.filter.country
+        locationJob?.cancel()
+        _uiState.update {
+            it.copy(filter = it.filter.copy(state = s, city = null), cityOptions = emptyList())
+        }
+        if (s == null || country.isNullOrBlank()) return
+        locationJob = viewModelScope.launch {
+            val result = searchRepository.getCities(country, s, query = null)
+            if (result is ApiResult.Success) {
+                _uiState.update { it.copy(cityOptions = result.data) }
+            }
+        }
     }
 
+    /** City text changed — updates the committed value and debounced-queries matching cities (`q`). */
     fun onCityChanged(city: String?) {
-        _uiState.update { it.copy(filter = it.filter.copy(city = city?.ifBlank { null })) }
+        val text = city?.ifBlank { null }
+        val f = _uiState.value.filter
+        _uiState.update { it.copy(filter = it.filter.copy(city = text)) }
+        // Cities require both country and state; never query without them.
+        val country = f.country
+        val state = f.state
+        if (country.isNullOrBlank() || state.isNullOrBlank()) return
+        locationJob?.cancel()
+        locationJob = viewModelScope.launch {
+            delay(DEBOUNCE_MS)
+            val result = searchRepository.getCities(country, state, query = text)
+            if (result is ApiResult.Success) {
+                _uiState.update { it.copy(cityOptions = result.data) }
+            }
+        }
+    }
+
+    /** A city suggestion was tapped — commit it exactly, no further query needed. */
+    fun onCitySelected(city: String) {
+        locationJob?.cancel()
+        _uiState.update { it.copy(filter = it.filter.copy(city = city.ifBlank { null })) }
     }
 
     fun onResetFilter() {
-        _uiState.update { it.copy(filter = SearchFilter(), isStyleExpanded = false, stateOptions = emptyList()) }
+        locationJob?.cancel()
+        _uiState.update {
+            it.copy(
+                filter = SearchFilter(),
+                isStyleExpanded = false,
+                stateOptions = emptyList(),
+                cityOptions = emptyList(),
+            )
+        }
     }
 
     private companion object {
