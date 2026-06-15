@@ -4,6 +4,7 @@ import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.toApiError
 import com.rinx.artRINXapp.feature.home.data.remote.HomeApiService
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
+import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkSizeDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.BannerDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.CurationDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.LikeArtworkRequest
@@ -209,7 +210,22 @@ class HomeRepositoryImpl @Inject constructor(
         ownerId = userId,
         ownerName = displayName?.takeIf { it.isNotBlank() } ?: artistDisplay(),
         artistId = artist?.artistId,
+        dimensions = size?.toDimensionsDisplay(),
     )
+
+    /** Build a human-readable size string from the artwork's dimensions, or null if none are set. */
+    private fun ArtworkSizeDto.toDimensionsDisplay(): String? {
+        val h = heightCm?.trim()?.toDoubleOrNull()
+        val w = widthCm?.trim()?.toDoubleOrNull()
+        if (h == null && w == null) return null
+        val u = unit?.trim()?.ifBlank { null } ?: "cm"
+        fun fmt(n: Double) = if (n % 1.0 == 0.0) n.toLong().toString() else n.toString()
+        return when {
+            h != null && w != null -> "${fmt(h)} × ${fmt(w)} $u"
+            h != null -> "Height: ${fmt(h)} $u"
+            else -> "Width: ${fmt(w!!)} $u"
+        }
+    }
 
     private fun CurationDto.toCurationItem(): CurationItem {
         // Use the curation's natural artwork order from the API (do NOT sort). Sorting by id makes

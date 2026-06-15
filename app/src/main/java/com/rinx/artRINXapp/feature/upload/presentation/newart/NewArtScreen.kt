@@ -267,6 +267,17 @@ fun NewArtScreen(
                     Spacer(Modifier.height(Spacing.md))
                 }
 
+                // Dimensions (optional physical size, in cm)
+                item(key = "size") {
+                    DimensionsRow(
+                        height = state.sizeHeightCm,
+                        width = state.sizeWidthCm,
+                        onHeightChange = viewModel::onSizeHeightChange,
+                        onWidthChange = viewModel::onSizeWidthChange,
+                    )
+                    Spacer(Modifier.height(Spacing.md))
+                }
+
                 // Privacy
                 item(key = "privacy") {
                     PrivacyRow(state.privacy, viewModel::onShowPrivacyPicker)
@@ -749,6 +760,82 @@ private fun PriceField(value: String, isError: Boolean, onChange: (String) -> Un
                     if (value.isEmpty()) {
                         Text(
                             "e.g. 250",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        )
+                    }
+                    inner()
+                }
+            },
+        )
+    }
+}
+
+/** Optional artwork dimensions — two side-by-side numeric fields (Height × Width), in cm. */
+@Composable
+private fun DimensionsRow(
+    height: String,
+    width: String,
+    onHeightChange: (String) -> Unit,
+    onWidthChange: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = Spacing.md)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DimensionField(
+            label = "Height (cm)",
+            value = height,
+            onChange = onHeightChange,
+            modifier = Modifier.weight(1f),
+        )
+        DimensionField(
+            label = "Width (cm)",
+            value = width,
+            onChange = onWidthChange,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** A single optional numeric dimension field (no error styling — dimensions are never required). */
+@Composable
+private fun DimensionField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val d = LocalDimens.current
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = Spacing.md, vertical = Spacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(Spacing.md))
+        BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+            cursorBrush = SolidColor(BrandPrimary),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.weight(1f),
+            decorationBox = { inner ->
+                Box {
+                    if (value.isEmpty()) {
+                        Text(
+                            "e.g. 60",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )

@@ -44,6 +44,9 @@ interface UploadApiService {
         @Field("privacy") privacy: Boolean?,
         @Field("rekognition_tags") rekognitionTags: String?,
         @Field("aspect_ratio") aspectRatio: String?,
+        @Field("size_height_cm") sizeHeightCm: Double?,
+        @Field("size_width_cm") sizeWidthCm: Double?,
+        @Field("size_unit") sizeUnit: String?,
     ): Response<EnvelopeDto<CreateArtworkResultDto>>
 
     /** Fetch a single artwork (with all fields) — used to prefill the edit form. */

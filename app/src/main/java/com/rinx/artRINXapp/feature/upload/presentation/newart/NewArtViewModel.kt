@@ -85,6 +85,8 @@ class NewArtViewModel @Inject constructor(
                         selectedMedium = a.mediumTitle,
                         shopLink = a.shopLink.orEmpty(),
                         price = a.price?.let { p -> if (p % 1.0 == 0.0) p.toLong().toString() else p.toString() }.orEmpty(),
+                        sizeHeightCm = a.sizeHeightCm.orEmpty(),
+                        sizeWidthCm = a.sizeWidthCm.orEmpty(),
                         privacy = if (a.isPrivate) PrivacyOption.PRIVATE else PrivacyOption.PUBLIC,
                         // Restore the artist when either an id or a (no-profile) name exists.
                         selectedArtist = if (a.artistId != null || !a.artistName.isNullOrBlank()) {
@@ -192,6 +194,16 @@ class NewArtViewModel @Inject constructor(
     /** Price input; digits + a single decimal point only. Sent only when a shop link is present. */
     fun onPriceChange(p: String) = _state.update {
         it.copy(price = p.filter { c -> c.isDigit() || c == '.' }.take(12), isPriceError = false)
+    }
+
+    /** Optional height (cm); digits + a single decimal point only. Never required. */
+    fun onSizeHeightChange(h: String) = _state.update {
+        it.copy(sizeHeightCm = h.filter { c -> c.isDigit() || c == '.' }.take(8))
+    }
+
+    /** Optional width (cm); digits + a single decimal point only. Never required. */
+    fun onSizeWidthChange(w: String) = _state.update {
+        it.copy(sizeWidthCm = w.filter { c -> c.isDigit() || c == '.' }.take(8))
     }
 
     // ── Artist ────────────────────────────────────────────────────────────────
@@ -327,6 +339,7 @@ class NewArtViewModel @Inject constructor(
             awaitingPrivate = true
             _state.update { it.copy(creationStatus = CreationStatus.LOADING) }
         }
+        val (height, width, unit) = dimensionsFor(s)
         val started = uploadManager.enqueue(
             UploadRequest(
                 imageUri = uri,
@@ -339,6 +352,9 @@ class NewArtViewModel @Inject constructor(
                 isPrivate = isPrivate,
                 artistId = artist?.userId,
                 artistName = artist?.displayName,
+                sizeHeightCm = height,
+                sizeWidthCm = width,
+                sizeUnit = unit,
             ),
             artistName = artist?.displayName.orEmpty(),
             artistHandle = artist?.handle?.let { "@$it" }.orEmpty(),
@@ -361,6 +377,7 @@ class NewArtViewModel @Inject constructor(
         val s = _state.value
         val id = s.editArtworkId ?: return
         val artist = s.selectedArtist
+        val (height, width, unit) = dimensionsFor(s)
         _state.update { it.copy(creationStatus = CreationStatus.LOADING, creationError = null) }
         viewModelScope.launch {
             val result = uploadRepository.updateArtwork(
@@ -375,6 +392,9 @@ class NewArtViewModel @Inject constructor(
                     isPrivate = s.privacy == PrivacyOption.PRIVATE,
                     artistId = artist?.userId,
                     artistName = artist?.displayName,
+                    sizeHeightCm = height,
+                    sizeWidthCm = width,
+                    sizeUnit = unit,
                 ),
             )
             when (result) {
@@ -391,4 +411,11 @@ class NewArtViewModel @Inject constructor(
     /** Price is only sent when a shop link is present (handout §Field gating). */
     private fun priceFor(s: ArtFormState): Double? =
         if (s.shopLink.isNotBlank()) s.price.toDoubleOrNull() else null
+
+    /** Optional dimensions: (height, width, unit). Unit is "cm" iff either dimension is provided. */
+    private fun dimensionsFor(s: ArtFormState): Triple<Double?, Double?, String?> {
+        val h = s.sizeHeightCm.toDoubleOrNull()
+        val w = s.sizeWidthCm.toDoubleOrNull()
+        return Triple(h, w, if (h != null || w != null) "cm" else null)
+    }
 }

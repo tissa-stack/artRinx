@@ -13,4 +13,7 @@ data class UpdateArtworkBody(
     @SerializedName("privacy") val privacy: Boolean?,
     @SerializedName("artist_id") val artistId: Int?,
     @SerializedName("artist_name") val artistName: String?,
+    @SerializedName("size_height_cm") val sizeHeightCm: Double?,
+    @SerializedName("size_width_cm") val sizeWidthCm: Double?,
+    @SerializedName("size_unit") val sizeUnit: String?,
 )

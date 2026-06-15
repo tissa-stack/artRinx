@@ -83,6 +83,8 @@ data class ShoppablePost(
     val ownerName: String = "",
     /** Credited artist's RINX profile id (null when they have no profile). */
     val artistId: Int? = null,
+    /** Preformatted physical size (e.g. "60 × 90 cm"); null when the artwork has no dimensions. */
+    val dimensions: String? = null,
 )
 
 /** Everything the single /api/feed/discover call returns, mapped to domain models. */

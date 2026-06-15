@@ -84,6 +84,9 @@ class UploadRepositoryImpl @Inject constructor(
             privacy = request.isPrivate,
             rekognitionTags = rekognitionTags,
             aspectRatio = aspectRatio,
+            sizeHeightCm = request.sizeHeightCm,
+            sizeWidthCm = request.sizeWidthCm,
+            sizeUnit = request.sizeUnit,
         )
         val data = response.body()?.data
         if (response.isSuccessful && data?.id != null) {
@@ -110,6 +113,8 @@ class UploadRepositoryImpl @Inject constructor(
                     artistId = data.artist?.artistId,
                     artistName = data.artist?.artistName,
                     imageUrl = data.imageUrl ?: data.thumbnailUrl ?: data.webpUrl,
+                    sizeHeightCm = cleanNumber(data.size?.heightCm),
+                    sizeWidthCm = cleanNumber(data.size?.widthCm),
                 ),
             )
         } else {
@@ -130,6 +135,9 @@ class UploadRepositoryImpl @Inject constructor(
                 privacy = request.isPrivate,
                 artistId = request.artistId,
                 artistName = request.artistName,
+                sizeHeightCm = request.sizeHeightCm,
+                sizeWidthCm = request.sizeWidthCm,
+                sizeUnit = request.sizeUnit,
             ),
         )
         if (response.isSuccessful) {
@@ -148,6 +156,12 @@ class UploadRepositoryImpl @Inject constructor(
         } else {
             errorFor(response.code())
         }
+    }
+
+    /** Normalize a wire dimension string to a clean numeric string (drops a trailing ".0"); null/blank → null. */
+    private fun cleanNumber(raw: String?): String? {
+        val n = raw?.trim()?.toDoubleOrNull() ?: return null
+        return if (n % 1.0 == 0.0) n.toLong().toString() else n.toString()
     }
 
     // ── Signed-URL PUT body with byte-level progress ──────────────────────────

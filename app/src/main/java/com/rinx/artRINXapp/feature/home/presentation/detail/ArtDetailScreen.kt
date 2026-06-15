@@ -543,6 +543,30 @@ private fun ArtDetailContent(
             }
         }
 
+        // ── Dimensions (only when the artwork has a physical size) ─────
+        post.dimensions?.let { dimensions ->
+            item(key = "dimensions") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                ) {
+                    Text(
+                        text = "Dimensions",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(
+                        text = dimensions,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            }
+        }
+
         // ── Artist row + Send message ──────────────────────────────────
         item(key = "artist-row") {
             Row(

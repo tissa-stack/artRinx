@@ -67,6 +67,9 @@ data class ArtFormState(
     val shopLinkVisibility: ShopLinkVisibility = ShopLinkVisibility.HIDDEN,
     /** Price string (raw input); only sent when [shopLink] is non-empty (handout §Field gating). */
     val price: String = "",
+    /** Optional artwork dimensions (raw input, in cm). Never required; blank = not sent. */
+    val sizeHeightCm: String = "",
+    val sizeWidthCm: String = "",
     val privacy: PrivacyOption = PrivacyOption.PUBLIC,
     val showMediumPicker: Boolean = false,
     val showPrivacyPicker: Boolean = false,
@@ -133,6 +136,10 @@ data class UploadRequest(
     /** Artist attribution (both null = no artist → defaults to the uploader). */
     val artistId: Int? = null,
     val artistName: String? = null,
+    /** Optional physical dimensions; null = not provided. [sizeUnit] is "cm" when either is set. */
+    val sizeHeightCm: Double? = null,
+    val sizeWidthCm: Double? = null,
+    val sizeUnit: String? = null,
 )
 
 /** Step-1 result: the signed CDN URL + the file path to finalize with. */
@@ -161,6 +168,9 @@ data class EditableArtwork(
     val artistId: Int?,
     val artistName: String?,
     val imageUrl: String?,
+    /** Existing dimensions as clean numeric strings, ready to prefill the edit form (cm). */
+    val sizeHeightCm: String? = null,
+    val sizeWidthCm: String? = null,
 )
 
 /** Metadata-only update sent to PUT /api/artworks/{id}. */
@@ -174,6 +184,9 @@ data class UpdateArtworkRequest(
     val isPrivate: Boolean,
     val artistId: Int?,
     val artistName: String?,
+    val sizeHeightCm: Double? = null,
+    val sizeWidthCm: Double? = null,
+    val sizeUnit: String? = null,
 )
 
 // ── New Curation form ─────────────────────────────────────────────────────────

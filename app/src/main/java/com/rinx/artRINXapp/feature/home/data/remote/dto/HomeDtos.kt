@@ -40,6 +40,14 @@ data class ArtworkDto(
     @SerializedName("aspect_ratio") val aspectRatio: Double? = null,
     @SerializedName("artist") val artist: ArtistDto? = null,
     @SerializedName("medium") val medium: ArtworkMediumDto? = null,
+    @SerializedName("size") val size: ArtworkSizeDto? = null,
+)
+
+/** Physical dimensions of an artwork. Height/width arrive as strings on the wire. */
+data class ArtworkSizeDto(
+    @SerializedName("height_cm") val heightCm: String? = null,
+    @SerializedName("width_cm") val widthCm: String? = null,
+    @SerializedName("unit") val unit: String? = null,
 )
 
 data class ArtistDto(
