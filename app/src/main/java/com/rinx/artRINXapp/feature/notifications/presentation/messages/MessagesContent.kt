@@ -50,7 +50,9 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.SearchOff
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ConfirmDialog
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
@@ -174,17 +176,42 @@ fun MessagesContent(
                 modifier     = Modifier.weight(1f),
             ) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(filtered, key = { it.id }) { conv ->
-                        SwipeableMessageItem(
-                            item      = conv,
-                            onClick   = { onConversationClick(conv) },
-                            onMarkRead = { onMarkRead(conv) },
-                            onDelete   = { pendingDelete = conv },
-                        )
-                        HorizontalDivider(
-                            color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                            modifier = Modifier.padding(horizontal = Spacing.lg),
-                        )
+                    if (filtered.isEmpty()) {
+                        // Empty as a full-viewport item so pull-to-refresh still works.
+                        item(key = "empty") {
+                            if (messageQuery.isNotEmpty()) {
+                                // Search returned nothing, but the inbox isn't actually empty.
+                                SearchMessageView(
+                                    title    = "No results",
+                                    subtitle = "No chats match \"$messageQuery\".",
+                                    icon     = Icons.Outlined.SearchOff,
+                                    modifier = Modifier.fillParentMaxSize(),
+                                )
+                            } else {
+                                // Genuinely no conversations yet.
+                                SearchMessageView(
+                                    title       = "No messages yet",
+                                    subtitle    = "When you start a conversation, it'll show up here.",
+                                    icon        = Icons.Outlined.ChatBubbleOutline,
+                                    actionLabel = "Start a chat",
+                                    onAction    = onNewMessage,
+                                    modifier    = Modifier.fillParentMaxSize(),
+                                )
+                            }
+                        }
+                    } else {
+                        items(filtered, key = { it.id }) { conv ->
+                            SwipeableMessageItem(
+                                item      = conv,
+                                onClick   = { onConversationClick(conv) },
+                                onMarkRead = { onMarkRead(conv) },
+                                onDelete   = { pendingDelete = conv },
+                            )
+                            HorizontalDivider(
+                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                modifier = Modifier.padding(horizontal = Spacing.lg),
+                            )
+                        }
                     }
                 }
             }
