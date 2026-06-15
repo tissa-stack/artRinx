@@ -90,9 +90,12 @@ fun ProfileCreationScreen(
             onFullNameTooltipToggle = viewModel::onFullNameTooltipToggle,
             onDisplayNameTooltipToggle = viewModel::onDisplayNameTooltipToggle,
             onDobChange = viewModel::onDobChange,
-            onCountryChange = viewModel::onCountryChange,
-            onStateChange = viewModel::onStateChange,
-            onCityChange = viewModel::onCityChange,
+            onCountryQuery = viewModel::onCountryQuery,
+            onCountrySelected = viewModel::onCountrySelected,
+            onStateQuery = viewModel::onStateQuery,
+            onStateSelected = viewModel::onStateSelected,
+            onCityQuery = viewModel::onCityQuery,
+            onCitySelected = viewModel::onCitySelected,
             onPersonalInfoTooltipToggle = viewModel::onPersonalInfoTooltipToggle,
             onMediumToggle = viewModel::onMediumToggle,
             onMediumsTooltipToggle = viewModel::onMediumsTooltipToggle,
@@ -125,9 +128,12 @@ private fun ProfileCreationContent(
     onFullNameTooltipToggle: () -> Unit,
     onDisplayNameTooltipToggle: () -> Unit,
     onDobChange: (String) -> Unit,
-    onCountryChange: (String) -> Unit,
-    onStateChange: (String) -> Unit,
-    onCityChange: (String) -> Unit,
+    onCountryQuery: (String) -> Unit,
+    onCountrySelected: (String) -> Unit,
+    onStateQuery: (String) -> Unit,
+    onStateSelected: (String) -> Unit,
+    onCityQuery: (String) -> Unit,
+    onCitySelected: (String) -> Unit,
     onPersonalInfoTooltipToggle: () -> Unit,
     onMediumToggle: (Int) -> Unit,
     onMediumsTooltipToggle: () -> Unit,
@@ -162,8 +168,8 @@ private fun ProfileCreationContent(
         1 -> uiState.fullName.isNotBlank() &&
             uiState.usernameCheckState is UsernameCheckState.Available &&
             uiState.displayName.isNotBlank()
-        2 -> uiState.dob.isNotBlank() && uiState.country.isNotBlank() &&
-            uiState.state.isNotBlank() && uiState.city.isNotBlank()
+        2 -> uiState.dob.isNotBlank() && uiState.selectedCountryIso2 != null &&
+            uiState.selectedStateCode != null && uiState.city.isNotBlank()
         3 -> uiState.selectedMediumIds.size == ProfileCreationViewModel.REQUIRED_MEDIUM_COUNT
         4 -> true // informational plan step — always proceedable
         else -> false
@@ -271,12 +277,18 @@ private fun ProfileCreationContent(
                         cityError = uiState.cityError,
                         showTooltip = uiState.showPersonalInfoTooltip,
                         onDobChange = onDobChange,
-                        onCountryChange = onCountryChange,
-                        onStateChange = onStateChange,
-                        onCityChange = onCityChange,
+                        onCountryQuery = onCountryQuery,
+                        onCountrySelected = onCountrySelected,
+                        onStateQuery = onStateQuery,
+                        onStateSelected = onStateSelected,
+                        onCityQuery = onCityQuery,
+                        onCitySelected = onCitySelected,
                         onTooltipToggle = onPersonalInfoTooltipToggle,
                         countryOptions = uiState.countryOptions,
                         stateOptions = uiState.stateOptions,
+                        cityOptions = uiState.cityOptions,
+                        countrySelected = uiState.selectedCountryIso2 != null,
+                        stateSelected = uiState.selectedStateCode != null,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     3 -> MediumSelectionStep(

@@ -3,7 +3,6 @@ package com.rinx.artRINXapp.feature.profile.presentation
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rinx.artRINXapp.core.location.LocationRepository
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.tour.TourManager
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
@@ -11,7 +10,10 @@ import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
 import com.rinx.artRINXapp.feature.profile.domain.model.Medium
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileDraft
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileType
+import com.rinx.artRINXapp.feature.profile.domain.repository.CountryOption
+import com.rinx.artRINXapp.feature.profile.domain.repository.MasterLocationRepository
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
+import com.rinx.artRINXapp.feature.profile.domain.repository.StateOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -66,9 +68,13 @@ data class ProfileCreationUiState(
     val stateError: Boolean = false,
     val cityError: Boolean = false,
     val showPersonalInfoTooltip: Boolean = false,
-    // Location pickers (from bundled assets/locations.json).
+    // Location pickers (master catalog APIs). Options are filtered display names; the selected ids
+    // drive the cascade and gate "Next" (a typed-but-unpicked value has no id and can't advance).
     val countryOptions: List<String> = emptyList(),
     val stateOptions: List<String> = emptyList(),
+    val cityOptions: List<String> = emptyList(),
+    val selectedCountryIso2: String? = null,
+    val selectedStateCode: String? = null,
 
     // Step 3 – Mediums
     val mediums: List<Medium> = emptyList(),
@@ -88,7 +94,7 @@ class ProfileCreationViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val draftDataSource: ProfileDraftDataSource,
     private val authRepository: AuthRepository,
-    private val locationRepository: LocationRepository,
+    private val masterLocationRepository: MasterLocationRepository,
     private val tourManager: TourManager,
 ) : ViewModel() {
 
@@ -96,6 +102,12 @@ class ProfileCreationViewModel @Inject constructor(
     val uiState: StateFlow<ProfileCreationUiState> = _uiState.asStateFlow()
 
     private var usernameCheckJob: Job? = null
+
+    // Loaded master catalogs (full names + ids); the UI shows names, these resolve the cascade ids.
+    private var countries: List<CountryOption> = emptyList()
+    private var states: List<StateOption> = emptyList()
+    // Cancels stale cascade lookups (a new country/state/city query supersedes the prior one).
+    private var locationJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -114,11 +126,10 @@ class ProfileCreationViewModel @Inject constructor(
                     country = draft.country,
                     state = draft.state,
                     city = draft.city,
-                    countryOptions = locationRepository.countryNames(),
-                    stateOptions = locationRepository.statesOf(draft.country),
                     selectedMediumIds = draft.mediumIds,
                 )
             }
+            loadCountriesThenRestore(draft.country, draft.state)
         }
         loadProfileTypes()
         loadMediums()
@@ -246,26 +257,158 @@ class ProfileCreationViewModel @Inject constructor(
         viewModelScope.launch { draftDataSource.saveDob(value) }
     }
 
-    fun onCountryChange(value: String) {
-        // Country changed → refresh the state options and clear any previously-picked state.
-        val states = locationRepository.statesOf(value)
+    /** Loads the master country catalog, then best-effort restores the cascade from saved names. */
+    private fun loadCountriesThenRestore(savedCountry: String, savedState: String) {
+        viewModelScope.launch {
+            val result = masterLocationRepository.getCountries()
+            if (result !is ApiResult.Success) return@launch
+            countries = result.data
+            _uiState.update { it.copy(countryOptions = result.data.map { c -> c.name }) }
+
+            val country = countries.firstOrNull { it.name.equals(savedCountry.trim(), ignoreCase = true) } ?: return@launch
+            val statesResult = masterLocationRepository.getStates(country.iso2)
+            if (statesResult !is ApiResult.Success) return@launch
+            states = statesResult.data
+            _uiState.update { it.copy(selectedCountryIso2 = country.iso2, stateOptions = statesResult.data.map { s -> s.name }) }
+
+            val state = states.firstOrNull { it.name.equals(savedState.trim(), ignoreCase = true) } ?: return@launch
+            val citiesResult = masterLocationRepository.getCities(country.iso2, state.stateCode, null)
+            _uiState.update {
+                it.copy(
+                    selectedStateCode = state.stateCode,
+                    cityOptions = (citiesResult as? ApiResult.Success)?.data.orEmpty(),
+                )
+            }
+        }
+    }
+
+    /** Typing in Country: filter the catalog and invalidate any prior selection + dependents. */
+    fun onCountryQuery(value: String) {
+        states = emptyList()
         _uiState.update {
-            it.copy(country = value, countryError = false, stateOptions = states, state = "", stateError = false)
+            it.copy(
+                country = value,
+                countryError = false,
+                selectedCountryIso2 = null,
+                state = "",
+                stateError = false,
+                stateOptions = emptyList(),
+                city = "",
+                cityError = false,
+                cityOptions = emptyList(),
+                countryOptions = countries.filterByName(value),
+            )
         }
         viewModelScope.launch {
             draftDataSource.saveCountry(value)
             draftDataSource.saveState("")
+            draftDataSource.saveCity("")
         }
     }
 
-    fun onStateChange(value: String) {
-        _uiState.update { it.copy(state = value, stateError = false) }
-        viewModelScope.launch { draftDataSource.saveState(value) }
+    /** Picked a real country → resolve its iso2 and load its states. */
+    fun onCountrySelected(name: String) {
+        val country = countries.firstOrNull { it.name == name } ?: return
+        locationJob?.cancel()
+        states = emptyList()
+        _uiState.update {
+            it.copy(
+                country = country.name,
+                countryError = false,
+                selectedCountryIso2 = country.iso2,
+                state = "",
+                stateError = false,
+                stateOptions = emptyList(),
+                city = "",
+                cityError = false,
+                cityOptions = emptyList(),
+            )
+        }
+        viewModelScope.launch {
+            draftDataSource.saveCountry(country.name)
+            draftDataSource.saveState("")
+            draftDataSource.saveCity("")
+        }
+        locationJob = viewModelScope.launch {
+            val result = masterLocationRepository.getStates(country.iso2)
+            if (result is ApiResult.Success) {
+                states = result.data
+                _uiState.update { it.copy(stateOptions = result.data.map { s -> s.name }) }
+            }
+        }
     }
 
-    fun onCityChange(value: String) {
+    /** Typing in State: filter loaded states and invalidate any prior selection + city. */
+    fun onStateQuery(value: String) {
+        _uiState.update {
+            it.copy(
+                state = value,
+                stateError = false,
+                selectedStateCode = null,
+                city = "",
+                cityError = false,
+                cityOptions = emptyList(),
+                stateOptions = states.map { s -> s.name }.filterByQuery(value),
+            )
+        }
+        viewModelScope.launch {
+            draftDataSource.saveState(value)
+            draftDataSource.saveCity("")
+        }
+    }
+
+    /** Picked a real state → resolve its code and load the first page of cities. */
+    fun onStateSelected(name: String) {
+        val iso2 = _uiState.value.selectedCountryIso2 ?: return
+        val state = states.firstOrNull { it.name == name } ?: return
+        locationJob?.cancel()
+        _uiState.update {
+            it.copy(
+                state = state.name,
+                stateError = false,
+                selectedStateCode = state.stateCode,
+                city = "",
+                cityError = false,
+                cityOptions = emptyList(),
+            )
+        }
+        viewModelScope.launch {
+            draftDataSource.saveState(state.name)
+            draftDataSource.saveCity("")
+        }
+        locationJob = viewModelScope.launch {
+            val result = masterLocationRepository.getCities(iso2, state.stateCode, null)
+            if (result is ApiResult.Success) _uiState.update { it.copy(cityOptions = result.data) }
+        }
+    }
+
+    /** Typing in City: debounced prefix search against the catalog (needs both ids). */
+    fun onCityQuery(value: String) {
         _uiState.update { it.copy(city = value, cityError = false) }
         viewModelScope.launch { draftDataSource.saveCity(value) }
+        val iso2 = _uiState.value.selectedCountryIso2
+        val code = _uiState.value.selectedStateCode
+        if (iso2 == null || code == null) return
+        locationJob?.cancel()
+        locationJob = viewModelScope.launch {
+            delay(CITY_DEBOUNCE_MS)
+            val result = masterLocationRepository.getCities(iso2, code, value)
+            if (result is ApiResult.Success) _uiState.update { it.copy(cityOptions = result.data) }
+        }
+    }
+
+    fun onCitySelected(name: String) {
+        locationJob?.cancel()
+        _uiState.update { it.copy(city = name, cityError = false) }
+        viewModelScope.launch { draftDataSource.saveCity(name) }
+    }
+
+    private fun List<CountryOption>.filterByName(query: String): List<String> =
+        map { it.name }.filterByQuery(query)
+
+    private fun List<String>.filterByQuery(query: String): List<String> {
+        val q = query.trim()
+        return if (q.isBlank()) this else filter { it.contains(q, ignoreCase = true) }
     }
 
     fun onPersonalInfoTooltipToggle() {
@@ -338,8 +481,9 @@ class ProfileCreationViewModel @Inject constructor(
     fun onNextFromPersonalInfo(): Boolean {
         val state = _uiState.value
         val dobOk = state.dob.isNotBlank()
-        val countryOk = state.country.isNotBlank()
-        val stateOk = state.state.isNotBlank()
+        // Country/state must be real picks from the catalog (resolved ids), not just typed text.
+        val countryOk = state.selectedCountryIso2 != null
+        val stateOk = state.selectedStateCode != null
         val cityOk = state.city.isNotBlank()
         _uiState.update {
             it.copy(
@@ -428,5 +572,7 @@ class ProfileCreationViewModel @Inject constructor(
         const val REQUIRED_MEDIUM_COUNT = 3
         /** Index of the informational plan step (step 5), shown after the profile POST succeeds. */
         const val PLAN_STEP = 4
+        /** Debounce for the city prefix-search query. */
+        const val CITY_DEBOUNCE_MS = 350L
     }
 }

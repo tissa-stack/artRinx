@@ -28,8 +28,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.DobPickerField
-import com.rinx.artRINXapp.core.ui.SearchableDropdownField
-import com.rinx.artRINXapp.feature.profile.presentation.components.ProfileTextField
+import com.rinx.artRINXapp.core.ui.SearchableTextDropdownField
 
 @Composable
 fun PersonalInfoStep(
@@ -43,12 +42,18 @@ fun PersonalInfoStep(
     cityError: Boolean,
     showTooltip: Boolean,
     onDobChange: (String) -> Unit,
-    onCountryChange: (String) -> Unit,
-    onStateChange: (String) -> Unit,
-    onCityChange: (String) -> Unit,
+    onCountryQuery: (String) -> Unit,
+    onCountrySelected: (String) -> Unit,
+    onStateQuery: (String) -> Unit,
+    onStateSelected: (String) -> Unit,
+    onCityQuery: (String) -> Unit,
+    onCitySelected: (String) -> Unit,
     onTooltipToggle: () -> Unit,
     countryOptions: List<String>,
     stateOptions: List<String>,
+    cityOptions: List<String>,
+    countrySelected: Boolean,
+    stateSelected: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -92,28 +97,38 @@ fun PersonalInfoStep(
 
         Spacer(Modifier.height(Spacing.md))
 
-        DropdownWithError(
+        // Country → State → City type-to-search cascade (master catalog APIs). State appears once a
+        // country is picked; city once a state is picked (cities need both ids).
+        SearchableFieldWithError(
             value = country,
             options = countryOptions,
-            onValueChange = onCountryChange,
+            onQueryChange = onCountryQuery,
+            onOptionSelected = onCountrySelected,
             label = "Country",
             hasError = countryError,
         )
-        Spacer(Modifier.height(Spacing.md))
-        // State is a dropdown when the chosen country has bundled states; otherwise free text.
-        if (stateOptions.isNotEmpty()) {
-            DropdownWithError(
+        if (countrySelected) {
+            Spacer(Modifier.height(Spacing.md))
+            SearchableFieldWithError(
                 value = state,
                 options = stateOptions,
-                onValueChange = onStateChange,
+                onQueryChange = onStateQuery,
+                onOptionSelected = onStateSelected,
                 label = "State",
                 hasError = stateError,
             )
-        } else {
-            FieldWithError(value = state, onValueChange = onStateChange, label = "State", hasError = stateError)
         }
-        Spacer(Modifier.height(Spacing.md))
-        FieldWithError(value = city, onValueChange = onCityChange, label = "City", hasError = cityError)
+        if (stateSelected) {
+            Spacer(Modifier.height(Spacing.md))
+            SearchableFieldWithError(
+                value = city,
+                options = cityOptions,
+                onQueryChange = onCityQuery,
+                onOptionSelected = onCitySelected,
+                label = "City",
+                hasError = cityError,
+            )
+        }
 
         Spacer(Modifier.height(Spacing.xl))
 
@@ -155,47 +170,22 @@ fun PersonalInfoStep(
 }
 
 @Composable
-private fun DropdownWithError(
+private fun SearchableFieldWithError(
     value: String,
     options: List<String>,
-    onValueChange: (String) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onOptionSelected: (String) -> Unit,
     label: String,
     hasError: Boolean,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        SearchableDropdownField(
+        SearchableTextDropdownField(
             label = label,
             value = value,
             options = options,
-            onValueChange = onValueChange,
+            onQueryChange = onQueryChange,
+            onOptionSelected = onOptionSelected,
             modifier = Modifier.fillMaxWidth(),
-            isError = hasError,
-        )
-        if (hasError) {
-            Text(
-                text = "This field should not be empty",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
-            )
-        }
-    }
-}
-
-@Composable
-private fun FieldWithError(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    hasError: Boolean,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        ProfileTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = label,
-            modifier = Modifier.fillMaxWidth(),
-            hasError = hasError,
         )
         if (hasError) {
             Text(
