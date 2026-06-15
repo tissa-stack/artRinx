@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.settings.presentation.editprofile
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -32,6 +33,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +46,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +93,27 @@ fun EditProfileScreen(
         }
     }
 
+    // Guard against losing unsaved edits: confirm before leaving when the form is dirty.
+    var showDiscard by remember { mutableStateOf(false) }
+    val tryBack = { if (viewModel.isDirty) showDiscard = true else onBack() }
+    BackHandler(enabled = !state.isSaving) { tryBack() }
+
+    if (showDiscard) {
+        AlertDialog(
+            onDismissRequest = { showDiscard = false },
+            title = { Text("Discard changes?") },
+            text = { Text("You have unsaved changes. Leaving now will discard them.") },
+            confirmButton = {
+                TextButton(onClick = { showDiscard = false; onBack() }) {
+                    Text("Discard", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscard = false }) { Text("Keep editing") }
+            },
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -101,7 +127,7 @@ fun EditProfileScreen(
                 .fillMaxWidth()
                 .padding(vertical = Spacing.xs),
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+            IconButton(onClick = tryBack, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Back",

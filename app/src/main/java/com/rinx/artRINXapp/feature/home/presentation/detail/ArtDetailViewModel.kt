@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.userMessage
+import com.rinx.artRINXapp.core.util.LikeBus
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
@@ -64,6 +65,7 @@ class ArtDetailViewModel @Inject constructor(
     private val uploadRepository: UploadRepository,
     private val editTargetStore: EditTargetStore,
     private val profileRefreshBus: ProfileRefreshBus,
+    private val likeBus: LikeBus,
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
     private val detailCache: DetailCache,
 ) : ViewModel() {
@@ -96,6 +98,10 @@ class ArtDetailViewModel @Inject constructor(
     /** One-shot: emitted after a successful delete so the screen can pop back. */
     private val _deleted = Channel<Unit>(Channel.BUFFERED)
     val deleted = _deleted.receiveAsFlow()
+
+    /** One-shot: emitted when the artwork is gone server-side (404) so the screen toasts + pops. */
+    private val _gone = Channel<Unit>(Channel.BUFFERED)
+    val gone = _gone.receiveAsFlow()
 
     /** One-shot: emits the success toast text after a block so the screen toasts, closes the sheet & pops. */
     private val _blocked = Channel<String>(Channel.BUFFERED)
@@ -146,10 +152,15 @@ class ArtDetailViewModel @Inject constructor(
                 // Resolve the conversation state with the owner so the send sheet shows the right
                 // framing (plain message for an active chat, not a fresh invitation).
                 if (!isOwn) post.ownerId?.let { resolveSendMode(it) }
+            } else if (detailRes is ApiResult.Error.NotFound) {
+                // Definitively gone (deleted/removed server-side) — drop any stale cache so the feed
+                // and a future re-open don't resurrect it, then leave the screen with a toast.
+                detailCache.evictArtwork(id)
+                _gone.send(Unit)
             } else if (!hasCache) {
                 _uiState.update { it.copy(isLoading = false, error = true) }
             }
-            // else: refresh failed but a cache is showing → keep it silently (no error/spinner).
+            // else: transient refresh failure with a cache showing → keep it silently (no error/spinner).
         }
     }
 
@@ -199,8 +210,8 @@ class ArtDetailViewModel @Inject constructor(
         val nowLiked = !post.isLiked
         pendingLike = nowLiked
         setLiked(nowLiked)
-        // Write-through so a reopen before the network returns is already correct.
-        detailCache.updateArtworkLike(id, nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
+        // Write-through to every cache + live Home feed so a reopen / the feed card stay in sync.
+        propagateLike(id, nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
         viewModelScope.launch {
             when (if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)) {
                 is ApiResult.Error.Network ->
@@ -210,7 +221,7 @@ class ArtDetailViewModel @Inject constructor(
                     // Hard failure (server rejected) → revert; local and server now agree.
                     pendingLike = null
                     setLiked(!nowLiked)
-                    detailCache.updateArtworkLike(id, !nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
+                    propagateLike(id, !nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
                 }
                 else -> {
                     pendingLike = null // server confirmed
@@ -231,6 +242,13 @@ class ArtDetailViewModel @Inject constructor(
                 ),
             )
         }
+    }
+
+    /** Persist the like to the detail + feed caches and notify any live Home feed (absolute values). */
+    private fun propagateLike(id: Int, isLiked: Boolean, likeCount: Int) {
+        detailCache.updateArtworkLike(id, isLiked, likeCount)
+        repository.updateCachedLike(id, isLiked, likeCount)
+        likeBus.signal(id, isLiked, likeCount)
     }
 
     // ── Report / block ────────────────────────────────────────────────────────

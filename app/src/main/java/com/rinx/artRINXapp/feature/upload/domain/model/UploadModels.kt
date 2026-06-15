@@ -90,6 +90,8 @@ data class ArtFormState(
     val imageUrl: String? = null,
     /** True while the existing artwork is being fetched to prefill the edit form. */
     val isLoadingEdit: Boolean = false,
+    /** Set when the edit prefill fetch failed (e.g. the artwork was deleted) → screen toasts + pops. */
+    val editLoadFailed: Boolean = false,
 ) {
     /**
      * Required to upload/save (handout §6): title, description, artist name (id optional), and a
@@ -220,6 +222,8 @@ data class NewCurationState(
     val editCurationId: Int? = null,
     /** True while the existing curation is being fetched to prefill the edit form. */
     val isLoadingEdit: Boolean = false,
+    /** Set when the edit prefill fetch failed (e.g. the curation was deleted) → screen toasts + pops. */
+    val editLoadFailed: Boolean = false,
 ) {
     val isValid: Boolean get() = title.isNotEmpty() && selectedArts.isNotEmpty()
     val displayedArts: List<UserArtItem> get() = if (activeArtTab == ArtTab.UPLOADS) uploadedArts else likedArts

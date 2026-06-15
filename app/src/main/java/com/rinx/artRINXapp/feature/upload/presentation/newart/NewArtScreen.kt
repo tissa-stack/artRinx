@@ -99,6 +99,14 @@ fun NewArtScreen(
         if (imageUri != null) viewModel.onImageSet(imageUri)
     }
 
+    // Edit prefill failed (e.g. the artwork was deleted) → don't leave the user on a blank form.
+    LaunchedEffect(state.editLoadFailed) {
+        if (state.editLoadFailed) {
+            Toast.makeText(context, "This artwork is no longer available.", Toast.LENGTH_SHORT).show()
+            onBack()
+        }
+    }
+
     if (state.showMediumPicker) {
         MediumPickerSheet(
             mediums          = state.mediums,

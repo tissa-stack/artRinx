@@ -425,6 +425,15 @@ private fun HomeTabPage(
             HomeTab.SHOP -> {
                 if (uiState.isLoading) {
                     items(count = 3, key = { "shop-shimmer-$it" }) { FeedShimmer() }
+                } else if (uiState.error != null && uiState.shoppableItems.isEmpty()) {
+                    // First-load failed (no cache) → show the reason + Retry, not a misleading empty state.
+                    item(key = "shop-error") {
+                        ErrorView(
+                            error = uiState.error,
+                            onRetry = onRetry,
+                            modifier = Modifier.fillParentMaxHeight(0.7f),
+                        )
+                    }
                 } else if (uiState.shoppableItems.isEmpty()) {
                     item(key = "shop-empty") {
                         EmptyView(
@@ -451,6 +460,15 @@ private fun HomeTabPage(
             HomeTab.FOR_YOU -> {
                 if (uiState.isLoading) {
                     items(count = 3, key = { "foryou-shimmer-$it" }) { FeedShimmer() }
+                } else if (uiState.error != null && uiState.forYouItems.isEmpty()) {
+                    // First-load failed (no cache) → show the reason + Retry, not a misleading empty state.
+                    item(key = "foryou-error") {
+                        ErrorView(
+                            error = uiState.error,
+                            onRetry = onRetry,
+                            modifier = Modifier.fillParentMaxHeight(0.7f),
+                        )
+                    }
                 } else if (uiState.forYouItems.isEmpty()) {
                     item(key = "foryou-empty") {
                         EmptyView(

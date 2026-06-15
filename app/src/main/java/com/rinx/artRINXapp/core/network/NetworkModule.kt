@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.core.network
 
+import com.rinx.artRINXapp.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +29,14 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
-        HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+        HttpLoggingInterceptor().apply {
+            // Full bodies only in debug builds — request/response bodies and the refresh client carry
+            // OTP codes, access/refresh tokens and the Bearer header, which must never reach release
+            // logcat. Also redact the auth header regardless of level as defense-in-depth.
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                    else HttpLoggingInterceptor.Level.NONE
+            redactHeader("Authorization")
+        }
 
     // ── Main client: auth-token preflight interceptor + 401 refresh authenticator ──────────
 

@@ -98,6 +98,14 @@ fun CurationDetailScreen(
         viewModel.deleted.collect { onBack() }
     }
 
+    // Curation no longer exists server-side (404) → toast + pop instead of showing stale cached detail.
+    LaunchedEffect(Unit) {
+        viewModel.gone.collect {
+            Toast.makeText(context, "This curation is no longer available.", Toast.LENGTH_SHORT).show()
+            onBack()
+        }
+    }
+
     // Close the sheet and pop back once the curation's author is blocked (toast survives the pop).
     LaunchedEffect(Unit) {
         viewModel.blocked.collect { message ->

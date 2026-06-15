@@ -3,7 +3,9 @@ package com.rinx.artRINXapp.feature.home.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.util.LikeBus
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
+import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.home.domain.model.BannerItem
 import com.rinx.artRINXapp.feature.home.domain.model.FeedPost
 import com.rinx.artRINXapp.feature.home.domain.model.ForYouItem
@@ -27,6 +29,8 @@ class HomeViewModel @Inject constructor(
     private val curationPreviewStore: CurationPreviewStore,
     private val uploadManager: UploadManager,
     private val curationManager: CurationManager,
+    private val likeBus: LikeBus,
+    private val detailCache: DetailCache,
 ) : ViewModel() {
 
     // Seed synchronously from cache so returning to the tab renders instantly with no shimmer (SWR).
@@ -52,6 +56,43 @@ class HomeViewModel @Inject constructor(
         load()
         observeUploads()
         observeCurations()
+        observeLikes()
+    }
+
+    /** Converge with likes made elsewhere (e.g. the detail screen) while this feed is live. */
+    private fun observeLikes() {
+        viewModelScope.launch {
+            likeBus.events.collect { u -> applyLikeUpdate(u.artworkId.toString(), u.isLiked, u.likeCount) }
+        }
+    }
+
+    /** Set the absolute like state of an artwork wherever it appears (idempotent). */
+    private fun applyLikeUpdate(id: String, isLiked: Boolean, likeCount: Int) {
+        _uiState.update { state ->
+            state.copy(
+                feedItems = state.feedItems.map {
+                    if (it.id == id) it.copy(isLiked = isLiked, likeCount = likeCount) else it
+                },
+                forYouItems = state.forYouItems.map { item ->
+                    if (item is ForYouItem.Post && item.post.id == id) {
+                        ForYouItem.Post(item.post.copy(isLiked = isLiked, likeCount = likeCount))
+                    } else {
+                        item
+                    }
+                },
+                shoppableItems = state.shoppableItems.map {
+                    if (it.id == id) it.copy(isLiked = isLiked, likeCount = likeCount) else it
+                },
+            )
+        }
+    }
+
+    /** Write the (already-applied) absolute like state through to caches + notify other live screens. */
+    private fun propagateLike(postId: String, isLiked: Boolean, likeCount: Int) {
+        val id = postId.toIntOrNull() ?: return
+        repository.updateCachedLike(id, isLiked, likeCount)
+        detailCache.updateArtworkLike(id, isLiked, likeCount)
+        likeBus.signal(id, isLiked, likeCount)
     }
 
     // ── Upload progress (PUBLIC uploads only) ──────────────────────────────────
@@ -208,10 +249,14 @@ class HomeViewModel @Inject constructor(
         val post = _uiState.value.feedItems.find { it.id == postId } ?: return
         val nowLiked = !post.isLiked
         setFeedLiked(postId, nowLiked)
+        _uiState.value.feedItems.find { it.id == postId }?.let { propagateLike(postId, it.isLiked, it.likeCount) }
         viewModelScope.launch {
             val id = postId.toIntOrNull() ?: return@launch
             val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)
-            if (result is ApiResult.Error) setFeedLiked(postId, !nowLiked)   // revert on failure
+            if (result is ApiResult.Error) {
+                setFeedLiked(postId, !nowLiked)   // revert on failure
+                _uiState.value.feedItems.find { it.id == postId }?.let { propagateLike(postId, it.isLiked, it.likeCount) }
+            }
         }
     }
 
@@ -243,10 +288,14 @@ class HomeViewModel @Inject constructor(
         val post = _uiState.value.shoppableItems.find { it.id == postId } ?: return
         val nowLiked = !post.isLiked
         setShopLiked(postId, nowLiked)
+        _uiState.value.shoppableItems.find { it.id == postId }?.let { propagateLike(postId, it.isLiked, it.likeCount) }
         viewModelScope.launch {
             val id = postId.toIntOrNull() ?: return@launch
             val result = if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)
-            if (result is ApiResult.Error) setShopLiked(postId, !nowLiked)
+            if (result is ApiResult.Error) {
+                setShopLiked(postId, !nowLiked)
+                _uiState.value.shoppableItems.find { it.id == postId }?.let { propagateLike(postId, it.isLiked, it.likeCount) }
+            }
         }
     }
 

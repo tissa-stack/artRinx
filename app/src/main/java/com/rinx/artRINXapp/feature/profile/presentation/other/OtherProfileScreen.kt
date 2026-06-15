@@ -179,6 +179,24 @@ fun OtherProfileScreen(
                 }
             }
 
+            // The other user has blocked the viewer → don't render their profile/actions/content.
+            uiState.profile?.theyBlocked == true -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    .statusBarsPadding()
+                    .padding(horizontal = Spacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = uiState.profile?.blockReason ?: "This profile isn't available.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+
             else -> {
                 val profile = uiState.profile!!
                 val tabs = listOf(ProfileTab.ART, ProfileTab.CURATIONS)

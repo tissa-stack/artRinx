@@ -63,6 +63,14 @@ class NotificationsViewModel @Inject constructor(
     private val _state = MutableStateFlow(NotificationsUiState())
     val state: StateFlow<NotificationsUiState> = _state.asStateFlow()
 
+    /**
+     * Optimistic "mark read" has no server endpoint, so a server refresh (fired on every WS event)
+     * would otherwise resurrect the unread badge. Track each locally-read conversation with the
+     * unread count it had when marked read; keep suppressing it across refreshes until the server
+     * shows MORE unread than that baseline (a genuinely new message), or the convo disappears.
+     */
+    private val locallyRead = mutableMapOf<String, Int>()
+
     init {
         loadNotifications()
         refreshConversations()
@@ -150,13 +158,24 @@ class NotificationsViewModel @Inject constructor(
         if (isUserRefresh) _state.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
             when (val res = messagesRepository.getChatrooms()) {
-                is ApiResult.Success -> _state.update {
-                    it.copy(
-                        conversations = res.data,
-                        isLoadingConversations = false,
-                        isRefreshing = false,
-                        conversationsError = null,
-                    )
+                is ApiResult.Success -> {
+                    // Reconcile optimistic local reads: drop a convo from the suppressed set once the
+                    // server shows more unread than the marked-read baseline (new message) or it's gone.
+                    locallyRead.entries.retainAll { (id, baseline) ->
+                        val server = res.data.firstOrNull { it.id == id }
+                        server != null && server.unreadCount <= baseline
+                    }
+                    val reconciled = res.data.map { c ->
+                        if (locallyRead.containsKey(c.id)) c.copy(isUnread = false, unreadCount = 0) else c
+                    }
+                    _state.update {
+                        it.copy(
+                            conversations = reconciled,
+                            isLoadingConversations = false,
+                            isRefreshing = false,
+                            conversationsError = null,
+                        )
+                    }
                 }
                 is ApiResult.Error -> _state.update {
                     it.copy(
@@ -193,8 +212,10 @@ class NotificationsViewModel @Inject constructor(
         }
     }
 
-    /** No bulk "mark chat read" endpoint — clear the unread badge locally (optimistic). */
+    /** No bulk "mark chat read" endpoint — clear the unread badge locally (optimistic) and remember
+     *  the baseline so refreshes don't resurrect it until a genuinely new message arrives. */
     fun onMarkConversationRead(item: ConversationItem) {
+        locallyRead[item.id] = item.unreadCount
         _state.update {
             it.copy(conversations = it.conversations.map { c ->
                 if (c.id == item.id) c.copy(isUnread = false, unreadCount = 0) else c

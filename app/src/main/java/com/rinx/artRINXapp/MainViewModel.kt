@@ -56,10 +56,16 @@ class MainViewModel @Inject constructor(
         if (refresh.isNullOrBlank()) return NavRoutes.AUTH
 
         // 3. Have a session. If the access token has expired, refresh it through the single-flight
-        //    coordinator (the same path used mid-session). The coordinator wipes the session on a
-        //    hard refresh failure; if we can't get a valid token, fall back to auth.
+        //    coordinator (the same path used mid-session). The coordinator wipes the session ONLY on
+        //    a hard refresh failure (401 refresh_invalid/reused). A transient network/timeout failure
+        //    returns false WITHOUT wiping — so only fall back to auth when the session was actually
+        //    cleared (refresh token gone). Otherwise keep the user in the app and let the interceptor/
+        //    authenticator recover the token on the first successful call (avoids a false sign-out to
+        //    the login screen when launching offline / on a flaky network with a still-valid session).
         if (authRepository.isAccessTokenExpired()) {
-            if (!tokenRefreshCoordinator.refresh()) return NavRoutes.AUTH
+            if (!tokenRefreshCoordinator.refresh() && authRepository.getRefreshToken().isNullOrBlank()) {
+                return NavRoutes.AUTH
+            }
         }
 
         // 4. Valid session → route by profile completion.

@@ -114,19 +114,25 @@ class OtherProfileViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isLoading || state.isLoadingMore) return
         when (state.activeTab) {
+            // Advance the page + recompute hasMore ONLY on success; on a transient error keep both and
+            // just clear the spinner so the next scroll retries the same page (never skip/permanently stop).
             ProfileTab.ART -> {
                 if (!state.artHasMore) return
                 _uiState.update { it.copy(isLoadingMore = true) }
                 viewModelScope.launch {
-                    val next = (repository.getPublicArtworks(id, artPage + 1, PAGE_SIZE) as? ApiResult.Success)?.data.orEmpty()
-                    artPage += 1
-                    _uiState.update { st ->
-                        val existing = st.artItems.associateBy { it.id }
-                        st.copy(
-                            artItems = st.artItems + next.filter { it.id !in existing },
-                            artHasMore = next.size >= PAGE_SIZE,
-                            isLoadingMore = false,
-                        )
+                    when (val res = repository.getPublicArtworks(id, artPage + 1, PAGE_SIZE)) {
+                        is ApiResult.Success -> {
+                            artPage += 1
+                            _uiState.update { st ->
+                                val existing = st.artItems.associateBy { it.id }
+                                st.copy(
+                                    artItems = st.artItems + res.data.filter { it.id !in existing },
+                                    artHasMore = res.data.size >= PAGE_SIZE,
+                                    isLoadingMore = false,
+                                )
+                            }
+                        }
+                        is ApiResult.Error -> _uiState.update { it.copy(isLoadingMore = false) }
                     }
                 }
             }
@@ -134,15 +140,19 @@ class OtherProfileViewModel @Inject constructor(
                 if (!state.curationHasMore) return
                 _uiState.update { it.copy(isLoadingMore = true) }
                 viewModelScope.launch {
-                    val next = (repository.getPublicCurations(id, curationPage + 1, PAGE_SIZE) as? ApiResult.Success)?.data.orEmpty()
-                    curationPage += 1
-                    _uiState.update { st ->
-                        val existing = st.curations.associateBy { it.id }
-                        st.copy(
-                            curations = st.curations + next.filter { it.id !in existing },
-                            curationHasMore = next.size >= PAGE_SIZE,
-                            isLoadingMore = false,
-                        )
+                    when (val res = repository.getPublicCurations(id, curationPage + 1, PAGE_SIZE)) {
+                        is ApiResult.Success -> {
+                            curationPage += 1
+                            _uiState.update { st ->
+                                val existing = st.curations.associateBy { it.id }
+                                st.copy(
+                                    curations = st.curations + res.data.filter { it.id !in existing },
+                                    curationHasMore = res.data.size >= PAGE_SIZE,
+                                    isLoadingMore = false,
+                                )
+                            }
+                        }
+                        is ApiResult.Error -> _uiState.update { it.copy(isLoadingMore = false) }
                     }
                 }
             }

@@ -36,6 +36,8 @@ data class EditProfileUiState(
     val loadError: String? = null,
     val isSaving: Boolean = false,
     val usernameError: String? = null,
+    /** The exact username the server last reported as taken; gates re-submitting it unchanged. */
+    val takenUsername: String? = null,
     val saveStatus: SaveStatus? = null,
     val saveError: String? = null,
     val showUsernameTooltip: Boolean = false,
@@ -46,7 +48,9 @@ data class EditProfileUiState(
 ) {
     val canSave: Boolean
         get() = !isSaving && username.isNotBlank() && fullName.isNotBlank() && displayName.isNotBlank() &&
-            dob.isNotBlank() && country.isNotBlank() && state.isNotBlank() && city.isNotBlank()
+            dob.isNotBlank() && country.isNotBlank() && state.isNotBlank() && city.isNotBlank() &&
+            // Can't re-submit a username the server just said is taken (until it's edited).
+            username.trim() != takenUsername
 }
 
 @HiltViewModel
@@ -66,6 +70,7 @@ class EditProfileViewModel @Inject constructor(
     }
 
     private fun load() {
+        userEdited = false // a fresh prefill is not a user edit
         _state.update { it.copy(isLoading = true, loadError = null) }
         viewModelScope.launch {
             when (val result = repository.getEditableProfile()) {
@@ -128,7 +133,7 @@ class EditProfileViewModel @Inject constructor(
                     is ApiResult.Success ->
                         if (!check.data) {
                             _state.update {
-                                it.copy(isSaving = false, usernameError = "Username is taken")
+                                it.copy(isSaving = false, usernameError = "Username is taken", takenUsername = newUsername)
                             }
                             return@launch
                         }
@@ -163,21 +168,52 @@ class EditProfileViewModel @Inject constructor(
     /** Clears the one-time save result after the screen has consumed it. */
     fun onSaveHandled() = _state.update { it.copy(saveStatus = null, saveError = null) }
 
-    fun onUsernameChange(v: String) = _state.update { it.copy(username = v, usernameError = null) }
+    /**
+     * True once the user has actually edited any field / picked a new picture. We track real user
+     * interaction rather than diffing loaded values — none of the inputs (text fields, DOB picker,
+     * dropdowns) emit on composition, so this can't false-positive on a fresh load the way a value
+     * diff did (loaded representation vs. picker-normalized form). Reset to false after a load.
+     */
+    private var userEdited = false
+    val isDirty: Boolean get() = userEdited
+
+    fun onUsernameChange(v: String) {
+        userEdited = true
+        _state.update { it.copy(username = v, usernameError = null) }
+    }
     fun onFullNameChange(v: String) = _state.update {
         // Guard: ignore edits once the 2-change cap is reached (the field is also disabled in the UI).
-        if (!it.canEditFullName) it else it.copy(fullName = v)
+        if (!it.canEditFullName) it else { userEdited = true; it.copy(fullName = v) }
     }
-    fun onBioChange(v: String) = _state.update { it.copy(bio = v) }
-    fun onDisplayNameChange(v: String) = _state.update { it.copy(displayName = v) }
-    fun onDobChange(v: String) = _state.update { it.copy(dob = v) }
-    fun onCountryChange(v: String) = _state.update {
+    fun onBioChange(v: String) {
+        userEdited = true
+        _state.update { it.copy(bio = v) }
+    }
+    fun onDisplayNameChange(v: String) {
+        userEdited = true
+        _state.update { it.copy(displayName = v) }
+    }
+    fun onDobChange(v: String) {
+        userEdited = true
+        _state.update { it.copy(dob = v) }
+    }
+    fun onCountryChange(v: String) {
+        userEdited = true
         // Country changed → refresh state options and clear the previously-picked state.
-        it.copy(country = v, state = "", stateOptions = locationRepository.statesOf(v))
+        _state.update { it.copy(country = v, state = "", stateOptions = locationRepository.statesOf(v)) }
     }
-    fun onStateChange(v: String) = _state.update { it.copy(state = v) }
-    fun onCityChange(v: String) = _state.update { it.copy(city = v) }
-    fun onPictureSelected(uri: Uri?) = _state.update { it.copy(pictureUri = uri) }
+    fun onStateChange(v: String) {
+        userEdited = true
+        _state.update { it.copy(state = v) }
+    }
+    fun onCityChange(v: String) {
+        userEdited = true
+        _state.update { it.copy(city = v) }
+    }
+    fun onPictureSelected(uri: Uri?) {
+        if (uri != null) userEdited = true // null = the user cancelled the picker → not an edit
+        _state.update { it.copy(pictureUri = uri) }
+    }
 
     fun onUsernameTooltipToggle() = _state.update { it.copy(showUsernameTooltip = !it.showUsernameTooltip) }
     fun onFullNameTooltipToggle() = _state.update { it.copy(showFullNameTooltip = !it.showFullNameTooltip) }

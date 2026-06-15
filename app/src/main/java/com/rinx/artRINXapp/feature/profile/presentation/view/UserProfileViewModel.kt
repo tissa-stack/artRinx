@@ -125,42 +125,51 @@ class UserProfileViewModel @Inject constructor(
         if (!hasMore) return
         _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
+            // Advance the page + recompute hasMore ONLY on success. On a transient error we keep the
+            // page index and hasMore untouched and just clear the spinner, so the next scroll retries
+            // the same page instead of skipping it and permanently ending pagination.
             when (tab) {
-                ProfileTab.ART -> {
-                    val next = (profileRepository.getMyArtworks(artPage + 1, SIZE) as? ApiResult.Success)?.data.orEmpty()
-                    artPage += 1
-                    _uiState.update { st ->
-                        val existing = st.artItems.associateBy { it.id }
-                        st.copy(
-                            artItems = st.artItems + next.filter { it.id !in existing },
-                            artHasMore = next.size >= SIZE,
-                            isLoadingMore = false,
-                        )
+                ProfileTab.ART -> when (val res = profileRepository.getMyArtworks(artPage + 1, SIZE)) {
+                    is ApiResult.Success -> {
+                        artPage += 1
+                        _uiState.update { st ->
+                            val existing = st.artItems.associateBy { it.id }
+                            st.copy(
+                                artItems = st.artItems + res.data.filter { it.id !in existing },
+                                artHasMore = res.data.size >= SIZE,
+                                isLoadingMore = false,
+                            )
+                        }
                     }
+                    is ApiResult.Error -> _uiState.update { it.copy(isLoadingMore = false) }
                 }
-                ProfileTab.CURATIONS -> {
-                    val next = (profileRepository.getMyCurations(curationPage + 1, SIZE) as? ApiResult.Success)?.data.orEmpty()
-                    curationPage += 1
-                    _uiState.update { st ->
-                        val existing = st.curations.associateBy { it.id }
-                        st.copy(
-                            curations = st.curations + next.filter { it.id !in existing },
-                            curationHasMore = next.size >= SIZE,
-                            isLoadingMore = false,
-                        )
+                ProfileTab.CURATIONS -> when (val res = profileRepository.getMyCurations(curationPage + 1, SIZE)) {
+                    is ApiResult.Success -> {
+                        curationPage += 1
+                        _uiState.update { st ->
+                            val existing = st.curations.associateBy { it.id }
+                            st.copy(
+                                curations = st.curations + res.data.filter { it.id !in existing },
+                                curationHasMore = res.data.size >= SIZE,
+                                isLoadingMore = false,
+                            )
+                        }
                     }
+                    is ApiResult.Error -> _uiState.update { it.copy(isLoadingMore = false) }
                 }
-                ProfileTab.LIKED -> {
-                    val next = (profileRepository.getLikedArtworks(likedPage + 1, SIZE) as? ApiResult.Success)?.data.orEmpty()
-                    likedPage += 1
-                    _uiState.update { st ->
-                        val existing = st.likedItems.associateBy { it.id }
-                        st.copy(
-                            likedItems = st.likedItems + next.filter { it.id !in existing },
-                            likedHasMore = next.size >= SIZE,
-                            isLoadingMore = false,
-                        )
+                ProfileTab.LIKED -> when (val res = profileRepository.getLikedArtworks(likedPage + 1, SIZE)) {
+                    is ApiResult.Success -> {
+                        likedPage += 1
+                        _uiState.update { st ->
+                            val existing = st.likedItems.associateBy { it.id }
+                            st.copy(
+                                likedItems = st.likedItems + res.data.filter { it.id !in existing },
+                                likedHasMore = res.data.size >= SIZE,
+                                isLoadingMore = false,
+                            )
+                        }
                     }
+                    is ApiResult.Error -> _uiState.update { it.copy(isLoadingMore = false) }
                 }
             }
         }

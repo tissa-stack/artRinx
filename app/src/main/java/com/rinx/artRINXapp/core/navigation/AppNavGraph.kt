@@ -66,6 +66,11 @@ import com.rinx.artRINXapp.feature.upload.presentation.newart.NewArtViewModel
 import com.rinx.artRINXapp.feature.upload.presentation.tags.AddTagsScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.remember
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.rinx.artRINXapp.feature.upload.domain.model.CurationProgress
+import com.rinx.artRINXapp.feature.upload.domain.model.UploadProgress
+import com.rinx.artRINXapp.feature.upload.presentation.UploadStatusViewModel
 
 @Composable
 fun AppNavGraph(
@@ -117,6 +122,30 @@ fun AppNavGraph(
             else -> Unit // Invite handled by InviteCodeViewModel; null = nothing pending.
         }
     }
+    // Surface a PUBLIC upload/curation FAILURE that happens while the user is away from Home. The
+    // in-feed retry row only renders on Home, so an off-Home failure would otherwise be silent. Gated
+    // on route != HOME so we never double up with that row (which still offers retry once back on Home).
+    val uploadStatus: UploadStatusViewModel = hiltViewModel()
+    val appContext = LocalContext.current
+    LaunchedEffect(Unit) {
+        uploadStatus.uploadProgress.collect { p ->
+            if (p is UploadProgress.Failed && !p.isPrivate &&
+                navController.currentDestination?.route != NavRoutes.HOME
+            ) {
+                Toast.makeText(appContext, p.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        uploadStatus.curationProgress.collect { p ->
+            if (p is CurationProgress.Failed && !p.isPrivate &&
+                navController.currentDestination?.route != NavRoutes.HOME
+            ) {
+                Toast.makeText(appContext, p.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()

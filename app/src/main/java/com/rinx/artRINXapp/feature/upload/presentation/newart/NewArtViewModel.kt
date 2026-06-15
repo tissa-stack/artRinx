@@ -103,7 +103,9 @@ class NewArtViewModel @Inject constructor(
                     )
                 }
             } else {
-                _state.update { it.copy(isLoadingEdit = false) }
+                // Prefill failed (e.g. the artwork was deleted server-side) → don't strand the user on
+                // a blank, un-saveable form; flag so the screen toasts + pops back.
+                _state.update { it.copy(isLoadingEdit = false, editLoadFailed = true) }
             }
         }
     }

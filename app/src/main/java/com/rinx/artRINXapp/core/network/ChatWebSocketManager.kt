@@ -65,6 +65,9 @@ class ChatWebSocketManager @Inject constructor(
     @Volatile private var attempt = 0
     @Volatile private var consecutive4401 = 0
     @Volatile private var lastInboundAt = 0L
+    // True between starting a (possibly async, refresh-first) connect and the socket actually opening,
+    // so overlapping connect() calls don't spin up duplicate coroutines/sockets.
+    @Volatile private var connecting = false
 
     private var reconnectJob: Job? = null
     private var watchdogJob: Job? = null
@@ -114,15 +117,42 @@ class ChatWebSocketManager @Inject constructor(
 
     @Synchronized
     private fun connect() {
-        if (!foreground || webSocket != null) return
-        val token = session.getAccessToken()
-        if (token.isNullOrBlank()) {
+        if (!foreground || webSocket != null || connecting) return
+        if (session.getAccessToken().isNullOrBlank() && session.getRefreshToken().isNullOrBlank()) {
             // No usable session yet (e.g. cold launch before sign-in completes) — retry softly.
             scheduleReconnect()
             return
         }
+        connecting = true
         manualClose = false
         _connectionState.value = WsConnectionState.CONNECTING
+        // Preflight-refresh an expiring access token BEFORE opening (mirrors the HTTP preflight §13.6),
+        // so we don't reliably open with a stale token after a long background and bounce on 4401. The
+        // single-flight coordinator coalesces this with the HTTP/foreground refresh (no extra round-trip).
+        scope.launch {
+            try {
+                if (session.getRefreshToken() != null &&
+                    session.isAccessTokenExpiringSoon(WS_REFRESH_THRESHOLD_MS)
+                ) {
+                    tokenRefreshCoordinator.refresh()
+                }
+            } finally {
+                openSocket()
+            }
+        }
+    }
+
+    /** Opens the socket with the (now-fresh) token. Single-socket invariant held under the lock. */
+    @Synchronized
+    private fun openSocket() {
+        connecting = false
+        if (!foreground || webSocket != null) return
+        val token = session.getAccessToken()
+        if (token.isNullOrBlank()) {
+            scheduleReconnect()
+            return
+        }
+        manualClose = false
         lastInboundAt = System.currentTimeMillis()
         val request = Request.Builder()
             .url(WS_URL)
@@ -137,6 +167,7 @@ class ChatWebSocketManager @Inject constructor(
     private fun teardown() {
         reconnectJob?.cancel(); reconnectJob = null
         watchdogJob?.cancel(); watchdogJob = null
+        connecting = false
         webSocket?.close(NORMAL_CLOSURE, "lifecycle")
         webSocket = null
         _connectionState.value = WsConnectionState.DISCONNECTED
@@ -297,6 +328,8 @@ class ChatWebSocketManager @Inject constructor(
 
     private companion object {
         const val WS_URL = "wss://apifargate.rinx.com/ws"
+        /** Preflight-refresh the token if it expires within this window before opening the socket (§13.6). */
+        const val WS_REFRESH_THRESHOLD_MS = 60_000L
         const val NORMAL_CLOSURE = 1000
         const val ABNORMAL_CLOSURE = 1006
         const val BASE_BACKOFF_MS = 1_000L

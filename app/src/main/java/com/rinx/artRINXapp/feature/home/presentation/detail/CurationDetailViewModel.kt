@@ -98,6 +98,10 @@ class CurationDetailViewModel @Inject constructor(
     private val _blocked = Channel<String>(Channel.BUFFERED)
     val blocked = _blocked.receiveAsFlow()
 
+    /** One-shot: emitted when the curation is gone server-side (404) so the screen toasts + pops. */
+    private val _gone = Channel<Unit>(Channel.BUFFERED)
+    val gone = _gone.receiveAsFlow()
+
     init {
         load()
     }
@@ -156,10 +160,14 @@ class CurationDetailViewModel @Inject constructor(
                 }
                 // Resolve the send mode now (before the sheet can open) to avoid an invite→message flicker.
                 if (!isOwn) resolveSendMode(curation.authorId)
+            } else if (detailRes is ApiResult.Error.NotFound) {
+                // Definitively gone server-side — drop any stale cache and leave the screen.
+                detailCache.evictCuration(id)
+                _gone.send(Unit)
             } else if (!hasCache) {
                 _uiState.update { it.copy(isLoading = false, error = true) }
             }
-            // else: refresh failed but a cache is showing → keep it silently (no error/spinner).
+            // else: transient refresh failure with a cache showing → keep it silently (no error/spinner).
         }
     }
 

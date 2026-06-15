@@ -68,7 +68,9 @@ class NewCurationViewModel @Inject constructor(
                     )
                 }
             } else {
-                _state.update { it.copy(isLoadingEdit = false) }
+                // Prefill failed (e.g. the curation was deleted server-side) → flag so the screen
+                // toasts + pops instead of showing a blank, un-saveable edit form.
+                _state.update { it.copy(isLoadingEdit = false, editLoadFailed = true) }
             }
         }
     }

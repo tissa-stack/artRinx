@@ -174,10 +174,10 @@ private fun OtpContent(
 
                 Spacer(modifier = Modifier.height(Spacing.lg))
 
-                // ── Expires-in countdown ───────────────────────────────────
+                // ── Resend countdown (this timer gates Resend, not code expiry) ──
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Expires in: ",
+                        text = "Resend in: ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

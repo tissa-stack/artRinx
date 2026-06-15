@@ -24,6 +24,12 @@ interface HomeRepository {
     fun cachedForYou(): List<FeedPost>?
     /** Drop the cached feed/shop/for-you. */
     fun clearCache()
+    /**
+     * Patch the like state of a single artwork across the in-memory feed/shop/for-you caches so a
+     * later SWR re-seed reflects a like made elsewhere (e.g. on the detail screen). No-op if the
+     * artwork isn't cached. Carries absolute values (idempotent).
+     */
+    fun updateCachedLike(artworkId: Int, isLiked: Boolean, likeCount: Int)
 
     suspend fun likeArtwork(artworkId: Int): ApiResult<Unit>
     suspend fun unlikeArtwork(artworkId: Int): ApiResult<Unit>

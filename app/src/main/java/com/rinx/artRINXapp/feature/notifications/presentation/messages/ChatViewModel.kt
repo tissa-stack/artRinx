@@ -154,7 +154,10 @@ class ChatViewModel @Inject constructor(
         chatCache.put(
             partnerUserId,
             com.rinx.artRINXapp.feature.notifications.data.local.ChatSnapshot(
-                messages = st.messages,
+                // Don't persist in-flight (SENDING) bubbles: after process death the dispatch coroutine
+                // is gone, so a reopen would wrongly resurrect them as FAILED. A send that actually
+                // landed reappears via the server thread fetch; FAILED bubbles are still cached (retryable).
+                messages = st.messages.filter { it.sendStatus != SendStatus.SENDING },
                 partnerName = st.partnerName,
                 partnerRole = st.partnerRole,
                 partnerAvatarUrl = st.partnerAvatarUrl,
@@ -373,8 +376,9 @@ class ChatViewModel @Inject constructor(
     fun loadEarlier() {
         val st = _state.value
         if (!st.canLoadEarlier || st.isLoadingEarlier || st.isLoading) return
-        val before = st.messages.minByOrNull { it.createdAtEpochMs }?.createdAtIso?.takeIf { it.isNotBlank() }
-            ?: nextCursor ?: return
+        // Page by the server's authoritative cursor (not the oldest visible message's timestamp — an
+        // optimistic bubble has no server time, and a raw timestamp can skip/re-fetch the boundary).
+        val before = nextCursor ?: run { _state.update { it.copy(canLoadEarlier = false) }; return }
         _state.update { it.copy(isLoadingEarlier = true) }
         viewModelScope.launch {
             val res = messagesRepository.getThread(partnerUserId, currentUserId, before = before)
@@ -384,13 +388,16 @@ class ChatViewModel @Inject constructor(
             }
             nextCursor = res.data.nextCursor
             val existing = confirmed.associateBy { it.id }
-            confirmed = (res.data.messages.filter { it.id !in existing } + confirmed).sortedBy { it.createdAtEpochMs }
+            val newOnes = res.data.messages.filter { it.id !in existing }
+            confirmed = (newOnes + confirmed).sortedBy { it.createdAtEpochMs }
             val merged = displayMessages()
             _state.update { stt ->
                 stt.copy(
                     messages = merged,
                     isLoadingEarlier = false,
-                    canLoadEarlier = nextCursor != null,
+                    // Stop when the server signals the start OR this page added nothing new — otherwise
+                    // a parked-at-top scroll would re-poll the same page forever.
+                    canLoadEarlier = res.data.nextCursor != null && newOnes.isNotEmpty(),
                 )
             }
         }

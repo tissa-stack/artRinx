@@ -85,6 +85,15 @@ fun DeleteAccountDialog(
                     textAlign = TextAlign.Center,
                 )
 
+                Spacer(Modifier.height(Spacing.sm))
+                Text(
+                    text = "Your account is deactivated now and permanently deleted after a " +
+                        "grace period. Sign back in before then to cancel the deletion.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+
                 if (errorText != null) {
                     Spacer(Modifier.height(Spacing.sm))
                     Text(

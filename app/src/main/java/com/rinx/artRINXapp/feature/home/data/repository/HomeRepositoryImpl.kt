@@ -38,6 +38,21 @@ class HomeRepositoryImpl @Inject constructor(
         forYouCache = null
     }
 
+    override fun updateCachedLike(artworkId: Int, isLiked: Boolean, likeCount: Int) {
+        val idStr = artworkId.toString()
+        feedCache = feedCache?.let { f ->
+            f.copy(posts = f.posts.map {
+                if (it.id == idStr) it.copy(isLiked = isLiked, likeCount = likeCount) else it
+            })
+        }
+        shopCache = shopCache?.map {
+            if (it.id == idStr) it.copy(isLiked = isLiked, likeCount = likeCount) else it
+        }
+        forYouCache = forYouCache?.map {
+            if (it.id == idStr) it.copy(isLiked = isLiked, likeCount = likeCount) else it
+        }
+    }
+
     override suspend fun getDiscoverFeed(): ApiResult<HomeFeed> = safeCall {
         val response = apiService.getDiscoverFeed()
         if (response.isSuccessful) {

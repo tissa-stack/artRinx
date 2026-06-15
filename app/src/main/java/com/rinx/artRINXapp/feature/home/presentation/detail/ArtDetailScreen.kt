@@ -101,6 +101,14 @@ fun ArtDetailScreen(
         viewModel.deleted.collect { onBack() }
     }
 
+    // Artwork no longer exists server-side (404) → toast + pop instead of showing stale cached detail.
+    LaunchedEffect(Unit) {
+        viewModel.gone.collect {
+            Toast.makeText(context, "This artwork is no longer available.", Toast.LENGTH_SHORT).show()
+            onBack()
+        }
+    }
+
     // Close the sheet and pop back once the art/user is blocked (toast survives the pop).
     LaunchedEffect(Unit) {
         viewModel.blocked.collect { message ->

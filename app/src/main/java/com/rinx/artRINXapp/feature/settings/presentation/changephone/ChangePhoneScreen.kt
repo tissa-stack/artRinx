@@ -238,14 +238,14 @@ private fun OtpStep(
     OtpBoxRow(otp = otp, onOtpChange = onOtpChange, modifier = Modifier.fillMaxWidth())
     Spacer(Modifier.height(Spacing.lg))
 
-    // ── Expires-in countdown ───────────────────────────────────────────
+    // ── Resend countdown (this timer gates Resend, not code expiry) ─────
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "Expires in: ",
+            text = "Resend in: ",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
