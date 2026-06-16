@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -39,6 +40,8 @@ import androidx.compose.ui.window.Dialog
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.LinkSafetyInfoIcon
+import com.rinx.artRINXapp.core.ui.LinkSafetyInfoOverlay
 
 /**
  * Third-party-link warning shown before opening a user's portfolio/shop link (image #7).
@@ -52,12 +55,14 @@ fun PortfolioLinkDialog(
 ) {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(Spacing.lg),
             color = MaterialTheme.colorScheme.surface,
         ) {
+          Box {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -103,13 +108,20 @@ fun PortfolioLinkDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(Spacing.sm))
-                Text(
-                    text = "Would you like to continue?",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                )
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Would you like to continue?",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.width(Spacing.xs))
+                    LinkSafetyInfoIcon(onClick = { showInfo = true })
+                }
 
                 Spacer(Modifier.height(Spacing.lg))
 
@@ -188,6 +200,9 @@ fun PortfolioLinkDialog(
                     )
                 }
             }
+
+            if (showInfo) LinkSafetyInfoOverlay(onClose = { showInfo = false })
+          }
         }
     }
 }

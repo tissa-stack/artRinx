@@ -21,6 +21,8 @@ val LightFieldText = Color(0xFF1D1D1D)
 val DarkBackground = Color(0xFF121212)
 val DarkSurface = Color(0xFF1A1A1A)
 val DarkCardSurface = Color(0xFF1D1D1D)
+/** Lighter raised surface for overlays/popups that need to read above the dialog in dark theme. */
+val DarkElevatedSurface = Color(0xFF333333)
 val DarkPrimaryText = Color(0xFFFFFFFF)
 val DarkSecondaryText = Color(0xFFF5F5F5)
 val DarkInlineText = Color(0xFF949494)

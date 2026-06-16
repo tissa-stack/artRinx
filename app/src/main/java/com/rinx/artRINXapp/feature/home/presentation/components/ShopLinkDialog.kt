@@ -41,6 +41,8 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DarkCardSurface
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.LinkSafetyInfoIcon
+import com.rinx.artRINXapp.core.ui.LinkSafetyInfoOverlay
 
 @Composable
 fun ShopLinkDialog(
@@ -50,6 +52,7 @@ fun ShopLinkDialog(
 ) {
     val uriHandler = LocalUriHandler.current
     var urlExpanded by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -57,6 +60,7 @@ fun ShopLinkDialog(
             color  = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth(),
         ) {
+          Box {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -116,12 +120,7 @@ fun ShopLinkDialog(
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(Modifier.width(Spacing.xs))
-                    Icon(
-                        painter            = painterResource(R.drawable.ic_help),
-                        contentDescription = null,
-                        tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier           = Modifier.size(Spacing.md),
-                    )
+                    LinkSafetyInfoIcon(onClick = { showInfo = true })
                 }
                 Spacer(Modifier.height(Spacing.lg))
 
@@ -201,6 +200,9 @@ fun ShopLinkDialog(
 
                 Spacer(Modifier.height(Spacing.lg))
             }
+
+            if (showInfo) LinkSafetyInfoOverlay(onClose = { showInfo = false })
+          }
         }
     }
 }
