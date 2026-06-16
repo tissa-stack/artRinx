@@ -79,7 +79,13 @@ fun ProfileShimmer(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 repeat(4) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Bound each column to an equal slot (weight) so the fillMaxWidth fractions
+                    // resolve against the per-column width. Without this the boxes size against the
+                    // whole row, overflow, and the next column's clipped edge leaks in at the right.
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(0.65f)
