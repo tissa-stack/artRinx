@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -63,6 +64,7 @@ fun MessagesContent(
     conversations: List<ConversationItem>,
     messageQuery: String,
     invitationCount: Int,
+    isLoading: Boolean = false,
     isRefreshing: Boolean = false,
     onRefresh: () -> Unit = {},
     onQueryChange: (String) -> Unit,
@@ -179,24 +181,33 @@ fun MessagesContent(
                     if (filtered.isEmpty()) {
                         // Empty as a full-viewport item so pull-to-refresh still works.
                         item(key = "empty") {
-                            if (messageQuery.isNotEmpty()) {
-                                // Search returned nothing, but the inbox isn't actually empty.
-                                SearchMessageView(
-                                    title    = "No results",
-                                    subtitle = "No chats match \"$messageQuery\".",
-                                    icon     = Icons.Outlined.SearchOff,
-                                    modifier = Modifier.fillParentMaxSize(),
-                                )
-                            } else {
-                                // Genuinely no conversations yet.
-                                SearchMessageView(
-                                    title       = "No messages yet",
-                                    subtitle    = "When you start a conversation, it'll show up here.",
-                                    icon        = Icons.Outlined.ChatBubbleOutline,
-                                    actionLabel = "Start a chat",
-                                    onAction    = onNewMessage,
-                                    modifier    = Modifier.fillParentMaxSize(),
-                                )
+                            when {
+                                // First load still in flight — show a spinner, never the "Start a chat"
+                                // empty state, which would otherwise flash before conversations arrive.
+                                isLoading -> Box(
+                                    modifier         = Modifier.fillParentMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(color = BrandPrimary)
+                                }
+                                messageQuery.isNotEmpty() ->
+                                    // Search returned nothing, but the inbox isn't actually empty.
+                                    SearchMessageView(
+                                        title    = "No results",
+                                        subtitle = "No chats match \"$messageQuery\".",
+                                        icon     = Icons.Outlined.SearchOff,
+                                        modifier = Modifier.fillParentMaxSize(),
+                                    )
+                                else ->
+                                    // Genuinely no conversations yet.
+                                    SearchMessageView(
+                                        title       = "No messages yet",
+                                        subtitle    = "When you start a conversation, it'll show up here.",
+                                        icon        = Icons.Outlined.ChatBubbleOutline,
+                                        actionLabel = "Start a chat",
+                                        onAction    = onNewMessage,
+                                        modifier    = Modifier.fillParentMaxSize(),
+                                    )
                             }
                         }
                     } else {

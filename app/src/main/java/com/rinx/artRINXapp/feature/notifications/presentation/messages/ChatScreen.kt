@@ -405,7 +405,8 @@ fun ChatScreen(
                     maxWidth           = dimens.chatBubbleMaxWidth,
                     avatarSize         = dimens.chatAvatarSize,
                     showInviteSent     = msg.isSent && index == lastSentIndex &&
-                                         state.gate == ChatGate.INVITE_SENT_WAITING,
+                                         state.gate == ChatGate.INVITE_SENT_WAITING &&
+                                         state.gateConfirmed,
                     onLongPress        = {
                         if (msg.isSent && !msg.isDeleted && msg.sendStatus == SendStatus.SENT) menuTarget = msg
                     },
@@ -421,6 +422,7 @@ fun ChatScreen(
         // ── Compose-gate info banner (handout 5-state tree) ─────────────
         ChatGateBanner(
             gate             = state.gate,
+            confirmed        = state.gateConfirmed,
             partnerName      = state.partnerName.ifBlank { "this user" },
             remainingInvites = state.remainingInvites,
             iconColor        = iconColor,
@@ -577,10 +579,20 @@ private fun ChatInputShimmer(bg: Color) {
 @Composable
 private fun ChatGateBanner(
     gate: ChatGate,
+    confirmed: Boolean,
     partnerName: String,
     remainingInvites: Int?,
     iconColor: Color,
 ) {
+    // Invite-type gates flip as the relationship changes, so a cache-seeded reopen can briefly hold a
+    // stale one (e.g. "Invite to chat" / "Invitation sent" for a chat that's long since active). Hold
+    // these banners back until the server has confirmed the gate for this open. Blocked states are
+    // seeded reliably (incl. the local blocked-users store), so they show immediately.
+    val isInviteState = gate == ChatGate.FRESH_INVITE ||
+        gate == ChatGate.INVITE_RECEIVED ||
+        gate == ChatGate.INVITE_SENT_WAITING
+    if (isInviteState && !confirmed) return
+
     when (gate) {
         ChatGate.ACTIVE -> Unit
 

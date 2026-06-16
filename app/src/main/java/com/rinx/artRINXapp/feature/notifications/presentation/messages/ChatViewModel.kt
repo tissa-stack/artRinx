@@ -40,6 +40,12 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
     val gate: ChatGate = ChatGate.ACTIVE,
+    /**
+     * True once the server has confirmed the relationship for this screen-open. A cache-seeded reopen
+     * starts false: the cached gate may be a stale invite/waiting state for a chat that's since become
+     * active, so the invite banner is held back until the silent revalidation confirms the real gate.
+     */
+    val gateConfirmed: Boolean = false,
     /** profile.remaining_chat_invites — drives the "You have N new chats this month" footnote. */
     val remainingInvites: Int? = null,
     val isLoading: Boolean = true,
@@ -263,7 +269,7 @@ class ChatViewModel @Inject constructor(
                 if (iBlockedThem) {
                     iBlocked = true
                     _state.update {
-                        it.copy(isLoading = false, isRefreshing = false, error = false, gate = ChatGate.BLOCKED_BY_ME)
+                        it.copy(isLoading = false, isRefreshing = false, error = false, gate = ChatGate.BLOCKED_BY_ME, gateConfirmed = true)
                     }
                 } else {
                     _state.update { it.copy(isLoading = false, isRefreshing = false, error = !isRefresh && !hasContent) }
@@ -299,6 +305,7 @@ class ChatViewModel @Inject constructor(
                     partnerAvatarUrl = pub?.avatarUrl,
                     messages = merged,
                     gate = deriveGate(merged),
+                    gateConfirmed = true,
                     remainingInvites = remaining ?: it.remainingInvites,
                     isLoading = false,
                     isRefreshing = false,
@@ -344,6 +351,7 @@ class ChatViewModel @Inject constructor(
                 st.copy(
                     messages = merged,
                     gate = deriveGate(merged),
+                    gateConfirmed = true,
                     remainingInvites = server.remainingInvites ?: st.remainingInvites,
                     canLoadEarlier = nextCursor != null,
                 )

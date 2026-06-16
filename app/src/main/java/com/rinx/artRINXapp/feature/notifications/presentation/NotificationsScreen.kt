@@ -168,6 +168,7 @@ fun NotificationsScreen(
                         conversations      = state.conversations,
                         messageQuery       = state.messageQuery,
                         invitationCount    = state.invitationCount,
+                        isLoading          = state.isLoadingConversations,
                         isRefreshing       = state.isRefreshing,
                         onRefresh          = { viewModel.refreshConversations(isUserRefresh = true) },
                         onQueryChange      = viewModel::onMessageQueryChange,
