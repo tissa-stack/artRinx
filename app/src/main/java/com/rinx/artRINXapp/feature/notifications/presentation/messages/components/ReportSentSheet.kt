@@ -32,6 +32,7 @@ import com.rinx.artRINXapp.core.theme.Spacing
 @Composable
 fun ReportSentSheet(
     userName: String,
+    isFollowing: Boolean,
     onDismiss: () -> Unit,
     onBlock: () -> Unit,
     onUnfollow: () -> Unit,
@@ -79,9 +80,11 @@ fun ReportSentSheet(
 
             // Block button
             ActionPill("Block this user", BrandPrimary) { onBlock(); onDismiss() }
-            Spacer(Modifier.height(Spacing.md))
-            // Unfollow button
-            ActionPill("Unfollow this user", BrandPrimary) { onUnfollow(); onDismiss() }
+            // Unfollow button — only offered when the current user actually follows them
+            if (isFollowing) {
+                Spacer(Modifier.height(Spacing.md))
+                ActionPill("Unfollow this user", BrandPrimary) { onUnfollow(); onDismiss() }
+            }
 
             Spacer(Modifier.height(Spacing.md))
             Text(

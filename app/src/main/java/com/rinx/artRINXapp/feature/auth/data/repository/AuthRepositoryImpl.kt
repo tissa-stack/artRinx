@@ -20,6 +20,7 @@ import com.rinx.artRINXapp.feature.auth.domain.model.InviteCodeType
 import com.rinx.artRINXapp.feature.auth.domain.model.InviteVerification
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.core.auth.LocalDataCleaner
+import androidx.annotation.VisibleForTesting
 import com.google.gson.Gson
 import java.io.IOException
 import javax.inject.Inject
@@ -346,7 +347,8 @@ class AuthRepositoryImpl @Inject constructor(
 
     // ── Error Parsing ────────────────────────────────────────────────────────
 
-    private fun nativeErrorResult(
+    @VisibleForTesting
+    internal fun nativeErrorResult(
         code: Int,
         rawError: String?,
         response: retrofit2.Response<*>,
@@ -364,7 +366,8 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun parseNativeError(body: String?, fallback: String = DEFAULT_NATIVE_ERROR): String {
+    @VisibleForTesting
+    internal fun parseNativeError(body: String?, fallback: String = DEFAULT_NATIVE_ERROR): String {
         if (body == null) return fallback
         return try {
             val code = gson.fromJson(body, NativeAuthErrorResponse::class.java)?.detail?.code
@@ -374,7 +377,8 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun codeToMessage(code: String?): String? = when (code) {
+    @VisibleForTesting
+    internal fun codeToMessage(code: String?): String? = when (code) {
         "invalid_otp" -> "The code is invalid or has expired."
         "expired_otp", "otp_expired" -> "Your code has expired. Please request a new one."
         "invalid_invite_code", "invite_invalid" -> "This invite code is not valid."

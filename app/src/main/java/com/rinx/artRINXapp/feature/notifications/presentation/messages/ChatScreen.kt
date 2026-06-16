@@ -224,6 +224,7 @@ fun ChatScreen(
     if (showReportSent) {
         ReportSentSheet(
             userName = menuState.name,
+            isFollowing = menuState.isFollowing,
             onDismiss = { showReportSent = false },
             onBlock = { showReportSent = false; blockConfirm = true },
             onUnfollow = { showReportSent = false; unfollowConfirm = true },

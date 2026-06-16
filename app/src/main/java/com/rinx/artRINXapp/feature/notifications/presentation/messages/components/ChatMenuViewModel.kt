@@ -20,6 +20,7 @@ data class ChatMenuUiState(
     val role: String = "Artist",
     val handle: String = "user", // without leading "@"
     val iBlocked: Boolean = false,
+    val isFollowing: Boolean = false,
     val isActioning: Boolean = false,
     val actionError: String? = null,
     /** One-shot: set true after a successful block so the screen can exit to a safe screen. */
@@ -53,6 +54,7 @@ class ChatMenuViewModel @Inject constructor(
                         role = p.role.ifBlank { "Artist" },
                         handle = p.handle.removePrefix("@").ifBlank { "user" },
                         iBlocked = p.iBlocked,
+                        isFollowing = p.isFollowing,
                     )
                 }
             }
@@ -105,7 +107,7 @@ class ChatMenuViewModel @Inject constructor(
         _state.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
             when (val r = profileRepository.unfollowUser(userId)) {
-                is ApiResult.Success -> _state.update { it.copy(isActioning = false, unfollowedSuccess = true) }
+                is ApiResult.Success -> _state.update { it.copy(isActioning = false, isFollowing = false, unfollowedSuccess = true) }
                 is ApiResult.Error -> _state.update {
                     it.copy(isActioning = false, actionError = r.userMessage("Couldn't unfollow. Please try again."))
                 }

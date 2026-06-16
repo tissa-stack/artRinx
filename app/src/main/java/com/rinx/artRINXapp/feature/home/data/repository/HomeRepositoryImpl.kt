@@ -16,6 +16,7 @@ import com.rinx.artRINXapp.feature.home.domain.model.FeedPost
 import com.rinx.artRINXapp.feature.home.domain.model.HomeFeed
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
+import androidx.annotation.VisibleForTesting
 import retrofit2.Response
 import java.io.IOException
 import javax.inject.Inject
@@ -186,7 +187,8 @@ class HomeRepositoryImpl @Inject constructor(
     private fun ArtworkDto.artistDisplay(): String =
         artist?.artistName?.takeIf { it.isNotBlank() } ?: displayName ?: ""
 
-    private fun ArtworkDto.toArtworkItem() = ArtworkItem(
+    @VisibleForTesting
+    internal fun ArtworkDto.toArtworkItem() = ArtworkItem(
         id = id?.toString() ?: "",
         imageUrl = bestImage(),
         title = title.orEmpty(),
@@ -194,7 +196,8 @@ class HomeRepositoryImpl @Inject constructor(
         artistAvatarUrl = profilePictureUrl,
     )
 
-    private fun ArtworkDto.toFeedPost() = FeedPost(
+    @VisibleForTesting
+    internal fun ArtworkDto.toFeedPost() = FeedPost(
         id = id?.toString() ?: "",
         artistName = artistDisplay(),
         artistHandle = artist?.artistName?.let { "@$it" } ?: "",
@@ -208,7 +211,8 @@ class HomeRepositoryImpl @Inject constructor(
         ownerName = displayName?.takeIf { it.isNotBlank() } ?: artistDisplay(),
     )
 
-    private fun ArtworkDto.toShoppablePost() = ShoppablePost(
+    @VisibleForTesting
+    internal fun ArtworkDto.toShoppablePost() = ShoppablePost(
         id = id?.toString() ?: "",
         artistName = artistDisplay(),
         artistHandle = artist?.artistName?.let { "@$it" } ?: "",
@@ -229,7 +233,8 @@ class HomeRepositoryImpl @Inject constructor(
     )
 
     /** Build a human-readable size string from the artwork's dimensions, or null if none are set. */
-    private fun ArtworkSizeDto.toDimensionsDisplay(): String? {
+    @VisibleForTesting
+    internal fun ArtworkSizeDto.toDimensionsDisplay(): String? {
         val h = heightCm?.trim()?.toDoubleOrNull()
         val w = widthCm?.trim()?.toDoubleOrNull()
         if (h == null && w == null) return null
@@ -242,7 +247,8 @@ class HomeRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun CurationDto.toCurationItem(): CurationItem {
+    @VisibleForTesting
+    internal fun CurationDto.toCurationItem(): CurationItem {
         // Use the curation's natural artwork order from the API (do NOT sort). Sorting by id makes
         // every curation surface its lowest-id artworks first, so curations that share artworks
         // (common in the data) end up showing the same preview images. Natural order keeps each
