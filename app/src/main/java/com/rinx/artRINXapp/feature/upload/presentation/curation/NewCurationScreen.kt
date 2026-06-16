@@ -191,6 +191,7 @@ fun NewCurationScreen(
                         charLimit     = 255,
                         showCounter   = state.description.isNotEmpty(),
                         contentHeight = Spacing.giant * 2 + Spacing.lg,
+                        required      = true,
                     )
                 }
 

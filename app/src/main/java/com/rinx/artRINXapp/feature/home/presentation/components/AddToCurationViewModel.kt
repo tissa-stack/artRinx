@@ -39,9 +39,12 @@ class AddToCurationViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AddToCurationUiState())
     val uiState: StateFlow<AddToCurationUiState> = _uiState.asStateFlow()
 
-    // One-shot "close the sheet" signal — a Channel (not state) so it never replays when the
-    // shared ViewModel's sheet is reopened for the same artwork.
-    private val _closeSheet = Channel<Unit>(Channel.BUFFERED)
+    // One-shot "added → close the sheet" signal carrying the success message. A Channel (not state)
+    // so it never replays when the shared ViewModel's sheet is reopened for the same artwork.
+    // The message rides this event (rather than [AddToCurationUiState.message]) so the toast is shown
+    // synchronously, before the sheet is dismissed — otherwise dismissing disposes the composable and
+    // cancels the message-toast effect before it runs.
+    private val _closeSheet = Channel<String>(Channel.BUFFERED)
     val closeSheet = _closeSheet.receiveAsFlow()
 
     init {
@@ -74,8 +77,8 @@ class AddToCurationViewModel @Inject constructor(
             }
             when (val result = curationRepository.addArtworksToCuration(targetId, ids)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(isAdding = false, message = "Added to ${target.title}") }
-                    _closeSheet.send(Unit)
+                    _uiState.update { it.copy(isAdding = false) }
+                    _closeSheet.send("Added to ${target.title}")
                 }
                 is ApiResult.Error ->
                     _uiState.update { it.copy(isAdding = false, message = "Couldn't add — try again") }

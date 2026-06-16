@@ -225,7 +225,7 @@ data class NewCurationState(
     /** Set when the edit prefill fetch failed (e.g. the curation was deleted) → screen toasts + pops. */
     val editLoadFailed: Boolean = false,
 ) {
-    val isValid: Boolean get() = title.isNotEmpty() && selectedArts.isNotEmpty()
+    val isValid: Boolean get() = title.isNotEmpty() && description.isNotBlank() && selectedArts.isNotEmpty()
     val displayedArts: List<UserArtItem> get() = if (activeArtTab == ArtTab.UPLOADS) uploadedArts else likedArts
     val isEditing: Boolean get() = editCurationId != null || isLoadingEdit
 }

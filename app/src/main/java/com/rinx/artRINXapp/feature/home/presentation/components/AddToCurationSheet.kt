@@ -80,16 +80,21 @@ fun AddToCurationSheet(
     // Fixed sheet height (status-bar-safe) so it doesn't fluctuate with content — the grid scrolls inside.
     val sheetHeight = (LocalConfiguration.current.screenHeightDp * 0.8f).dp
 
-    // Toast one-shot messages.
+    // Toast one-shot messages (errors keep the sheet open).
     LaunchedEffect(state.message) {
         state.message?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.consumeMessage()
         }
     }
-    // Close the sheet once an add succeeds (one-shot event — safe to reopen for the same art).
+    // Once an add succeeds, show the success toast *then* close the sheet (one-shot event — safe to
+    // reopen for the same art). Toast fires synchronously here, before onDismiss disposes the sheet,
+    // so the success message is never dropped to the dismissal race.
     LaunchedEffect(Unit) {
-        viewModel.closeSheet.collect { onDismiss() }
+        viewModel.closeSheet.collect { successMessage ->
+            Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
+            onDismiss()
+        }
     }
 
     val filtered = remember(state.curations, query) {
