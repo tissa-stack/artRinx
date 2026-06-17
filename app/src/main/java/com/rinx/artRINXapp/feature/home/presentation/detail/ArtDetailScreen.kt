@@ -326,6 +326,10 @@ private fun ArtDetailContent(
 ) {
     val d = LocalDimens.current
     val post = uiState.post ?: return
+    // Lift the hero above sibling items only while the image is actually zoomed, so a zoomed
+    // image overlays the content below it — yet when not zoomed the like-heart pop (which hops
+    // upward into the hero's region) still draws above the image instead of behind it.
+    var imageZoomed by remember { mutableStateOf(false) }
     var descExpanded by remember { mutableStateOf(false) }
     var showSendSheet by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
@@ -367,13 +371,15 @@ private fun ArtDetailContent(
         item(key = "hero") {
             Box(
                 modifier = Modifier
-                    .zIndex(1f) // draw above the detail items so a zoomed image overlays them
+                    // Above detail items only while zoomed; otherwise the like-heart pop wins.
+                    .zIndex(if (imageZoomed) 1f else 0f)
                     .fillMaxWidth()
                     .height(d.artDetailImageHeight),
             ) {
                 ZoomableImage(
                     model = post.imageUrl,
                     contentDescription = post.title,
+                    onZoomedChange = { imageZoomed = it },
                     modifier = Modifier.fillMaxSize(),
                 )
                 // Subtle top gradient so back button stays readable

@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,10 +42,16 @@ fun ZoomableImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    onZoomedChange: (Boolean) -> Unit = {},
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Report whether the image is currently zoomed so the caller can lift it above
+    // sibling content only while it actually needs to overlay them.
+    val zoomed = scale > 1f
+    LaunchedEffect(zoomed) { onZoomedChange(zoomed) }
 
     fun clampOffset(target: Offset, atScale: Float): Offset {
         if (atScale <= 1f || boxSize == IntSize.Zero) return Offset.Zero
