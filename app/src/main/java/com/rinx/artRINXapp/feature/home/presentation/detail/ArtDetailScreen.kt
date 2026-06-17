@@ -216,9 +216,11 @@ fun ArtDetailScreen(
                     onInviteSheetOpened = viewModel::onInviteSheetOpened,
                     onSendInvite = viewModel::onSendInvite,
                     onInviteSheetClosed = viewModel::onInviteSheetClosed,
-                    // Your OWN art → read-only (just the details). Anyone else's art (incl. liked
-                    // arts in the Profile tab) keeps all the actions + Send message.
-                    showActions = !uiState.isOwn,
+                    // Add-to-curation / Share / Like show on every artwork, including your own.
+                    showActions = true,
+                    // Send-message + Shop-Art only make sense on someone else's art — you can't
+                    // message or buy from yourself.
+                    showContactActions = !uiState.isOwn,
                     modifier = Modifier.fillMaxSize(),
                 )
 
@@ -319,6 +321,7 @@ private fun ArtDetailContent(
     onSendInvite: (String) -> Unit = {},
     onInviteSheetClosed: () -> Unit = {},
     showActions: Boolean = true,
+    showContactActions: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
@@ -508,7 +511,7 @@ private fun ArtDetailContent(
                     }
                 }
                 // Shop Art — only when this artwork has a shop link.
-                if (showActions && post.shopUrl.isNotBlank()) {
+                if (showContactActions && post.shopUrl.isNotBlank()) {
                     ShopArtButton(price = post.price, onClick = { showShopDialog = true })
                 }
             }
@@ -611,7 +614,7 @@ private fun ArtDetailContent(
                     )
                 }
                 // "Send message" shows for other artists' art (incl. liked arts), never your own.
-                if (showActions) {
+                if (showContactActions) {
                     Spacer(Modifier.width(Spacing.sm))
                     Box(
                         modifier = Modifier
