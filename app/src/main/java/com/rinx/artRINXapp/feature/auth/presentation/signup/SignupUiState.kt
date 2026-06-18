@@ -13,12 +13,15 @@ data class SignupUiState(
     val selectedCountry: CountryCode = CountryCodes.default,
     val acceptedTerms: Boolean = false,
     val isLoading: Boolean = false,
+    val isGoogleLoading: Boolean = false,
     val errorMessage: String? = null,
     val navigateToOtp: OtpArgs? = null,
+    val navigateToHome: Boolean = false,
+    val navigateToProfileCompletion: Boolean = false,
 )
 
 val SignupUiState.isContinueEnabled: Boolean
-    get() = !isLoading && acceptedTerms && when (contactType) {
+    get() = !isLoading && !isGoogleLoading && acceptedTerms && when (contactType) {
         ContactType.EMAIL -> email.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(email).matches()
         ContactType.PHONE -> rawPhone.isNotBlank()
     }

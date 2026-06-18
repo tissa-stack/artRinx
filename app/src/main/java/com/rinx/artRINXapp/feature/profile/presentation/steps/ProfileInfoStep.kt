@@ -63,6 +63,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.UsernameCheckState
 import com.rinx.artRINXapp.feature.profile.presentation.components.ProfileTextField
 
@@ -70,6 +71,8 @@ import com.rinx.artRINXapp.feature.profile.presentation.components.ProfileTextFi
 @Composable
 fun ProfileInfoStep(
     pictureUri: Uri?,
+    googlePhotoUrl: String?,
+    avatarPrefilling: Boolean,
     showImageSourceSheet: Boolean,
     fullName: String,
     username: String,
@@ -160,19 +163,33 @@ fun ProfileInfoStep(
                     .clickable(onClick = onAvatarTapped),
                 contentAlignment = Alignment.Center,
             ) {
-                if (pictureUri != null) {
-                    AsyncImage(
+                when {
+                    // Picked / downloaded local photo wins.
+                    pictureUri != null -> AsyncImage(
                         model = pictureUri,
                         contentDescription = "Profile picture",
                         modifier = Modifier.size(avatarSize).clip(CircleShape),
                         contentScale = ContentScale.Crop,
                     )
-                } else {
-                    Icon(
+                    // Google sign-in: show the remote photo (initials fallback) while it downloads.
+                    googlePhotoUrl != null -> RinxAvatar(
+                        url = googlePhotoUrl,
+                        contentDescription = "Profile picture",
+                        size = avatarSize,
+                        name = fullName,
+                    )
+                    else -> Icon(
                         painter = painterResource(R.drawable.ic_edit_photo),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(avatarSize * 0.38f),
+                    )
+                }
+                if (avatarPrefilling) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(avatarSize * 0.3f),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

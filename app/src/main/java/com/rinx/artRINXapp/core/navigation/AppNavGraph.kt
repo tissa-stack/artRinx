@@ -194,6 +194,12 @@ fun AppNavGraph(
             LoginScreen(
                 onBack        = { navController.popBackStack() },
                 onNavigateToOtp = { args -> navController.navigateToOtp(args) },
+                onNavigateToHome = {
+                    navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
+                },
+                onNavigateToProfileCompletion = {
+                    navController.navigate(NavRoutes.PROFILE_COMPLETION) { popUpTo(0) { inclusive = true } }
+                },
             )
         }
 
@@ -214,6 +220,12 @@ fun AppNavGraph(
                     navController.navigate(NavRoutes.LOGIN) {
                         popUpTo(NavRoutes.LOGIN) { inclusive = true }
                     }
+                },
+                onNavigateToHome = {
+                    navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
+                },
+                onNavigateToProfileCompletion = {
+                    navController.navigate(NavRoutes.PROFILE_COMPLETION) { popUpTo(0) { inclusive = true } }
                 },
             )
         }

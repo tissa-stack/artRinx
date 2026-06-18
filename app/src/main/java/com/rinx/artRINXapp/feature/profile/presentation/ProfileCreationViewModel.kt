@@ -1,10 +1,17 @@
 package com.rinx.artRINXapp.feature.profile.presentation
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.tour.TourManager
+import com.rinx.artRINXapp.feature.auth.domain.GooglePrefillHolder
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
 import com.rinx.artRINXapp.feature.profile.domain.model.Medium
@@ -15,6 +22,8 @@ import com.rinx.artRINXapp.feature.profile.domain.repository.MasterLocationRepos
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.profile.domain.repository.StateOption
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +31,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 
 sealed class UsernameCheckState {
@@ -46,6 +58,10 @@ data class ProfileCreationUiState(
 
     // Step 1 – Profile Info
     val profilePictureUri: Uri? = null,
+    // Google sign-in prefill: the remote photo URL (shown via RinxAvatar while it downloads) and a
+    // flag for the download-in-flight spinner. Cleared once the local copy is set as the avatar.
+    val googlePhotoUrl: String? = null,
+    val avatarPrefilling: Boolean = false,
     val showImageSourceSheet: Boolean = false,
     val fullName: String = "",
     val username: String = "",
@@ -96,6 +112,8 @@ class ProfileCreationViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val masterLocationRepository: MasterLocationRepository,
     private val tourManager: TourManager,
+    private val googlePrefillHolder: GooglePrefillHolder,
+    @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileCreationUiState())
@@ -112,28 +130,82 @@ class ProfileCreationViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val draft = draftDataSource.getDraft()
+            // Google new-user prefill (read-once; null for OTP signups). Idempotent: only fills a field
+            // the draft left blank, so a user's own edits are never clobbered. Username is intentionally
+            // NOT prefilled — it is availability-checked and must be deliberately chosen.
+            val google = googlePrefillHolder.consume()
+            val fullName = draft.fullName.ifBlank { google?.fullName.orEmpty() }
+            val displayName = draft.displayName.ifBlank {
+                (google?.givenName?.takeIf { it.isNotBlank() } ?: google?.fullName).orEmpty()
+            }
             _uiState.update { state ->
                 state.copy(
                     draftLoaded = true,
                     currentStep = draft.step,
                     showGroundRules = !draft.groundRulesAccepted,
                     selectedProfileTypeId = draft.profileTypeId,
-                    fullName = draft.fullName,
+                    fullName = fullName,
                     username = draft.username,
-                    displayName = draft.displayName,
+                    displayName = displayName,
                     bio = draft.bio,
                     dob = draft.dob,
                     country = draft.country,
                     state = draft.state,
                     city = draft.city,
                     selectedMediumIds = draft.mediumIds,
+                    googlePhotoUrl = google?.photoUrl,
                 )
             }
+            // Mirror the prefilled names into the draft so they survive process death.
+            if (fullName.isNotBlank() && draft.fullName.isBlank()) draftDataSource.saveFullName(fullName)
+            if (displayName.isNotBlank() && draft.displayName.isBlank()) draftDataSource.saveDisplayName(displayName)
             loadCountriesThenRestore(draft.country, draft.state)
+            google?.photoUrl?.let { maybePrefillPhoto(it) }
         }
         loadProfileTypes()
         loadMediums()
     }
+
+    /**
+     * Downloads the Google account photo to a private cache file and sets it as the avatar, so the
+     * existing multipart upload path works unchanged at submit time. Best-effort: any failure leaves
+     * the avatar empty (RinxAvatar initials fallback) and never blocks the user. A photo the user
+     * picks during the download wins (race guard).
+     */
+    private fun maybePrefillPhoto(googlePhotoUrl: String) {
+        if (_uiState.value.profilePictureUri != null) return
+        _uiState.update { it.copy(avatarPrefilling = true) }
+        viewModelScope.launch {
+            val localUri = downloadGooglePhoto(googlePhotoUrl)
+            _uiState.update { state ->
+                if (state.profilePictureUri != null) state.copy(avatarPrefilling = false)
+                else state.copy(profilePictureUri = localUri, avatarPrefilling = false)
+            }
+        }
+    }
+
+    private suspend fun downloadGooglePhoto(url: String): Uri? = withContext(Dispatchers.IO) {
+        try {
+            val request = ImageRequest.Builder(appContext)
+                .data(upscaleGooglePhotoUrl(url, GOOGLE_AVATAR_SIZE_PX))
+                .allowHardware(false) // need to read pixels back to compress
+                .build()
+            val result = appContext.imageLoader.execute(request)
+            if (result !is SuccessResult) return@withContext null
+            val bitmap = result.drawable.toBitmap()
+            val file = File(appContext.cacheDir, GooglePrefillHolder.AVATAR_CACHE_FILENAME)
+            FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) }
+            // Same-app, in-process read by createProfile's contentResolver — a file:// Uri is fine.
+            Uri.fromFile(file)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Google photo URLs accept a size suffix; request a larger square than the default ~96px. */
+    private fun upscaleGooglePhotoUrl(url: String, size: Int): String =
+        if (url.contains("=s")) url.replace(Regex("=s\\d+(-c)?"), "=s$size-c")
+        else "$url=s$size-c"
 
     // ── Ground Rules ─────────────────────────────────────────────────────────
 
@@ -537,6 +609,8 @@ class ProfileCreationViewModel @Inject constructor(
                     // device-global, so a 2nd account on the same device otherwise never sees it).
                     tourManager.prepareForNewUser()
                     draftDataSource.clearDraft()
+                    // Drop the downloaded Google avatar (if any) now that the profile is created.
+                    runCatching { File(appContext.cacheDir, GooglePrefillHolder.AVATAR_CACHE_FILENAME).delete() }
                     // POST fires at the mediums step; advance to the informational plan step (step 5).
                     _uiState.update { it.copy(isSubmitting = false, currentStep = PLAN_STEP) }
                     draftDataSource.saveStep(PLAN_STEP)
@@ -574,5 +648,7 @@ class ProfileCreationViewModel @Inject constructor(
         const val PLAN_STEP = 4
         /** Debounce for the city prefix-search query. */
         const val CITY_DEBOUNCE_MS = 350L
+        /** Requested square size (px) for the downloaded Google avatar. */
+        const val GOOGLE_AVATAR_SIZE_PX = 512
     }
 }

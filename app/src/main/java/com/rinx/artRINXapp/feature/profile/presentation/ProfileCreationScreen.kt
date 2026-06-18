@@ -244,6 +244,8 @@ private fun ProfileCreationContent(
                     )
                     1 -> ProfileInfoStep(
                         pictureUri = uiState.profilePictureUri,
+                        googlePhotoUrl = uiState.googlePhotoUrl,
+                        avatarPrefilling = uiState.avatarPrefilling,
                         showImageSourceSheet = uiState.showImageSourceSheet,
                         fullName = uiState.fullName,
                         username = uiState.username,

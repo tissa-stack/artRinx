@@ -22,6 +22,14 @@ android {
         versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Google Sign-In web (server) client ID — the serverClientId / ID-token audience used by
+        // Credential Manager. The backend's /api/auth/native/oauth/google accepts this audience.
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            "\"588835405696-oulc1iqcgrmgtv33u2o72mv9oosb3lfl.apps.googleusercontent.com\"",
+        )
     }
 
     buildTypes {
@@ -84,6 +92,12 @@ dependencies {
     implementation(libs.squareup.okhttp.core)
     implementation(libs.squareup.okhttp.logging)
     implementation(libs.androidx.security.crypto)
+
+    // Google Sign-In via Credential Manager (modern; replaces the deprecated GoogleSignInClient).
+    // credentials-play-services-auth bridges to Play services on pre-Android-14 devices (minSdk 24).
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.google.identity.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

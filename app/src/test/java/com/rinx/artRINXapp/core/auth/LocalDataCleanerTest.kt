@@ -1,9 +1,12 @@
 package com.rinx.artRINXapp.core.auth
 
+import android.content.Context
+import com.rinx.artRINXapp.core.auth.google.GoogleAuthClient
 import com.rinx.artRINXapp.core.offline.LiveMutationQueue
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
+import com.rinx.artRINXapp.feature.auth.domain.GooglePrefillHolder
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
@@ -45,6 +48,9 @@ class LocalDataCleanerTest {
     private val blockedUsersStore: BlockedUsersStore = mockk(relaxed = true)
     private val unreadNotificationsStore: UnreadNotificationsStore = mockk(relaxed = true)
     private val pushTokenManager: PushTokenManager = mockk(relaxed = true)
+    private val googleAuthClient: GoogleAuthClient = mockk(relaxed = true)
+    private val googlePrefillHolder: GooglePrefillHolder = mockk(relaxed = true)
+    private val appContext: Context = mockk(relaxed = true)
 
     private lateinit var cleaner: LocalDataCleaner
 
@@ -54,6 +60,7 @@ class LocalDataCleanerTest {
             session, profileDraft, liveMutationQueue, uploadManager, curationManager,
             homeRepository, searchRepository, profileRepository, detailCache, curationPreviewStore,
             chatCache, outgoingMessageStore, blockedUsersStore, unreadNotificationsStore, pushTokenManager,
+            googleAuthClient, googlePrefillHolder, appContext,
         )
     }
 
@@ -92,6 +99,9 @@ class LocalDataCleanerTest {
         coVerify { profileDraft.clearDraft() }
         coVerify { liveMutationQueue.clear() }
         verify { pushTokenManager.deleteToken() }
+        // Google sign-in is wiped too: the prefill is dropped and the saved credential state cleared.
+        verify { googlePrefillHolder.clear() }
+        coVerify { googleAuthClient.clearCredentialState(any()) }
         // clearAll delegates to clearCaches — spot-check a couple of cache wipes happened too.
         verify { detailCache.clear() }
         verify { homeRepository.clearCache() }

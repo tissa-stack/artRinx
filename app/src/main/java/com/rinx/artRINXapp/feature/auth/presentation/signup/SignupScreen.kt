@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.auth.presentation.signup
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.animateColorAsState
@@ -69,9 +68,12 @@ fun SignupScreen(
     onBack: () -> Unit,
     onNavigateToOtp: (OtpArgs) -> Unit,
     onNavigateToLogin: () -> Unit,
+    onNavigateToHome: () -> Unit,
+    onNavigateToProfileCompletion: () -> Unit,
     viewModel: SignupViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -89,6 +91,13 @@ fun SignupScreen(
         }
     }
 
+    LaunchedEffect(uiState.navigateToHome) {
+        if (uiState.navigateToHome) onNavigateToHome()
+    }
+    LaunchedEffect(uiState.navigateToProfileCompletion) {
+        if (uiState.navigateToProfileCompletion) onNavigateToProfileCompletion()
+    }
+
     ArtRinxTheme(darkTheme = true) {
         SignupContent(
             uiState = uiState,
@@ -100,6 +109,7 @@ fun SignupScreen(
             onCountryChange = viewModel::onCountryChange,
             onTermsChange = viewModel::onTermsChange,
             onContinue = viewModel::onContinue,
+            onGoogleSignIn = { viewModel.onGoogleSignIn(context) },
         )
     }
 }
@@ -115,9 +125,9 @@ private fun SignupContent(
     onCountryChange: (com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode) -> Unit,
     onTermsChange: (Boolean) -> Unit,
     onContinue: () -> Unit,
+    onGoogleSignIn: () -> Unit,
 ) {
     val dimens = LocalDimens.current
-    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -235,7 +245,7 @@ private fun SignupContent(
 
             Button(
                 onClick = onContinue,
-                enabled = !uiState.isLoading,
+                enabled = !uiState.isLoading && !uiState.isGoogleLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),
@@ -262,9 +272,8 @@ private fun SignupContent(
             Spacer(modifier = Modifier.height(Spacing.md))
 
             OutlinedButton(
-                onClick = {
-                    Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
-                },
+                onClick = onGoogleSignIn,
+                enabled = !uiState.isLoading && !uiState.isGoogleLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),
@@ -275,19 +284,27 @@ private fun SignupContent(
                     MaterialTheme.colorScheme.outline,
                 ),
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_google_logo),
-                        contentDescription = null,
+                if (uiState.isGoogleLoading) {
+                    CircularProgressIndicator(
                         modifier = Modifier.size(Spacing.xl),
+                        color = Color.White,
+                        strokeWidth = Spacing.xs / 2,
                     )
-                    Text(
-                        text = "Continue with Google",
-                        style = MaterialTheme.typography.labelLarge,
-                    )
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_google_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(Spacing.xl),
+                        )
+                        Text(
+                            text = "Continue with Google",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
                 }
             }
 

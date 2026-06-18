@@ -1,9 +1,14 @@
 package com.rinx.artRINXapp.core.auth
 
+import android.content.Context
+import com.rinx.artRINXapp.core.auth.google.GoogleAuthClient
 import com.rinx.artRINXapp.core.offline.LiveMutationQueue
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
+import com.rinx.artRINXapp.feature.auth.domain.GooglePrefillHolder
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.notifications.data.local.ChatCache
@@ -45,6 +50,9 @@ class LocalDataCleaner @Inject constructor(
     private val blockedUsersStore: BlockedUsersStore,
     private val unreadNotificationsStore: UnreadNotificationsStore,
     private val pushTokenManager: PushTokenManager,
+    private val googleAuthClient: GoogleAuthClient,
+    private val googlePrefillHolder: GooglePrefillHolder,
+    @ApplicationContext private val appContext: Context,
 ) {
     /** Wipe in-memory caches + transient upload/curation state. Keeps the session. */
     fun clearCaches() {
@@ -68,6 +76,11 @@ class LocalDataCleaner @Inject constructor(
         liveMutationQueue.clear()
         // Invalidate the device's FCM token so a signed-out device stops being a push target.
         pushTokenManager.deleteToken()
+        // Drop any unconsumed Google prefill + its downloaded avatar so it can't leak into a later signup.
+        googlePrefillHolder.clear()
+        runCatching { File(appContext.cacheDir, GooglePrefillHolder.AVATAR_CACHE_FILENAME).delete() }
+        // Clear the saved Google credential so the next sign-in re-prompts account choice (best-effort).
+        googleAuthClient.clearCredentialState(appContext)
         clearCaches()
     }
 }

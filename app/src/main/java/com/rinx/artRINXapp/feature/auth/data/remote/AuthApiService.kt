@@ -4,6 +4,7 @@ import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactConfirmAddRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactConfirmChangeRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactStartAddRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactStartChangeRequest
+import com.rinx.artRINXapp.feature.auth.data.remote.dto.GoogleSignInRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyResponse
@@ -46,6 +47,15 @@ interface AuthApiService {
     suspend fun resendOtp(
         @Body request: OtpRequest,
     ): Response<ResponseBody>
+
+    /**
+     * Continue with Google (mobile): exchange a verified Google ID token for a native token pair.
+     * Returns the same envelope as verify-otp; the backend auto-creates the account for new users.
+     */
+    @POST("api/auth/native/oauth/google")
+    suspend fun signInWithGoogle(
+        @Body request: GoogleSignInRequest,
+    ): Response<OtpVerifyResponse>
 
     @POST("api/auth/native/refresh")
     suspend fun refreshToken(

@@ -9,6 +9,7 @@ import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactConfirmAddRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactConfirmChangeRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactStartAddRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.ContactStartChangeRequest
+import com.rinx.artRINXapp.feature.auth.data.remote.dto.GoogleSignInRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.NativeAuthErrorResponse
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyRequest
@@ -125,6 +126,23 @@ class AuthRepositoryImpl @Inject constructor(
             val response = apiService.resendOtp(request)
             if (response.isSuccessful) {
                 ApiResult.Success(Unit)
+            } else {
+                val rawError = response.errorBody()?.string()
+                nativeErrorResult(response.code(), rawError, response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun signInWithGoogle(idToken: String, inviteCode: String?): ApiResult<OtpVerifyResponse> {
+        return try {
+            val response = apiService.signInWithGoogle(GoogleSignInRequest(idToken, inviteCode))
+            if (response.isSuccessful) {
+                response.body()?.let { ApiResult.Success(it) }
+                    ?: ApiResult.Error.Unknown(RuntimeException("Empty Google sign-in response"))
             } else {
                 val rawError = response.errorBody()?.string()
                 nativeErrorResult(response.code(), rawError, response)
@@ -384,6 +402,7 @@ class AuthRepositoryImpl @Inject constructor(
         "invalid_invite_code", "invite_invalid" -> "This invite code is not valid."
         "invalid_referral_code", "referral_invalid" -> "This referral code is not valid."
         "invite_or_referral_required" -> "An invite or referral code is required to sign up."
+        "invite_required" -> "An invite code is required to create an account. Please sign up with your invite code."
         "account_disabled", "identity_disabled" -> "Your account has been disabled. Please contact support."
         "otp_locked" -> "Too many attempts. Please wait before trying again."
         "rate_limited" -> "Too many attempts. Please wait a moment and try again."

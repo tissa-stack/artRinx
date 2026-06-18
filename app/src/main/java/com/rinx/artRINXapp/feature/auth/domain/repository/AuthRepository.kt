@@ -16,6 +16,12 @@ interface AuthRepository {
     suspend fun verifyOtp(request: OtpVerifyRequest): ApiResult<OtpVerifyResponse>
     suspend fun resendOtp(request: OtpRequest): ApiResult<Unit>
     suspend fun refreshToken(request: RefreshTokenRequest): ApiResult<OtpVerifyResponse>
+
+    /**
+     * Exchange a verified Google ID token for a native token pair (sign-in or sign-up).
+     * [inviteCode] must be supplied for new-user sign-up (the backend 400s `invite_required` without it).
+     */
+    suspend fun signInWithGoogle(idToken: String, inviteCode: String? = null): ApiResult<OtpVerifyResponse>
     suspend fun saveSession(response: OtpVerifyResponse)
     fun getRefreshToken(): String?
     fun isSessionValid(): Boolean

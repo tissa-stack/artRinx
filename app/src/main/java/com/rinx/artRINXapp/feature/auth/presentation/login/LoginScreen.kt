@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.auth.presentation.login
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.animateColorAsState
@@ -65,9 +64,12 @@ import com.rinx.artRINXapp.feature.auth.presentation.waitlist.components.Waitlis
 fun LoginScreen(
     onBack: () -> Unit,
     onNavigateToOtp: (OtpArgs) -> Unit,
+    onNavigateToHome: () -> Unit,
+    onNavigateToProfileCompletion: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -85,6 +87,13 @@ fun LoginScreen(
         }
     }
 
+    LaunchedEffect(uiState.navigateToHome) {
+        if (uiState.navigateToHome) onNavigateToHome()
+    }
+    LaunchedEffect(uiState.navigateToProfileCompletion) {
+        if (uiState.navigateToProfileCompletion) onNavigateToProfileCompletion()
+    }
+
     ArtRinxTheme {
         LoginContent(
             uiState = uiState,
@@ -94,6 +103,7 @@ fun LoginScreen(
             onPhoneChange = viewModel::onPhoneChange,
             onCountryChange = viewModel::onCountryChange,
             onContinue = viewModel::onContinue,
+            onGoogleSignIn = { viewModel.onGoogleSignIn(context) },
         )
     }
 }
@@ -107,9 +117,9 @@ private fun LoginContent(
     onPhoneChange: (String) -> Unit,
     onCountryChange: (com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode) -> Unit,
     onContinue: () -> Unit,
+    onGoogleSignIn: () -> Unit,
 ) {
     val dimens = LocalDimens.current
-    val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
 
     Column(
@@ -222,7 +232,7 @@ private fun LoginContent(
 
             Button(
                 onClick = onContinue,
-                enabled = !uiState.isLoading,
+                enabled = !uiState.isLoading && !uiState.isGoogleLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),
@@ -249,9 +259,8 @@ private fun LoginContent(
             Spacer(modifier = Modifier.height(Spacing.md))
 
             OutlinedButton(
-                onClick = {
-                    Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
-                },
+                onClick = onGoogleSignIn,
+                enabled = !uiState.isLoading && !uiState.isGoogleLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),
@@ -264,19 +273,27 @@ private fun LoginContent(
                     MaterialTheme.colorScheme.outline,
                 ),
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_google_logo),
-                        contentDescription = null,
+                if (uiState.isGoogleLoading) {
+                    CircularProgressIndicator(
                         modifier = Modifier.size(Spacing.xl),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        strokeWidth = Spacing.xs / 2,
                     )
-                    Text(
-                        text = "Continue with Google",
-                        style = MaterialTheme.typography.labelLarge,
-                    )
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_google_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(Spacing.xl),
+                        )
+                        Text(
+                            text = "Continue with Google",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
                 }
             }
 

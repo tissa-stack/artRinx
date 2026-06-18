@@ -12,12 +12,15 @@ data class LoginUiState(
     val rawPhone: String = "",
     val selectedCountry: CountryCode = CountryCodes.default,
     val isLoading: Boolean = false,
+    val isGoogleLoading: Boolean = false,
     val errorMessage: String? = null,
     val navigateToOtp: OtpArgs? = null,
+    val navigateToHome: Boolean = false,
+    val navigateToProfileCompletion: Boolean = false,
 )
 
 val LoginUiState.isContinueEnabled: Boolean
-    get() = !isLoading && when (contactType) {
+    get() = !isLoading && !isGoogleLoading && when (contactType) {
         ContactType.EMAIL -> email.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(email).matches()
         ContactType.PHONE -> rawPhone.isNotBlank()
     }
