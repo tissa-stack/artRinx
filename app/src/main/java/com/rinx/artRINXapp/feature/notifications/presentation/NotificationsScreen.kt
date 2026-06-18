@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.notifications.presentation
 
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -33,7 +34,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.events.presentation.EventDetailPopup
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
@@ -67,7 +67,7 @@ fun NotificationsScreen(
     // One-shot toast for a failed/missing event fetch (e.g. legacy 404 events).
     LaunchedEffect(state.eventError) {
         state.eventError?.let { msg ->
-            AppToast.show(msg)
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             viewModel.consumeEventError()
         }
     }

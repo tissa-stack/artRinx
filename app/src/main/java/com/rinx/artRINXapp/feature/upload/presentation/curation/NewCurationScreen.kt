@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.upload.presentation.curation
 
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -62,7 +63,6 @@ import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationCardStack
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
@@ -102,7 +102,7 @@ fun NewCurationScreen(
     // Edit prefill failed (e.g. the curation was deleted) → don't leave the user on a blank form.
     LaunchedEffect(state.editLoadFailed) {
         if (state.editLoadFailed) {
-            AppToast.show("This curation is no longer available.")
+            Toast.makeText(context, "This curation is no longer available.", Toast.LENGTH_SHORT).show()
             onBack()
         }
     }
@@ -183,7 +183,7 @@ fun NewCurationScreen(
                                 onDeleteArt = if (state.isEditing) {
                                     { index ->
                                         if (state.selectedArts.size <= 1) {
-                                            AppToast.show("A curation needs at least one artwork.")
+                                            Toast.makeText(context, "A curation needs at least one artwork.", Toast.LENGTH_SHORT).show()
                                         } else {
                                             pendingDeleteIndex = index
                                         }

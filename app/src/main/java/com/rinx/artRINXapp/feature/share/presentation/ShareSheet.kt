@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.share.presentation
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,7 +65,6 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.core.util.shareEntity
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.domain.model.FollowUser
@@ -95,7 +95,7 @@ fun ShareSheet(
     val sheetHeight = (LocalConfiguration.current.screenHeightDp * 0.8f).dp
 
     LaunchedEffect(Unit) {
-        viewModel.message.collect { AppToast.show(it) }
+        viewModel.message.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
     LaunchedEffect(Unit) {
         viewModel.closeSheet.collect { onDismiss() }
@@ -286,7 +286,7 @@ fun ShareSheet(
                     modifier = Modifier.weight(1f),
                     onClick = {
                         clipboard.setText(AnnotatedString(target.webUrl))
-                        AppToast.show("Link copied")
+                        Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
                     },
                 )
                 QuickAction(

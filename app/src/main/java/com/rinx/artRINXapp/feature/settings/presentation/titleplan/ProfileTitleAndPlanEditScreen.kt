@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.settings.presentation.titleplan
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -47,7 +48,6 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.PlanCard
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.ProfileTitleCard
@@ -153,7 +153,7 @@ fun ProfileTitleAndPlanEditScreen(
                             cta = PlanCatalog.ctaFor(plan.id, state.currentPlanId, state.role, state.isPaid),
                             // Stub until Play Billing lands (Play Console products + verify-google).
                             onCta = {
-                                AppToast.show("Subscriptions are coming soon.")
+                                Toast.makeText(context, "Subscriptions are coming soon.", Toast.LENGTH_SHORT).show()
                             },
                         )
                     }
@@ -168,7 +168,7 @@ fun ProfileTitleAndPlanEditScreen(
                         horizontalArrangement = Arrangement.Center,
                     ) {
                         PaywallAction("Restore Purchases") {
-                            AppToast.show("No purchases to restore.")
+                            Toast.makeText(context, "No purchases to restore.", Toast.LENGTH_SHORT).show()
                         }
                         if (state.isPaid) {
                             Spacer(Modifier.width(Spacing.xl))

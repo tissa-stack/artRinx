@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.settings.presentation.blocked
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +48,6 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.settings.domain.model.BlockedAccount
 
@@ -62,14 +62,14 @@ fun BlockedAccountsScreen(
 
     LaunchedEffect(state.unblockError) {
         state.unblockError?.let {
-            AppToast.show(it)
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.onUnblockErrorShown()
         }
     }
 
     LaunchedEffect(state.unblockedName) {
         state.unblockedName?.let {
-            AppToast.show("Unblocked $it")
+            Toast.makeText(context, "Unblocked $it", Toast.LENGTH_SHORT).show()
             viewModel.onUnblockMessageShown()
         }
     }

@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.upload.presentation.newart
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -67,7 +68,6 @@ import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
 import com.rinx.artRINXapp.feature.upload.domain.model.ShopLinkVisibility
 import com.rinx.artRINXapp.feature.upload.presentation.components.CreationStatusOverlay
@@ -102,7 +102,7 @@ fun NewArtScreen(
     // Edit prefill failed (e.g. the artwork was deleted) → don't leave the user on a blank form.
     LaunchedEffect(state.editLoadFailed) {
         if (state.editLoadFailed) {
-            AppToast.show("This artwork is no longer available.")
+            Toast.makeText(context, "This artwork is no longer available.", Toast.LENGTH_SHORT).show()
             onBack()
         }
     }
@@ -276,7 +276,7 @@ fun NewArtScreen(
                         ShopLinkVisibility.LOCKED -> {
                             val shopCtx = LocalContext.current
                             LockedShopLinkField(onTap = {
-                                AppToast.show("Adding a shop link requires Artist Pro.")
+                                Toast.makeText(context, "Adding a shop link requires Artist Pro.", Toast.LENGTH_SHORT).show()
                             })
                             Spacer(Modifier.height(Spacing.md))
                         }

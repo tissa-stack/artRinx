@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.notifications.presentation.messages
 
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,7 +77,6 @@ import com.rinx.artRINXapp.core.theme.ChatBubbleSentText
 import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ChatMenuViewModel
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ConfirmDialog
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ReportReasonSheet
@@ -135,14 +135,14 @@ fun ChatScreen(
 
     LaunchedEffect(menuState.actionError) {
         menuState.actionError?.let {
-            AppToast.show(it)
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             menuViewModel.onActionErrorShown()
         }
     }
     LaunchedEffect(menuState.blockedSuccess) {
         // Blocked → leave the chat for a safe screen (you can no longer message this user).
         if (menuState.blockedSuccess) {
-            AppToast.show("Blocked ${menuState.name}")
+            Toast.makeText(context, "Blocked ${menuState.name}", Toast.LENGTH_SHORT).show()
             blockConfirm = false
             menuViewModel.onBlockedHandled()
             onBlocked()
@@ -151,7 +151,7 @@ fun ChatScreen(
     LaunchedEffect(menuState.unblockedSuccess) {
         // Unblocked → close the confirm; the menu's full option set returns.
         if (menuState.unblockedSuccess) {
-            AppToast.show("Unblocked ${menuState.name}")
+            Toast.makeText(context, "Unblocked ${menuState.name}", Toast.LENGTH_SHORT).show()
             unblockConfirm = false
             menuViewModel.onUnblockedHandled()
             // Refresh the chat so the gate flips back to ACTIVE — footer + menu return to normal.
@@ -160,7 +160,7 @@ fun ChatScreen(
     }
     LaunchedEffect(menuState.unfollowedSuccess) {
         if (menuState.unfollowedSuccess) {
-            AppToast.show("Unfollowed ${menuState.name}")
+            Toast.makeText(context, "Unfollowed ${menuState.name}", Toast.LENGTH_SHORT).show()
             unfollowConfirm = false
             menuViewModel.onUnfollowedHandled()
         }
@@ -233,7 +233,7 @@ fun ChatScreen(
 
     LaunchedEffect(Unit) { viewModel.loadConversation() }
     LaunchedEffect(Unit) {
-        viewModel.toasts.collect { AppToast.show(it) }
+        viewModel.toasts.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
     // Auto-scroll to the newest message only when a message is APPENDED (last id changes) — not
     // when older messages are prepended by pagination.

@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.profile.presentation.other
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,7 +65,6 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
@@ -109,28 +109,28 @@ fun OtherProfileScreen(
     // Pop back after a successful block (toast survives the pop — it's app-context level).
     LaunchedEffect(Unit) {
         viewModel.closed.collect {
-            AppToast.show("Blocked ${uiState.profile?.displayName ?: "user"}")
+            Toast.makeText(context, "Blocked ${uiState.profile?.displayName ?: "user"}", Toast.LENGTH_SHORT).show()
             onBack()
         }
     }
 
     LaunchedEffect(uiState.actionError) {
         uiState.actionError?.let {
-            AppToast.show(it)
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.onActionErrorShown()
         }
     }
 
     LaunchedEffect(uiState.unblockedSuccess) {
         if (uiState.unblockedSuccess) {
-            AppToast.show("Unblocked ${uiState.profile?.displayName ?: "user"}")
+            Toast.makeText(context, "Unblocked ${uiState.profile?.displayName ?: "user"}", Toast.LENGTH_SHORT).show()
             viewModel.onUnblockedShown()
         }
     }
 
     LaunchedEffect(uiState.actionMessage) {
         uiState.actionMessage?.let {
-            AppToast.show(it)
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.onActionMessageShown()
         }
     }

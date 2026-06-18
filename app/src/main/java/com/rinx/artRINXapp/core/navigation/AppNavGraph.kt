@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.core.navigation
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import com.rinx.artRINXapp.core.tour.TourHost
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.core.util.LegalLinks
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -136,7 +136,7 @@ fun AppNavGraph(
             if (p is UploadProgress.Failed && !p.isPrivate &&
                 navController.currentDestination?.route != NavRoutes.HOME
             ) {
-                AppToast.show(p.message, long = true)
+                Toast.makeText(appContext, p.message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -145,7 +145,7 @@ fun AppNavGraph(
             if (p is CurationProgress.Failed && !p.isPrivate &&
                 navController.currentDestination?.route != NavRoutes.HOME
             ) {
-                AppToast.show(p.message, long = true)
+                Toast.makeText(appContext, p.message, Toast.LENGTH_LONG).show()
             }
         }
     }

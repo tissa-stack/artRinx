@@ -6,17 +6,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.rinx.artRINXapp.core.navigation.AppNavGraph
-import com.rinx.artRINXapp.core.ui.AppToastHost
 import com.rinx.artRINXapp.core.navigation.DeepLinkParser
 import com.rinx.artRINXapp.core.navigation.DeepLinkRouter
 import com.rinx.artRINXapp.core.navigation.DeepLinkTarget
@@ -72,12 +68,7 @@ class MainActivity : ComponentActivity() {
 
                 startDestination?.let { destination ->
                     CompositionLocalProvider(LocalUnreadNotificationCount provides unreadCount) {
-                        Box(Modifier.fillMaxSize()) {
-                            AppNavGraph(startDestination = destination, deepLinkRouter = deepLinkRouter)
-                            // App-wide toast overlay: themed pill replacing system Toast (whose
-                            // OS-drawn app icon can't be sized/removed on Android 12+).
-                            AppToastHost()
-                        }
+                        AppNavGraph(startDestination = destination, deepLinkRouter = deepLinkRouter)
                     }
                 }
             }

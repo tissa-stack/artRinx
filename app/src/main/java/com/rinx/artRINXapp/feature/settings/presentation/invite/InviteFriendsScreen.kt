@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.settings.presentation.invite
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,7 +50,6 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.core.util.shareText
 import com.rinx.artRINXapp.feature.settings.domain.model.Invitee
@@ -165,7 +165,7 @@ fun InviteFriendsScreen(
                                 .size(Spacing.xl)
                                 .clickable(enabled = hasCode) {
                                     clipboard.setText(AnnotatedString(state.code))
-                                    AppToast.show("Invitation code copied")
+                                    Toast.makeText(context, "Invitation code copied", Toast.LENGTH_SHORT).show()
                                 },
                         )
                     }

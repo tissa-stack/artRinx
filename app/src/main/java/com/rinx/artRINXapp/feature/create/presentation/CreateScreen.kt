@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.create.presentation
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,7 +52,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 
@@ -244,7 +244,7 @@ fun CreateScreen(
                         .clip(RoundedCornerShape(50))
                         .border(1.dp, BrandPrimary, RoundedCornerShape(50))
                         .clickable {
-                            AppToast.show("Coming soon")
+                            Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
                         }
                         .padding(horizontal = Spacing.md, vertical = Spacing.xs),
                     contentAlignment = Alignment.Center,

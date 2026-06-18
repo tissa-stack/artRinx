@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.home.presentation
 
+import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,7 +48,6 @@ import com.rinx.artRINXapp.core.tour.TourStep
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.home.domain.model.MockHomeData
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
@@ -93,7 +93,7 @@ fun HomeScreen(
     val context = LocalContext.current
     LaunchedEffect(uiState.toastMessage) {
         uiState.toastMessage?.let {
-            AppToast.show(it)
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.onToastShown()
         }
     }
@@ -400,29 +400,28 @@ private fun HomeTabPage(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = bottomPadding.calculateBottomPadding()),
     ) {
-        // Upload / curation progress belongs only to the Discover feed — not Shop or For You (the
-        // same HomeTabPage composable backs every tab, so gate the rows to the Discover page).
-        if (tab == HomeTab.DISCOVER) {
-            // ── Uploading row (public uploads) — pinned at the very top of the feed ──
-            uiState.uploadProgress?.let { progress ->
-                item(key = "upload-progress") {
-                    UploadProgressRow(
-                        progress = progress,
-                        onRetry = onRetryUpload,
-                        onDismiss = onDismissUpload,
-                    )
-                }
+        // Upload / curation progress is pinned at the very top of EVERY tab's feed (Discover, Shop,
+        // For You) so it's visible no matter which tab the user is on. Each tab is its own
+        // LazyColumn, so these item keys don't collide across pages.
+        // ── Uploading row (public uploads) ──
+        uiState.uploadProgress?.let { progress ->
+            item(key = "upload-progress") {
+                UploadProgressRow(
+                    progress = progress,
+                    onRetry = onRetryUpload,
+                    onDismiss = onDismissUpload,
+                )
             }
+        }
 
-            // ── Creating row (public curations) — directly below the upload row ──
-            uiState.curationProgress?.let { progress ->
-                item(key = "curation-progress") {
-                    CurationProgressRow(
-                        progress = progress,
-                        onRetry = onRetryCuration,
-                        onDismiss = onDismissCuration,
-                    )
-                }
+        // ── Creating row (public curations) — directly below the upload row ──
+        uiState.curationProgress?.let { progress ->
+            item(key = "curation-progress") {
+                CurationProgressRow(
+                    progress = progress,
+                    onRetry = onRetryCuration,
+                    onDismiss = onDismissCuration,
+                )
             }
         }
 
