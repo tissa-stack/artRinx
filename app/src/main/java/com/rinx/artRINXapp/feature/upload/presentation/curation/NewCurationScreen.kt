@@ -36,6 +36,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -56,10 +59,12 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationCardStack
+import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
 import com.rinx.artRINXapp.feature.upload.presentation.components.CreationStatusOverlay
 import com.rinx.artRINXapp.feature.upload.presentation.newart.components.PrivacyPickerSheet
@@ -80,6 +85,19 @@ fun NewCurationScreen(
     val d            = LocalDimens.current
     val focusManager = LocalFocusManager.current
     val context      = LocalContext.current
+
+    // Edit mode: index (into the preview deck) pending a "remove from curation" confirmation.
+    var pendingDeleteIndex by remember { mutableStateOf<Int?>(null) }
+    pendingDeleteIndex?.let { idx ->
+        ConfirmActionDialog(
+            title = "Remove from curation?",
+            confirmLabel = "Remove",
+            confirmColor = DangerRed,
+            iconRes = R.drawable.ic_delete,
+            onConfirm = { viewModel.onRemoveArtAt(idx); pendingDeleteIndex = null },
+            onDismiss = { pendingDeleteIndex = null },
+        )
+    }
 
     // Edit prefill failed (e.g. the curation was deleted) → don't leave the user on a blank form.
     LaunchedEffect(state.editLoadFailed) {
@@ -161,6 +179,22 @@ fun NewCurationScreen(
                             CurationCardStack(
                                 artworks = state.selectedArts.mapNotNull { it.imageUrl ?: it.imageRes },
                                 modifier = Modifier.fillMaxSize(),
+                                // Edit mode only: each card gets a delete badge → confirm → remove (saved on Save).
+                                onDeleteArt = if (state.isEditing) {
+                                    { index ->
+                                        if (state.selectedArts.size <= 1) {
+                                            Toast.makeText(
+                                                context,
+                                                "A curation needs at least one artwork.",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        } else {
+                                            pendingDeleteIndex = index
+                                        }
+                                    }
+                                } else {
+                                    null
+                                },
                             )
                         }
                     }

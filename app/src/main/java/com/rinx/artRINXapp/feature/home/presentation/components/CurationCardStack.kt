@@ -7,10 +7,14 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,15 +22,20 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import com.rinx.artRINXapp.R
+import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import kotlin.math.abs
 import kotlin.math.ceil
 
 private data class SlotConfig(
@@ -61,6 +70,8 @@ fun CurationCardStack(
     modifier: Modifier = Modifier,
     onTopIndexChanged: (Int) -> Unit = {},
     onCardClick: (Int) -> Unit = {},
+    /** When set (edit mode), the focused card shows a delete badge; tapping it invokes this with the page. */
+    onDeleteArt: ((Int) -> Unit)? = null,
 ) {
     if (artworks.isEmpty()) return
 
@@ -138,6 +149,27 @@ fun CurationCardStack(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
+
+                    // Edit-mode only: a delete badge on the FRONT (centered) card → remove this art.
+                    if (onDeleteArt != null && abs(pos) < 0.5f) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(Spacing.sm)
+                                .size(Spacing.xxl)
+                                // Translucent scrim keeps the red icon legible over light or busy images.
+                                .background(Color.Black.copy(alpha = 0.35f), CircleShape)
+                                .clickable { onDeleteArt(page) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_delete),
+                                contentDescription = "Remove from curation",
+                                tint = DangerRed,
+                                modifier = Modifier.size(Spacing.lg),
+                            )
+                        }
+                    }
                 }
             }
         }

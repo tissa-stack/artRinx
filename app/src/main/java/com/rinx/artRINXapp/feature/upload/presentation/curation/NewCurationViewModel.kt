@@ -157,6 +157,20 @@ class NewCurationViewModel @Inject constructor(
         }
     }
 
+    /** Remove the selected art at [index] in the preview deck (edit mode). Persisted on Save. */
+    fun onRemoveArtAt(index: Int) {
+        _state.update { state ->
+            val target = state.selectedArts.getOrNull(index) ?: return@update state
+            val updated = state.selectedArts.filterNot { it.id == target.id }
+            state.copy(
+                selectedArts = updated,
+                uploadedArts = state.uploadedArts.map { a -> a.copy(isSelected = updated.any { it.id == a.id }) },
+                likedArts    = state.likedArts.map { a -> a.copy(isSelected = updated.any { it.id == a.id }) },
+                previewIndex = 0,
+            )
+        }
+    }
+
     fun onPreviewPrev() = _state.update {
         val newIdx = (it.previewIndex - 1).coerceAtLeast(0)
         it.copy(previewIndex = newIdx)
