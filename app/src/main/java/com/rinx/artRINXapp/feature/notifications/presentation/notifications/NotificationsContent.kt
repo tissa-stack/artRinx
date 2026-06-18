@@ -23,6 +23,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
+import com.rinx.artRINXapp.feature.notifications.presentation.SharedContentPreview
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +37,8 @@ fun NotificationsContent(
     onOpenProfile: (Long) -> Unit,
     onOpenArt: (Long) -> Unit,
     onOpenCuration: (Long) -> Unit,
+    previews: Map<Long, SharedContentPreview>,
+    onLoadPreview: (NotificationItem) -> Unit,
     modifier: Modifier = Modifier,
     error: String? = null,
     onRetry: () -> Unit = {},
@@ -83,10 +86,15 @@ fun NotificationsContent(
                         )
                     } else {
                         SwipeableNotificationItem(
-                            item       = item,
-                            onDelete   = { onDelete(item.id) },
-                            onMarkRead = { onMarkRead(item.id) },
-                            onClick    = { routeNotification(item, onOpenArt, onOpenCuration, onOpenProfile) },
+                            item          = item,
+                            preview       = item.targetId?.let { previews[it] },
+                            onDelete      = { onDelete(item.id) },
+                            onMarkRead    = { onMarkRead(item.id) },
+                            onLoadPreview = { onLoadPreview(item) },
+                            onOpenProfile = onOpenProfile,
+                            onOpenArt     = onOpenArt,
+                            onOpenCuration = onOpenCuration,
+                            onClick       = { routeNotification(item, onOpenArt, onOpenCuration, onOpenProfile) },
                         )
                     }
                     HorizontalDivider(

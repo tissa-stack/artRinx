@@ -284,9 +284,11 @@ fun HomeContent(
     // tab indicator / active state stay in sync with the pager position both ways.
     val pagerState = rememberPagerState(initialPage = uiState.activeTab.ordinal) { HomeTab.entries.size }
 
-    // Swipe (or settle) → update the selected tab.
-    LaunchedEffect(pagerState.currentPage) {
-        val swipedTab = HomeTab.entries[pagerState.currentPage]
+    // Swipe → update the selected tab. Keyed on settledPage (not currentPage) so that animating to a
+    // NON-adjacent tab (e.g. Discover → For You) doesn't fire for the pages it passes through, which
+    // would yank activeTab to an intermediate page and cancel the scroll mid-way (the "stuck" header).
+    LaunchedEffect(pagerState.settledPage) {
+        val swipedTab = HomeTab.entries[pagerState.settledPage]
         if (swipedTab != uiState.activeTab) onTabSelected(swipedTab)
     }
     // Tab tapped (activeTab changed elsewhere) → animate the pager to it.

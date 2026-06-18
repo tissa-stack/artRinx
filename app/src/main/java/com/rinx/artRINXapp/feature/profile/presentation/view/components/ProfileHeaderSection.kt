@@ -136,11 +136,20 @@ fun ProfileHeaderSection(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            var showEnlargedAvatar by remember { mutableStateOf(false) }
+            if (showEnlargedAvatar) {
+                EnlargedAvatarDialog(
+                    url = profile.avatarUrl,
+                    name = profile.displayName,
+                    onDismiss = { showEnlargedAvatar = false },
+                )
+            }
             Box(
                 modifier = Modifier
                     .size(d.profileAvatarSize)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { showEnlargedAvatar = true },
                 contentAlignment = Alignment.Center,
             ) {
                 val avatarModel = profile.avatarUrl ?: profile.avatarRes

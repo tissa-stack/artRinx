@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.search.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.model.ResultTab
 import com.rinx.artRINXapp.feature.search.domain.model.SearchFilter
@@ -23,6 +24,7 @@ import javax.inject.Inject
 class SearchViewModel @Inject constructor(
     private val searchRepository: SearchRepository,
     private val profileRepository: ProfileRepository,
+    private val blockedArtworkBus: BlockedArtworkBus,
 ) : ViewModel() {
 
     // Seed idle content synchronously from cache so re-entering the tab shows it instantly (SWR).
@@ -42,6 +44,22 @@ class SearchViewModel @Inject constructor(
         loadIdleContent()
         loadMediums()
         loadCountries()
+        observeBlocks()
+    }
+
+    /** Drop a blocked artwork from results + recommendations the moment it's blocked. */
+    private fun observeBlocks() {
+        viewModelScope.launch {
+            blockedArtworkBus.events.collect { blockedId ->
+                val idStr = blockedId.toString()
+                _uiState.update {
+                    it.copy(
+                        artResults = it.artResults.filterNot { item -> item.id == idStr },
+                        recommended = it.recommended.filterNot { item -> item.id == idStr },
+                    )
+                }
+            }
+        }
     }
 
     /** Load the country filter options (places with ≥1 searchable user, ranked by count). */

@@ -74,6 +74,10 @@ class CurationRepositoryImpl @Inject constructor(
         val curation = getResp.body()?.data
         if (!getResp.isSuccessful || curation == null) return@safeCall errorFor(getResp)
         val existing = curation.artworks.orEmpty().mapNotNull { it.id }
+        // Reject re-adding art already in this curation (no silent no-op PUT) so the UI can warn.
+        if (artworkIds.isNotEmpty() && artworkIds.all { it in existing }) {
+            return@safeCall ApiResult.Error.Validation("Art already exists in the curation")
+        }
         val merged = (existing + artworkIds).distinct()
         // 2. PUT the merged membership, preserving the curation's title/description/privacy.
         val putResp = apiService.updateCuration(

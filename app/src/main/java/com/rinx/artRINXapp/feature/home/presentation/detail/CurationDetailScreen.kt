@@ -253,13 +253,8 @@ fun CurationDetailScreen(
                 uiState.curation != null -> CurationDetailContent(
                     uiState              = uiState,
                     onLike               = viewModel::onLikeToggled,
-                    onNavigateToCuration = onNavigateToCuration,
                     onNavigateToArtDetail = onNavigateToArtDetail,
                     onAddToCuration      = { showAddToCuration = true },
-                    onOpenProfile        = onOpenProfile,
-                    onInviteSheetOpened  = viewModel::onInviteSheetOpened,
-                    onSendInvite         = viewModel::onSendInvite,
-                    onInviteSheetClosed  = viewModel::onInviteSheetClosed,
                     modifier             = Modifier.weight(1f),
                 )
 
@@ -282,45 +277,16 @@ fun CurationDetailScreen(
 private fun CurationDetailContent(
     uiState: CurationDetailUiState,
     onLike: () -> Unit,
-    onNavigateToCuration: (String) -> Unit,
     onNavigateToArtDetail: (String) -> Unit = {},
     onAddToCuration: () -> Unit = {},
-    onOpenProfile: (Int) -> Unit = {},
-    onInviteSheetOpened: () -> Unit = {},
-    onSendInvite: (String) -> Unit = {},
-    onInviteSheetClosed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val d        = LocalDimens.current
     val curation = uiState.curation ?: return
     var descExpanded by remember { mutableStateOf(true) }
-    var showSendSheet by remember { mutableStateOf(false) }
-    var currentArtworkIndex by remember { mutableIntStateOf(0) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
 
     shareTarget?.let { target ->
         ShareSheet(target = target, onDismiss = { shareTarget = null })
-    }
-    val currentArtworkUrl = curation.artworkUrls.getOrElse(currentArtworkIndex) {
-        curation.artworkUrls.firstOrNull() ?: ""
-    }
-
-    if (showSendSheet) {
-        LaunchedEffect(Unit) { onInviteSheetOpened() }
-        SendMessageBottomSheet(
-            artistName      = curation.curatorName,
-            artistRole      = "Artist",
-            artistAvatarUrl = curation.curatorAvatarUrl,
-            artworkTitle    = curation.title,
-            artworkImageUrl = currentArtworkUrl,
-            invitationsLeft = uiState.invitationsLeft,
-            isSending       = uiState.isSendingInvite,
-            sent            = uiState.inviteSent,
-            onSend          = onSendInvite,
-            onDismiss       = { showSendSheet = false; onInviteSheetClosed() },
-            mode            = uiState.sendMode,
-            ready           = uiState.sendModeReady,
-        )
     }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
@@ -330,7 +296,6 @@ private fun CurationDetailContent(
             CurationCardStack(
                 artworks           = curation.artworkUrls,
                 modifier           = Modifier.fillMaxWidth(),
-                onTopIndexChanged  = { currentArtworkIndex = it },
                 onCardClick        = { index ->
                     curation.artworkIds.getOrNull(index)
                         ?.takeIf { it.isNotBlank() }
@@ -463,81 +428,8 @@ private fun CurationDetailContent(
             }
         }
 
-        // ── Curator row + Send message ──────────────────────────────────────
-        item(key = "curator-row") {
-            Row(
-                modifier          = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val authorId = curation.authorId
-                val authorClick = Modifier.then(
-                    if (authorId != null) Modifier.clickable { onOpenProfile(authorId) } else Modifier,
-                )
-                RinxAvatar(
-                    url                = curation.curatorAvatarUrl,
-                    contentDescription = curation.curatorName,
-                    size               = d.avatarSizeLg,
-                    name               = curation.curatorName,
-                    modifier           = authorClick,
-                )
-                Spacer(Modifier.width(Spacing.sm))
-                Column(modifier = Modifier.weight(1f).then(authorClick)) {
-                    Text(
-                        text       = curation.curatorName,
-                        style      = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = MaterialTheme.colorScheme.onBackground,
-                        maxLines   = 1,
-                        overflow   = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text  = "Artist",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                // No "Send message" on your own curation.
-                if (!uiState.isOwn) {
-                    Spacer(Modifier.width(Spacing.sm))
-                    Box(
-                        modifier         = Modifier
-                            .clip(RoundedCornerShape(Spacing.sm))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { showSendSheet = true }
-                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text  = "Send message",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
-            }
-        }
-
-        // ── More like this (hidden when there are no suggestions, e.g. from Profile) ──
-        if (uiState.moreLikeThis.isNotEmpty()) {
-            item(key = "more-header") {
-                SectionHeader(title = "More like this")
-            }
-            item(key = "more-content") {
-                LazyRow(
-                    contentPadding        = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    items(uiState.moreLikeThis, key = { it.id }) { item ->
-                        CollectionCard(
-                            item    = item,
-                            onClick = { onNavigateToCuration(item.id) },
-                        )
-                    }
-                }
-            }
-        }
+        // Curator profile row, "Send message", and "More like this" intentionally omitted —
+        // the curation detail shows only collection-related data.
 
         item(key = "bottom-space") { Spacer(Modifier.height(Spacing.xxl)) }
     }

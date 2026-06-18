@@ -249,7 +249,7 @@ fun NewArtScreen(
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Tags — inline editor (type a tag, tap Add)
+                // Tags — inline editor (type a tag, tap Add). At least one tag is required.
                 item(key = "tags") {
                     TagsEditor(
                         tags          = state.tags,
@@ -258,13 +258,34 @@ fun NewArtScreen(
                         onAdd         = viewModel::onAddTag,
                         onRemove      = viewModel::onRemoveTag,
                     )
+                    if (state.isTagsError) {
+                        Spacer(Modifier.height(Spacing.xs))
+                        FieldErrorText("Add at least one tag")
+                    }
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Shop link — a normal editable field for everyone; price shows once a link is entered.
+                // Shop link — premium-only. Editable for paid Artist/Gallery; locked (paywall) for
+                // Artist Free; hidden for Collector / Art Curious / inactive Gallery (handout §Field gating).
                 item(key = "shop") {
-                    ShopLinkPlainField(state.shopLink, viewModel::onShopLinkChange)
-                    Spacer(Modifier.height(Spacing.md))
+                    when (state.shopLinkVisibility) {
+                        ShopLinkVisibility.VISIBLE -> {
+                            ShopLinkPlainField(state.shopLink, viewModel::onShopLinkChange)
+                            Spacer(Modifier.height(Spacing.md))
+                        }
+                        ShopLinkVisibility.LOCKED -> {
+                            val shopCtx = LocalContext.current
+                            LockedShopLinkField(onTap = {
+                                Toast.makeText(
+                                    shopCtx,
+                                    "Adding a shop link requires Artist Pro.",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            })
+                            Spacer(Modifier.height(Spacing.md))
+                        }
+                        ShopLinkVisibility.HIDDEN -> Unit
+                    }
                 }
                 if (state.shopLink.isNotBlank()) item(key = "price") {
                     PriceField(state.price, state.isPriceError, viewModel::onPriceChange)

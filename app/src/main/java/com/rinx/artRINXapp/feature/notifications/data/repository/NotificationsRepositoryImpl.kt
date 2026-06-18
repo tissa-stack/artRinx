@@ -57,6 +57,8 @@ class NotificationsRepositoryImpl @Inject constructor(
             actorId = actor?.id,
             targetId = target?.id,
             targetType = target?.type,
+            targetTitle = target?.title,
+            targetName = target?.name,
             eventId = eventId,
             eventImageUrl = eventImageUrl,
             organizerId = organizerId,

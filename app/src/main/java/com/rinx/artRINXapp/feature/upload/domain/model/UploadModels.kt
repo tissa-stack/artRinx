@@ -78,6 +78,7 @@ data class ArtFormState(
     val isArtistError: Boolean = false,
     val isDescriptionError: Boolean = false,
     val isMediumError: Boolean = false,
+    val isTagsError: Boolean = false,
     val isPriceError: Boolean = false,
     val isUploading: Boolean = false,
     val artistSearchQuery: String = "",
@@ -94,14 +95,15 @@ data class ArtFormState(
     val editLoadFailed: Boolean = false,
 ) {
     /**
-     * Required to upload/save (handout §6): title, description, artist name (id optional), and a
-     * medium. A price is required only when a shop link is present (and the field is available).
+     * Required to upload/save (handout §6): title, description, artist name (id optional), a medium,
+     * and at least one tag. A price is required only when a shop link is present (and available).
      */
     val isValid: Boolean
         get() = title.isNotEmpty() &&
             description.isNotBlank() &&
             !(selectedArtist?.displayName).isNullOrBlank() &&
             selectedMediumId != null &&
+            tags.isNotEmpty() &&
             isPriceValidForShopLink
 
     /** Price must be a positive number when a shop link is entered; otherwise it's not required. */

@@ -118,9 +118,11 @@ fun CurationCardStack(
             }
             kotlinx.coroutines.delay(ADVANCE_AFTER_MS)
 
-            // Both in the same snapshot → re-entering card sees snap() in one recomposition
+            // Both in the same snapshot → re-entering card sees snap() in one recomposition.
+            // Directional: swipe left (direction < 0) → next card; swipe right → previous card.
             justDismissed = departingIdx
-            topIndex      = (topIndex + 1) % count
+            topIndex      = if (direction < 0) (topIndex + 1) % count
+                            else (topIndex - 1 + count) % count
             dragX.snapTo(0f)
             dragY.snapTo(0f)
 

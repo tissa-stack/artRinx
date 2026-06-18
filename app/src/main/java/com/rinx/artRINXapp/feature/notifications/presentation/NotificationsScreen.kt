@@ -59,6 +59,11 @@ fun NotificationsScreen(
     val d       = LocalDimens.current
     val context = LocalContext.current
 
+    // Reliability backstop: also request the notifications runtime permission here. Some users reach
+    // the app without passing through Home-after-tour (where it's first requested), so prompt on the
+    // Notifications tab too — no-op when already granted or on Android < 13.
+    com.rinx.artRINXapp.core.push.NotificationPermissionEffect()
+
     // One-shot toast for a failed/missing event fetch (e.g. legacy 404 events).
     LaunchedEffect(state.eventError) {
         state.eventError?.let { msg ->
@@ -158,6 +163,8 @@ fun NotificationsScreen(
                         onOpenProfile  = onOpenUserProfile,
                         onOpenArt      = onOpenArtDetail,
                         onOpenCuration = onOpenCurationDetail,
+                        previews       = state.previews,
+                        onLoadPreview  = viewModel::loadPreview,
                         error          = state.notificationsError,
                         onRetry       = viewModel::retryNotifications,
                         isRefreshing  = state.isRefreshingNotifications,

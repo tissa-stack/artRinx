@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.home.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.LikeBus
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
@@ -10,6 +11,7 @@ import com.rinx.artRINXapp.feature.home.domain.model.BannerItem
 import com.rinx.artRINXapp.feature.home.domain.model.FeedPost
 import com.rinx.artRINXapp.feature.home.domain.model.ForYouItem
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
+import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.upload.domain.CurationManager
 import com.rinx.artRINXapp.feature.upload.domain.UploadManager
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationProgress
@@ -30,7 +32,9 @@ class HomeViewModel @Inject constructor(
     private val uploadManager: UploadManager,
     private val curationManager: CurationManager,
     private val likeBus: LikeBus,
+    private val blockedArtworkBus: BlockedArtworkBus,
     private val detailCache: DetailCache,
+    private val profileRepository: ProfileRepository,
 ) : ViewModel() {
 
     // Seed synchronously from cache so returning to the tab renders instantly with no shimmer (SWR).
@@ -57,6 +61,26 @@ class HomeViewModel @Inject constructor(
         observeUploads()
         observeCurations()
         observeLikes()
+        observeBlocks()
+    }
+
+    /** Drop a blocked artwork from every list the moment it's blocked (no refresh wait). */
+    private fun observeBlocks() {
+        viewModelScope.launch {
+            blockedArtworkBus.events.collect { blockedId ->
+                val idStr = blockedId.toString()
+                _uiState.update { state ->
+                    state.copy(
+                        feedItems = state.feedItems.filterNot { it.id == idStr },
+                        forYouItems = state.forYouItems.filterNot {
+                            it is ForYouItem.Post && it.post.id == idStr
+                        },
+                        shoppableItems = state.shoppableItems.filterNot { it.id == idStr },
+                        newArtItems = state.newArtItems.filterNot { it.id == idStr },
+                    )
+                }
+            }
+        }
     }
 
     /** Converge with likes made elsewhere (e.g. the detail screen) while this feed is live. */
@@ -119,16 +143,25 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun UploadProgress.Success.toFeedPost(): FeedPost = FeedPost(
-        id = artwork.id.toString(),
-        artistName = artistName,
-        artistHandle = artistHandle,
-        // CDN url if the backend already returned it, else the local thumbnail for instant render.
-        imageUrl = artwork.imageUrl.ifEmpty { localThumb.toString() },
-        title = title,
-        likeCount = 0,
-        isLiked = false,
-    )
+    private fun UploadProgress.Success.toFeedPost(): FeedPost {
+        // The card header shows the UPLOADER (= current user), not the credited artist. The upload
+        // result has no owner avatar/name, so seed them from the cached profile — otherwise the
+        // optimistic card briefly shows a placeholder avatar + wrong name until the next refresh.
+        val me = profileRepository.cachedProfileData()
+        return FeedPost(
+            id = artwork.id.toString(),
+            artistName = artistName,
+            artistHandle = artistHandle,
+            artistRole = me?.role ?: "Artist",
+            artistAvatarUrl = me?.avatarUrl,
+            ownerName = me?.displayName.orEmpty(),
+            // CDN url if the backend already returned it, else the local thumbnail for instant render.
+            imageUrl = artwork.imageUrl.ifEmpty { localThumb.toString() },
+            title = title,
+            likeCount = 0,
+            isLiked = false,
+        )
+    }
 
     fun onRetryUpload() = uploadManager.retry()
     fun onDismissUpload() = uploadManager.dismiss()

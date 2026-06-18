@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DarkCardSurface
@@ -290,6 +291,8 @@ private fun ReportSent(
                     style      = MaterialTheme.typography.labelLarge,
                     color      = Color.White.copy(alpha = if (isBlocking) 0.6f else 1f),
                     fontWeight = FontWeight.SemiBold,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
                 )
             }
 
@@ -310,6 +313,8 @@ private fun ReportSent(
                 style      = MaterialTheme.typography.labelLarge,
                 color      = Color.White.copy(alpha = if (isBlocking) 0.6f else 1f),
                 fontWeight = FontWeight.SemiBold,
+                maxLines   = 1,
+                overflow   = TextOverflow.Ellipsis,
             )
         }
 
@@ -329,6 +334,8 @@ private fun ReportSent(
                     style      = MaterialTheme.typography.labelLarge,
                     color      = Color.White,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
                 )
             }
         }

@@ -279,7 +279,7 @@ class NewArtViewModel @Inject constructor(
     fun onAddTag() {
         val tag = _state.value.currentTagInput.trim().lowercase()
         if (tag.isNotEmpty() && tag !in _state.value.tags) {
-            _state.update { it.copy(tags = it.tags + tag, currentTagInput = "") }
+            _state.update { it.copy(tags = it.tags + tag, currentTagInput = "", isTagsError = false) }
         } else {
             _state.update { it.copy(currentTagInput = "") }
         }
@@ -289,7 +289,7 @@ class NewArtViewModel @Inject constructor(
     fun onSuggestedTagTap(tag: String) {
         val normalized = tag.trim().lowercase()
         if (normalized.isNotEmpty() && normalized !in _state.value.tags) {
-            _state.update { it.copy(tags = it.tags + normalized) }
+            _state.update { it.copy(tags = it.tags + normalized, isTagsError = false) }
         }
     }
 
@@ -311,6 +311,7 @@ class NewArtViewModel @Inject constructor(
         val descriptionBlank = s.description.isBlank()
         val artistNameBlank = (s.selectedArtist?.displayName).isNullOrBlank()
         val mediumMissing = s.selectedMediumId == null
+        val tagsEmpty = s.tags.isEmpty()
         // Price is required only when a (visible) shop link has been entered.
         val priceInvalid = !s.isPriceValidForShopLink
         _state.update {
@@ -319,10 +320,12 @@ class NewArtViewModel @Inject constructor(
                 isDescriptionError = descriptionBlank,
                 isArtistError = artistNameBlank,
                 isMediumError = mediumMissing,
+                isTagsError = tagsEmpty,
                 isPriceError = priceInvalid,
             )
         }
-        return !titleEmpty && !descriptionBlank && !artistNameBlank && !mediumMissing && !priceInvalid
+        return !titleEmpty && !descriptionBlank && !artistNameBlank && !mediumMissing &&
+            !tagsEmpty && !priceInvalid
     }
 
     /**

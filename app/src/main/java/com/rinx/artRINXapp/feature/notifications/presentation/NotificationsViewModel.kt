@@ -9,10 +9,13 @@ import com.rinx.artRINXapp.core.network.ChatEvent
 import com.rinx.artRINXapp.core.network.ChatWebSocketManager
 import com.rinx.artRINXapp.feature.events.domain.model.EventDetail
 import com.rinx.artRINXapp.feature.events.domain.repository.EventsRepository
+import com.rinx.artRINXapp.feature.home.data.local.DetailCache
+import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
 import com.rinx.artRINXapp.feature.notifications.domain.UnreadNotificationsStore
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotifTab
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
+import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
 import com.rinx.artRINXapp.feature.notifications.domain.repository.MessagesRepository
 import com.rinx.artRINXapp.feature.notifications.domain.repository.NotificationsRepository
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -24,9 +27,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Lazily-resolved preview for a share/like notification (the payload only carries the target id).
+ * For a curation: [imageUrls] are the first few artwork images (the card fan) and [ownerId]/[ownerName]
+ * the curator. For an artwork: [imageUrls] is the single image and [ownerId]/[ownerName] the uploader.
+ */
+data class SharedContentPreview(
+    val ownerId: Long? = null,
+    val ownerName: String? = null,
+    val title: String? = null,
+    val imageUrls: List<String> = emptyList(),
+)
+
 data class NotificationsUiState(
     val activeTab: NotifTab = NotifTab.NOTIFICATIONS,
     val notifications: List<NotificationItem> = emptyList(),
+    /** Resolved share/like previews keyed by target id (curation/artwork). */
+    val previews: Map<Long, SharedContentPreview> = emptyMap(),
     val conversations: List<ConversationItem> = emptyList(),
     val messageQuery: String = "",
     val invitationCount: Int = 0,
@@ -58,6 +75,8 @@ class NotificationsViewModel @Inject constructor(
     private val deepLinkRouter: DeepLinkRouter,
     private val unreadStore: UnreadNotificationsStore,
     private val webSocket: ChatWebSocketManager,
+    private val homeRepository: HomeRepository,
+    private val detailCache: DetailCache,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NotificationsUiState())
@@ -241,6 +260,50 @@ class NotificationsViewModel @Inject constructor(
         // Keep the bell badge in sync with the optimistic read.
         unreadStore.set(_state.value.notifications.count { !it.isRead })
         viewModelScope.launch { notificationsRepository.markRead(id) }
+    }
+
+    /**
+     * Resolve a share/like notification's preview (owner + images) from its target id, lazily and
+     * deduped. Peeks [DetailCache] first (warm), else fetches the curation/artwork detail. Read-only
+     * for artworks (so we don't clobber cached ownership). Silent on failure — the row falls back to
+     * the actor avatar + plain message.
+     */
+    fun loadPreview(item: NotificationItem) {
+        val targetId = item.targetId ?: return
+        if (_state.value.previews.containsKey(targetId)) return
+        val idInt = targetId.toInt()
+        viewModelScope.launch {
+            val preview: SharedContentPreview? = when (item.kind) {
+                NotificationKind.CURATION_SHARE, NotificationKind.CURATION_LIKE -> {
+                    val cur = detailCache.peekCuration(idInt)?.curation
+                        ?: (homeRepository.getCurationDetail(idInt) as? ApiResult.Success)?.data
+                    cur?.let {
+                        SharedContentPreview(
+                            ownerId = it.authorId?.toLong(),
+                            ownerName = it.curatorName,
+                            title = it.title.ifBlank { item.targetTitle.orEmpty() }.ifBlank { null },
+                            imageUrls = it.artworkUrls.take(3),
+                        )
+                    }
+                }
+                NotificationKind.ARTWORK_SHARE, NotificationKind.ARTWORK_LIKE -> {
+                    val post = detailCache.peekArtwork(idInt)?.post
+                        ?: (homeRepository.getArtworkDetail(idInt) as? ApiResult.Success)?.data
+                    post?.let {
+                        SharedContentPreview(
+                            ownerId = it.ownerId?.toLong(),
+                            ownerName = it.ownerName.ifBlank { null },
+                            title = it.title.ifBlank { item.targetTitle.orEmpty() }.ifBlank { null },
+                            imageUrls = listOfNotNull(item.thumbnailUrl ?: it.imageUrl.ifBlank { null }),
+                        )
+                    }
+                }
+                else -> null
+            }
+            if (preview != null) {
+                _state.update { it.copy(previews = it.previews + (targetId to preview)) }
+            }
+        }
     }
 
     // ── Event popup ──────────────────────────────────────────────────────────────

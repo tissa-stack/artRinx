@@ -260,6 +260,9 @@ fun ArtDetailScreen(
                 // Hold the action until ownership is known so we never flash Report on our own art.
                 if (uiState.ownershipResolved) {
                 if (uiState.isOwn) {
+                    // Edit/Delete only when opened from the user's own Profile tab. For own art opened
+                    // from any other flow (feed/search/curation/notifications) show no action at all.
+                    if (uiState.isFromProfile) {
                     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                         IconButton(
                             onClick = {
@@ -288,6 +291,7 @@ fun ArtDetailScreen(
                                 tint = Color.White,
                             )
                         }
+                    }
                     }
                 } else {
                     IconButton(

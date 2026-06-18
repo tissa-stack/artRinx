@@ -20,6 +20,9 @@ sealed interface DeepLinkTarget {
 
     /** gallery_enterprise_notice: open the app to Home only, no navigation/CTA (anti-steering). */
     data object HomeOnly : DeepLinkTarget
+
+    /** A notification push that couldn't be resolved to a specific screen → open the Notifications tab. */
+    data object Notifications : DeepLinkTarget
 }
 
 /**
@@ -63,11 +66,31 @@ object DeepLinkParser {
         kind: String?,
         type: String? = null,
         eventId: String? = null,
+        resourceType: String? = null,
+        resourceId: String? = null,
+        actorId: String? = null,
     ): DeepLinkTarget? {
         if (kind.equals("gallery_enterprise_notice", true)) return DeepLinkTarget.HomeOnly
-        val path = route?.takeIf { it.isNotBlank() }
-            ?: url?.let { runCatching { Uri.parse(it).path }.getOrNull() }
-        fromPath(path)?.let { return it }
+        // `route` is a plain path (e.g. "/artworks/362") → match directly.
+        route?.takeIf { it.isNotBlank() }?.let { fromPath(it)?.let { t -> return t } }
+        // `url` may be a full custom-scheme or universal URL. Parse it via [fromViewUri] (NOT just
+        // .path) so `rinxart://chat/<id>` — where the TYPE is the HOST, not a path segment — resolves
+        // correctly; a bare `Uri.parse(url).path` would drop "chat" and lose the destination.
+        url?.takeIf { it.isNotBlank() }?.let { raw ->
+            runCatching { Uri.parse(raw) }.getOrNull()?.let { uri ->
+                fromViewUri(uri)?.let { t -> return t }
+            }
+        }
+        // Fallback: engagement pushes (like/follow/share) may carry `resource_type` + `resource_id`
+        // instead of a route/url (e.g. resource_type="artwork", resource_id="362").
+        if (!resourceType.isNullOrBlank() && !resourceId.isNullOrBlank()) {
+            fromPath("/$resourceType/$resourceId")?.let { return it }
+        }
+        // A follow push usually carries no content resource — just the follower (`actor_id`); route
+        // to that profile, mirroring the in-app "X started following you" → actor profile behavior.
+        if (type.equals("follow", true) && !actorId.isNullOrBlank()) {
+            return DeepLinkTarget.Route(NavRoutes.userProfile(actorId))
+        }
         if (type?.startsWith("event_", ignoreCase = true) == true && !eventId.isNullOrBlank()) {
             return DeepLinkTarget.Event(eventId)
         }

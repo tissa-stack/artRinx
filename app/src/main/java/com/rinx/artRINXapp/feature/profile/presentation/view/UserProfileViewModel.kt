@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.profile.presentation.view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
@@ -28,6 +29,7 @@ class UserProfileViewModel @Inject constructor(
     private val uploadManager: UploadManager,
     private val curationManager: CurationManager,
     private val profileRefreshBus: ProfileRefreshBus,
+    private val blockedArtworkBus: BlockedArtworkBus,
 ) : ViewModel() {
 
     // Seed synchronously from cache so returning to the Profile tab renders instantly (SWR).
@@ -61,6 +63,22 @@ class UserProfileViewModel @Inject constructor(
         observeUploads()
         observeCurations()
         observeRefreshes()
+        observeBlocks()
+    }
+
+    /** Drop a blocked artwork from the art + liked grids immediately (no refresh wait). */
+    private fun observeBlocks() {
+        viewModelScope.launch {
+            blockedArtworkBus.events.collect { blockedId ->
+                val idStr = blockedId.toString()
+                _uiState.update {
+                    it.copy(
+                        artItems = it.artItems.filterNot { item -> item.id == idStr },
+                        likedItems = it.likedItems.filterNot { item -> item.id == idStr },
+                    )
+                }
+            }
+        }
     }
 
     private fun load() {

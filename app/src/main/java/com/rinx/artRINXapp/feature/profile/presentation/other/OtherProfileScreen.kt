@@ -75,6 +75,7 @@ import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileArtMasonryGrid
+import com.rinx.artRINXapp.feature.profile.presentation.view.components.EnlargedAvatarDialog
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileCurationsGrid
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileTabBar
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.shimmer.ProfileShimmer
@@ -445,11 +446,20 @@ private fun OtherProfileHeader(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            var showEnlargedAvatar by remember { mutableStateOf(false) }
+            if (showEnlargedAvatar) {
+                EnlargedAvatarDialog(
+                    url = profile.avatarUrl,
+                    name = profile.displayName,
+                    onDismiss = { showEnlargedAvatar = false },
+                )
+            }
             Box(
                 modifier = Modifier
                     .size(d.profileAvatarSize)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { showEnlargedAvatar = true },
                 contentAlignment = Alignment.Center,
             ) {
                 if (profile.avatarUrl != null) {

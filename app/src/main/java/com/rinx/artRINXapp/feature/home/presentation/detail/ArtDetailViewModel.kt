@@ -37,6 +37,9 @@ data class ArtDetailUiState(
     val error: Boolean = false,
     /** True when the current user owns this artwork → show Edit/Delete instead of Report. */
     val isOwn: Boolean = false,
+    /** True when this detail was opened from the user's own Profile tab. Edit/Delete are shown ONLY
+     *  for own artwork opened from there; from any other flow (feed/search/curation) no action shows. */
+    val isFromProfile: Boolean = false,
     /** False until ownership is known. The top-bar action stays hidden until then so we never
      *  flash Report on the user's own art before [isOwn] resolves. */
     val ownershipResolved: Boolean = false,
@@ -66,6 +69,7 @@ class ArtDetailViewModel @Inject constructor(
     private val editTargetStore: EditTargetStore,
     private val profileRefreshBus: ProfileRefreshBus,
     private val likeBus: LikeBus,
+    private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
     private val detailCache: DetailCache,
 ) : ViewModel() {
@@ -91,6 +95,7 @@ class ArtDetailViewModel @Inject constructor(
             moreLikeThis = cached.similar,
             isLoading = false,
             isOwn = cached.isOwn,
+            isFromProfile = isFromProfile,
             ownershipResolved = true,
         )
     }
@@ -146,7 +151,7 @@ class ArtDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false, error = false, post = post, moreLikeThis = similar,
-                        isOwn = isOwn, ownershipResolved = true,
+                        isOwn = isOwn, isFromProfile = isFromProfile, ownershipResolved = true,
                     )
                 }
                 // Resolve the conversation state with the owner so the send sheet shows the right
@@ -277,7 +282,9 @@ class ArtDetailViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = profileRepository.blockArtwork(id, lastReportMessage.ifBlank { "Reported from app" })) {
                 is ApiResult.Success -> {
-                    artworkId?.let { detailCache.evictArtwork(it) }
+                    id.let { detailCache.evictArtwork(it) }
+                    // Drop it from every live list immediately (no refresh wait).
+                    blockedArtworkBus.signal(id)
                     profileRefreshBus.signal()
                     _blocked.send("Art blocked")
                 }

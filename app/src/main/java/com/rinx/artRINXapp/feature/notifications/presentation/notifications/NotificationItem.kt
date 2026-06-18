@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -22,12 +23,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -36,36 +37,64 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
+import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
+import com.rinx.artRINXapp.feature.notifications.presentation.SharedContentPreview
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private val REVEAL_WIDTH = 160.dp
 private const val SNAP_OPEN_THRESHOLD = -60f   // drag this far in dp to snap open
 
+/**
+ * A non-event notification row: swipe-to-reveal mark-read/delete, a content-appropriate leading
+ * preview (curation → fan of cards, artwork → thumbnail, follow/profile → actor avatar), and a
+ * message whose named components (actor, content owner, title) are highlighted and individually
+ * navigable. The curation/artwork owner + preview images are resolved lazily via [onLoadPreview].
+ */
 @Composable
 fun SwipeableNotificationItem(
     item: NotificationItem,
+    preview: SharedContentPreview?,
     onDelete: () -> Unit,
     onMarkRead: () -> Unit,
+    onLoadPreview: () -> Unit,
+    onOpenProfile: (Long) -> Unit,
+    onOpenArt: (Long) -> Unit,
+    onOpenCuration: (Long) -> Unit,
     onClick: () -> Unit = {},
 ) {
     val scope        = rememberCoroutineScope()
     val density      = LocalDensity.current
-    // Convert 160dp → pixels so offset and reveal width are in the same unit
     val revealPx     = with(density) { REVEAL_WIDTH.toPx() }
     val snapThreshPx = with(density) { SNAP_OPEN_THRESHOLD.dp.toPx() }
     val offsetPx     = remember { Animatable(0f) }
     val d            = LocalDimens.current
+
+    val isCuration = item.kind == NotificationKind.CURATION_SHARE || item.kind == NotificationKind.CURATION_LIKE
+    val isArtwork  = item.kind == NotificationKind.ARTWORK_SHARE || item.kind == NotificationKind.ARTWORK_LIKE
+
+    // Resolve the owner + preview images once for curation/artwork rows (deduped in the ViewModel).
+    if (isCuration || isArtwork) {
+        LaunchedEffect(item.targetId) { onLoadPreview() }
+    }
 
     Box(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
 
@@ -76,7 +105,6 @@ fun SwipeableNotificationItem(
                 .fillMaxHeight()
                 .width(REVEAL_WIDTH),
         ) {
-            // Mark read — BrandPrimary (left half)
             Box(
                 modifier         = Modifier
                     .weight(1f)
@@ -88,14 +116,8 @@ fun SwipeableNotificationItem(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector        = Icons.Outlined.MailOutline,
-                    contentDescription = "Mark read",
-                    tint               = Color.White,
-                    modifier           = Modifier.size(Spacing.xxl),
-                )
+                Icon(Icons.Outlined.MailOutline, "Mark read", tint = Color.White, modifier = Modifier.size(Spacing.xxl))
             }
-            // Delete — red (right half)
             Box(
                 modifier         = Modifier
                     .weight(1f)
@@ -107,12 +129,7 @@ fun SwipeableNotificationItem(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector        = Icons.Filled.Delete,
-                    contentDescription = "Delete",
-                    tint               = Color.White,
-                    modifier           = Modifier.size(Spacing.xxl),
-                )
+                Icon(Icons.Filled.Delete, "Delete", tint = Color.White, modifier = Modifier.size(Spacing.xxl))
             }
         }
 
@@ -131,39 +148,57 @@ fun SwipeableNotificationItem(
                     },
                     onDragStopped = {
                         scope.launch {
-                            if (offsetPx.value < snapThreshPx)
-                                offsetPx.animateTo(-revealPx)
-                            else
-                                offsetPx.animateTo(0f)
+                            if (offsetPx.value < snapThreshPx) offsetPx.animateTo(-revealPx)
+                            else offsetPx.animateTo(0f)
                         }
                     },
                 )
-                // Tap routes by notification type (set by the caller); horizontal drag still
-                // reveals the mark-read / delete actions.
                 .clickable { onClick() }
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalAlignment = Alignment.Top,
         ) {
-            // Thumbnail (square art) takes priority over the actor avatar (circle).
-            val thumbModel:  Any? = item.thumbnailUrl ?: item.thumbnailRes
-            if (thumbModel != null) {
-                AsyncImage(
-                    model              = thumbModel,
-                    contentDescription = null,
-                    contentScale       = ContentScale.Crop,
-                    modifier           = Modifier
-                        .size(d.avatarSizeLg)
-                        .clip(RoundedCornerShape(Spacing.xs)),
-                )
-            } else {
-                // Circular actor avatar — image, then initials-on-pastel, then person icon.
-                com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar(
+            // ── Leading preview ───────────────────────────────────────────
+            when {
+                // Curation → a small fan of the curation's artwork cards (falls back to the single
+                // thumbnail / actor avatar while the preview resolves). Tap → curation detail.
+                isCuration -> {
+                    val urls = preview?.imageUrls?.takeIf { it.isNotEmpty() }
+                        ?: listOfNotNull(item.thumbnailUrl)
+                    MiniCurationFan(
+                        imageUrls = urls,
+                        size = d.avatarSizeLg,
+                        onClick = { item.targetId?.let(onOpenCuration) },
+                    )
+                }
+                // Artwork → its square thumbnail. Tap → art detail.
+                isArtwork -> {
+                    val url = preview?.imageUrls?.firstOrNull() ?: item.thumbnailUrl
+                    Box(
+                        modifier = Modifier
+                            .size(d.avatarSizeLg)
+                            .clip(RoundedCornerShape(Spacing.xs))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { item.targetId?.let(onOpenArt) },
+                    ) {
+                        if (url != null) {
+                            AsyncImage(
+                                model = url,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                }
+                // Follow / profile-share / unknown → the actor's circular avatar. Tap → actor profile.
+                else -> RinxAvatar(
                     url = item.avatarUrl,
                     fallbackRes = item.avatarRes,
                     contentDescription = null,
                     size = d.avatarSizeLg,
                     name = item.actorName,
+                    modifier = Modifier.clip(CircleShape).clickable { item.actorId?.let(onOpenProfile) },
                 )
             }
 
@@ -171,9 +206,8 @@ fun SwipeableNotificationItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text       = item.message,
+                    text       = buildNotificationMessage(item, preview, onOpenProfile, onOpenArt, onOpenCuration),
                     style      = MaterialTheme.typography.bodySmall,
-                    fontWeight = if (item.isRead) FontWeight.Normal else FontWeight.SemiBold,
                     color      = MaterialTheme.colorScheme.onBackground,
                     maxLines   = 3,
                     overflow   = TextOverflow.Ellipsis,
@@ -184,6 +218,137 @@ fun SwipeableNotificationItem(
                     color    = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.End),
                 )
+            }
+        }
+    }
+}
+
+/** A tappable highlighted span: the [text] substring inside the message links to [onClick]. */
+private data class MsgSpan(val text: String?, val onClick: () -> Unit)
+
+/**
+ * Build the message as an [AnnotatedString] with each known component (actor / owner / title)
+ * highlighted (BrandPrimary, SemiBold) and clickable. Spans whose text is blank or not found in the
+ * server message are skipped — so wording differences degrade gracefully to plain text.
+ */
+private fun buildNotificationMessage(
+    item: NotificationItem,
+    preview: SharedContentPreview?,
+    onOpenProfile: (Long) -> Unit,
+    onOpenArt: (Long) -> Unit,
+    onOpenCuration: (Long) -> Unit,
+): AnnotatedString {
+    val message = item.message
+    val unreadWeight = if (item.isRead) FontWeight.Normal else FontWeight.SemiBold
+
+    val title = (preview?.title ?: item.targetTitle)
+    val spans = buildList {
+        // The actor (who liked / shared / followed) → their profile.
+        item.actorId?.let { add(MsgSpan(item.actorName) { onOpenProfile(it) }) }
+        when (item.kind) {
+            NotificationKind.CURATION_SHARE, NotificationKind.CURATION_LIKE -> {
+                preview?.ownerId?.let { oid -> add(MsgSpan(preview.ownerName) { onOpenProfile(oid) }) }
+                item.targetId?.let { tid -> add(MsgSpan(title) { onOpenCuration(tid) }) }
+            }
+            NotificationKind.ARTWORK_SHARE, NotificationKind.ARTWORK_LIKE -> {
+                preview?.ownerId?.let { oid -> add(MsgSpan(preview.ownerName) { onOpenProfile(oid) }) }
+                item.targetId?.let { tid -> add(MsgSpan(title) { onOpenArt(tid) }) }
+            }
+            NotificationKind.PROFILE_SHARE -> {
+                // The shared profile (target) → that profile.
+                item.targetId?.let { tid -> add(MsgSpan(item.targetName) { onOpenProfile(tid) }) }
+            }
+            else -> Unit
+        }
+    }
+
+    // Resolve each span to a non-overlapping [start,end) range, earliest-first.
+    val matches = spans
+        .mapNotNull { s ->
+            val t = s.text?.trim().orEmpty()
+            if (t.isEmpty()) return@mapNotNull null
+            val idx = message.indexOf(t)
+            if (idx < 0) null else Triple(idx, idx + t.length, s)
+        }
+        .sortedBy { it.first }
+
+    val ranges = mutableListOf<Triple<Int, Int, MsgSpan>>()
+    var lastEnd = 0
+    for (m in matches) if (m.first >= lastEnd) { ranges.add(m); lastEnd = m.second }
+
+    if (ranges.isEmpty()) {
+        return buildAnnotatedString { withStyle(SpanStyle(fontWeight = unreadWeight)) { append(message) } }
+    }
+
+    return buildAnnotatedString {
+        var cursor = 0
+        for ((start, end, span) in ranges) {
+            if (start > cursor) {
+                withStyle(SpanStyle(fontWeight = unreadWeight)) { append(message.substring(cursor, start)) }
+            }
+            withLink(
+                LinkAnnotation.Clickable(
+                    tag = "notif",
+                    linkInteractionListener = { span.onClick() },
+                ),
+            ) {
+                // Same color as the rest of the message — just bold to mark the tappable name/title.
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(message.substring(start, end))
+                }
+            }
+            cursor = end
+        }
+        if (cursor < message.length) {
+            withStyle(SpanStyle(fontWeight = unreadWeight)) { append(message.substring(cursor)) }
+        }
+    }
+}
+
+/** Compact overlapping fan of up to 3 curation artwork images (mirrors CollectionCard at row size). */
+@Composable
+private fun MiniCurationFan(
+    imageUrls: List<String>,
+    size: Dp,
+    onClick: () -> Unit,
+) {
+    val previews = imageUrls.take(3)
+    val count = previews.size.coerceAtLeast(1)
+    // Occupy the SAME square footprint as the other rows' leading image (avatar / artwork thumb).
+    val totalWidth = size
+    val imageWidth = if (count <= 1) totalWidth else totalWidth * 0.7f
+    val stackOffset = if (count <= 1) 0.dp else (totalWidth - imageWidth) / (count - 1)
+
+    Box(
+        modifier = Modifier.width(totalWidth).height(size).clickable { onClick() },
+        contentAlignment = Alignment.TopStart,
+    ) {
+        if (previews.isEmpty()) {
+            Box(
+                Modifier
+                    .width(imageWidth)
+                    .height(size)
+                    .clip(RoundedCornerShape(Spacing.xs))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+        } else {
+            previews.indices.reversed().forEach { index ->
+                Box(
+                    Modifier
+                        .width(imageWidth)
+                        .height(size)
+                        .offset(x = stackOffset * index.toFloat())
+                        .zIndex((previews.size - index).toFloat())
+                        .clip(RoundedCornerShape(Spacing.xs))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    AsyncImage(
+                        model = previews[index],
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }

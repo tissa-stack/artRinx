@@ -162,8 +162,10 @@ private fun UserProfileContent(
             val pagerState = rememberPagerState(
                 initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
             ) { tabs.size }
-            LaunchedEffect(pagerState.currentPage) {
-                val swiped = tabs[pagerState.currentPage]
+            // Key on settledPage (not currentPage) so animating to a non-adjacent tab doesn't fire
+            // for intermediate pages and cancel the scroll mid-way (the "stuck" tab header).
+            LaunchedEffect(pagerState.settledPage) {
+                val swiped = tabs[pagerState.settledPage]
                 if (swiped != uiState.activeTab) onTabSelected(swiped)
             }
             LaunchedEffect(uiState.activeTab) {

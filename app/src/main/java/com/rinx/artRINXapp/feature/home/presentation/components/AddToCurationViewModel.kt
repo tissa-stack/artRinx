@@ -80,6 +80,8 @@ class AddToCurationViewModel @Inject constructor(
                     _uiState.update { it.copy(isAdding = false) }
                     _closeSheet.send("Added to ${target.title}")
                 }
+                is ApiResult.Error.Validation ->
+                    _uiState.update { it.copy(isAdding = false, message = result.message) }
                 is ApiResult.Error ->
                     _uiState.update { it.copy(isAdding = false, message = "Couldn't add — try again") }
             }

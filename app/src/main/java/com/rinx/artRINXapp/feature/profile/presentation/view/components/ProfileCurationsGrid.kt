@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -124,35 +125,35 @@ fun ProfileCurationCard(
                     )
                 }
             }
-
-            // Private lock icon overlay
-            if (item.isPrivate) {
-                Icon(
-                    imageVector = Icons.Filled.Lock,
-                    contentDescription = "Private",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(Spacing.sm)
-                        .size(Spacing.lg),
-                )
-            }
         }
 
-        // ── Title + handle row ────────────────────────────────────────────
+        // ── Title (+ private lock) + handle row ───────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         ) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                // Private indicator — pinned to the right end of the header, always visible.
+                if (item.isPrivate) {
+                    Spacer(Modifier.width(Spacing.xs))
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = "Private",
+                        tint = Color.White,
+                        modifier = Modifier.size(Spacing.md),
+                    )
+                }
+            }
             Text(
                 text = item.handle,
                 style = MaterialTheme.typography.labelSmall,

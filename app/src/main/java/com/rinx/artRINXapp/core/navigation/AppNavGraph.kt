@@ -119,6 +119,10 @@ fun AppNavGraph(
             DeepLinkTarget.HomeOnly -> {
                 navController.navigate(NavRoutes.HOME); deepLinkRouter.consume()
             }
+            DeepLinkTarget.Notifications -> {
+                // Unresolved notification push → at least open the Notifications list (never Home).
+                navController.navigateToTab(NavRoutes.NOTIFICATIONS); deepLinkRouter.consume()
+            }
             else -> Unit // Invite handled by InviteCodeViewModel; null = nothing pending.
         }
     }

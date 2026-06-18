@@ -56,6 +56,10 @@ data class NotificationItem(
     val actorId: Long? = null,
     val targetId: Long? = null,
     val targetType: String? = null,
+    /** Target title (artwork/curation) — highlighted + linked as the title span in the message. */
+    val targetTitle: String? = null,
+    /** Target name (e.g. the shared profile's display name for profile_share). */
+    val targetName: String? = null,
     // Event-only fields (populated when [kind].isEvent).
     val eventId: Long? = null,
     val eventImageUrl: String? = null,

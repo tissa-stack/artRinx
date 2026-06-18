@@ -17,7 +17,13 @@ class ArtFormValidationTest {
         description = "A description",
         selectedArtist = artist,
         selectedMediumId = 3,
+        tags = listOf("abstract"),
     )
+
+    @Test
+    fun `missing tags is invalid`() {
+        assertFalse(validBase().copy(tags = emptyList()).isValid)
+    }
 
     @Test
     fun `empty form is invalid`() {

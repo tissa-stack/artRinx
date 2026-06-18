@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import com.rinx.artRINXapp.core.navigation.AppNavGraph
 import com.rinx.artRINXapp.core.navigation.DeepLinkParser
 import com.rinx.artRINXapp.core.navigation.DeepLinkRouter
+import com.rinx.artRINXapp.core.navigation.DeepLinkTarget
 import com.rinx.artRINXapp.core.push.NotificationChannels
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.push.RinxMessagingService
@@ -83,18 +84,36 @@ class MainActivity : ComponentActivity() {
      */
     private fun handleIntentDeepLink(intent: Intent?) {
         intent ?: return
-        intent.getStringExtra(RinxMessagingService.EXTRA_NOTIFICATION_ID)?.let { id ->
+        // A push tapped while the app is backgrounded/killed is shown by the SYSTEM (not our
+        // onMessageReceived), which launches us with the raw FCM `data` entries as string extras
+        // keyed by their own names ("url", "route", "type", …) — NOT the push_* keys our foreground
+        // service sets. Read our keys first, then fall back to the raw data keys so taps route in
+        // BOTH cases (otherwise a backgrounded-tap loses the target and lands on Home).
+        fun extra(primary: String?, fallback: String): String? =
+            (primary?.let { intent.getStringExtra(it) }) ?: intent.getStringExtra(fallback)
+
+        val notificationId = extra(RinxMessagingService.EXTRA_NOTIFICATION_ID, "notification_id")
+        notificationId?.let { id ->
             lifecycleScope.launch { runCatching { notificationsRepository.markRead(id) } }
         }
-        val target = DeepLinkParser.fromViewUri(
+        var target = DeepLinkParser.fromViewUri(
             intent.data.takeIf { intent.action == Intent.ACTION_VIEW },
         ) ?: DeepLinkParser.fromPush(
-            route = intent.getStringExtra(RinxMessagingService.EXTRA_ROUTE),
-            url = intent.getStringExtra(RinxMessagingService.EXTRA_URL),
-            kind = intent.getStringExtra(RinxMessagingService.EXTRA_KIND),
-            type = intent.getStringExtra(RinxMessagingService.EXTRA_TYPE),
-            eventId = intent.getStringExtra(RinxMessagingService.EXTRA_EVENT_ID),
+            route = extra(RinxMessagingService.EXTRA_ROUTE, "route"),
+            url = extra(RinxMessagingService.EXTRA_URL, "url"),
+            kind = extra(RinxMessagingService.EXTRA_KIND, "kind"),
+            type = extra(RinxMessagingService.EXTRA_TYPE, "type"),
+            eventId = extra(RinxMessagingService.EXTRA_EVENT_ID, "event_id"),
+            resourceType = extra(null, "resource_type"),
+            resourceId = extra(null, "resource_id"),
+            actorId = extra(null, "actor_id"),
         )
+        // A tapped notification that didn't resolve to a specific screen should still open the
+        // Notifications list — never silently land on Home. (ACTION_VIEW web links are excluded so
+        // they keep resolving via fromViewUri.)
+        if (target == null && intent.action != Intent.ACTION_VIEW && notificationId != null) {
+            target = DeepLinkTarget.Notifications
+        }
         deepLinkRouter.post(target)
     }
 }
