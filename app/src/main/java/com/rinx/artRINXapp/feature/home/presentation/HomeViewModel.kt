@@ -140,11 +140,25 @@ class HomeViewModel @Inject constructor(
     // ── Upload progress (PUBLIC uploads only) ──────────────────────────────────
 
     private fun observeUploads() {
+        // Tracks whether a public upload is currently active, so we can detect the idle → active
+        // edge (the moment an upload starts) and react only once per upload.
+        var uploadActive = false
         viewModelScope.launch {
             uploadManager.progress.collect { progress ->
                 // Private uploads belong to the Profile screen, not the public feed.
                 val forHome = progress?.takeUnless { it.isPrivate }
-                _uiState.update { it.copy(uploadProgress = forHome) }
+
+                // When a public upload begins, always jump Home to the Discover tab — that's where
+                // the progress row lives — regardless of which tab the user was on at upload time.
+                val justStarted = forHome != null && !uploadActive
+                uploadActive = forHome != null
+
+                _uiState.update {
+                    it.copy(
+                        uploadProgress = forHome,
+                        activeTab = if (justStarted) HomeTab.DISCOVER else it.activeTab,
+                    )
+                }
 
                 if (forHome is UploadProgress.Success) {
                     _uiState.update { state ->
