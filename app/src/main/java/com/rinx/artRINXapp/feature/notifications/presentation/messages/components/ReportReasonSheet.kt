@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -74,6 +75,9 @@ fun ReportReasonSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Keep content below the status bar when the tall reason list expands the sheet
+                // to full height (otherwise the title draws under the status bar on some devices).
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = Spacing.lg)
                 .navigationBarsPadding(),

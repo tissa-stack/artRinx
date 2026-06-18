@@ -3,10 +3,12 @@ package com.rinx.artRINXapp.feature.search.presentation.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,7 +30,9 @@ fun ResultTypeTabs(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier              = modifier,
+        // Scroll horizontally so the pills keep their full labels on narrow screens / large font
+        // scales instead of being squeezed until "Curations" wraps to a second line.
+        modifier              = modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         ResultTab.entries.forEach { tab ->
@@ -69,6 +73,8 @@ private fun ResultPillTab(
             style      = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color      = textColor,
+            maxLines   = 1,
+            softWrap   = false,
         )
     }
 }

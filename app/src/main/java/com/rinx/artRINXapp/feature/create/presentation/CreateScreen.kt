@@ -14,8 +14,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -191,13 +193,15 @@ fun CreateScreen(
             Spacer(Modifier.height(Spacing.xl))
 
             // ── Option cards ──────────────────────────────────────────────
-            Row(modifier = Modifier.fillMaxWidth()) {
+            // IntrinsicSize.Max + fillMaxHeight keeps both cards the same height even when one
+            // title wraps to two lines (e.g. "New Collection") and the other stays single-line.
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
                 CreateOptionCard(
                     iconRes  = R.drawable.ic_upload_art,
                     iconColor = UploadArtColor,
                     title    = "Upload Art",
                     subtitle = "Share your work",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     onClick  = { onUploadArtTap() },
                 )
                 Spacer(Modifier.width(Spacing.md))
@@ -206,7 +210,7 @@ fun CreateScreen(
                     iconColor = NewCollectionColor,
                     title    = "New Collection",
                     subtitle = "Curate pieces",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     onClick  = { onNavigateToNewCuration() },
                 )
             }
