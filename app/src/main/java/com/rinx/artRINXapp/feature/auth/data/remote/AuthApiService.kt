@@ -67,8 +67,9 @@ interface AuthApiService {
         @Body request: RefreshTokenRequest,
     ): Response<ResponseBody>
 
-    /** Revoke ALL refresh tokens for the current user (Settings → Sign out everywhere). Bearer-authed. */
-    @POST("api/auth/native/sign-out-everywhere")
+    /** Revoke ALL refresh tokens for the current user (Settings → Sign out everywhere). Bearer-authed.
+     *  Path is `sign-out-all` per the api-skills contract. */
+    @POST("api/auth/native/sign-out-all")
     suspend fun signOutEverywhere(): Response<ResponseBody>
 
     /** Schedule deletion of the current account (§3.10). Bearer-authed; soft-deletes after a grace window. */

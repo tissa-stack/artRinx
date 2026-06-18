@@ -10,6 +10,7 @@ interface SearchRepository {
     suspend fun searchArtworks(
         query: String,
         mediumIds: List<Int>,
+        tags: List<String>,
         shopArtOnly: Boolean,
         sortBy: SortOption,
         country: String? = null,

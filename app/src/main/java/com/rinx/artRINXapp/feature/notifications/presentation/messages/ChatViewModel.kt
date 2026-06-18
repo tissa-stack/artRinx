@@ -16,9 +16,11 @@ import com.rinx.artRINXapp.feature.notifications.domain.repository.MessagesRepos
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.google.gson.JsonObject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,6 +59,8 @@ data class ChatUiState(
     val isLoadingEarlier: Boolean = false,
     /** Non-null while inline-editing one of my own messages (drives the X / ✓ compose UI). */
     val editingMessageId: String? = null,
+    /** True while the other participant is typing (drives the "typing…" bubble). */
+    val partnerIsTyping: Boolean = false,
 ) {
     val canSend: Boolean
         get() = when (gate) {
@@ -87,6 +91,12 @@ class ChatViewModel @Inject constructor(
     private var currentUserId: Int = 0
     private var chatroomId: String? = null
     private var nextCursor: String? = null
+
+    // Typing indicator: inbound clear-after-idle job, outbound stop-after-idle job + throttle clock.
+    private var typingClearJob: Job? = null
+    private var typingStopJob: Job? = null
+    private var outboundTypingActive = false
+    private var lastTypingPingMs = 0L
 
     /**
      * Server/WS-confirmed messages (the durable list). The displayed list = [confirmed] merged with
@@ -411,9 +421,39 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun onInputChange(text: String) =
+    fun onInputChange(text: String) {
         // Strip URLs in real time (the backend rejects them); other text + whitespace pass through.
-        _state.update { it.copy(inputText = text.replace(URL_REGEX, "")) }
+        val cleaned = text.replace(URL_REGEX, "")
+        _state.update { it.copy(inputText = cleaned) }
+        // Outbound typing signal (not while inline-editing an existing message).
+        if (cleaned.isNotEmpty() && _state.value.editingMessageId == null) onLocalTypingActivity()
+        else stopLocalTyping()
+    }
+
+    /** Throttled outbound typing: send is_typing=true ≤1 per [TYPING_PING_INTERVAL_MS]; auto-stop after idle. */
+    private fun onLocalTypingActivity() {
+        val room = chatroomId ?: return
+        val now = System.currentTimeMillis()
+        if (now - lastTypingPingMs >= TYPING_PING_INTERVAL_MS) {
+            webSocket.sendTyping(room, true)
+            lastTypingPingMs = now
+            outboundTypingActive = true
+        }
+        typingStopJob?.cancel()
+        typingStopJob = viewModelScope.launch {
+            delay(TYPING_IDLE_STOP_MS)
+            stopLocalTyping()
+        }
+    }
+
+    private fun stopLocalTyping() {
+        typingStopJob?.cancel()
+        if (outboundTypingActive) {
+            chatroomId?.let { webSocket.sendTyping(it, false) }
+            outboundTypingActive = false
+        }
+        lastTypingPingMs = 0L
+    }
 
     /** Enter inline-edit mode for one of my own messages (pre-fills the compose field). */
     fun beginEdit(message: ChatMessage) {
@@ -441,6 +481,7 @@ class ChatViewModel @Inject constructor(
         // bubble appears via the outgoing observer; clear the input now.
         val cid = UUID.randomUUID().toString()
         _state.update { it.copy(inputText = "") }
+        stopLocalTyping() // we're done typing the moment we send
         outgoingStore.send(partnerUserId, currentUserId, cid, text)
     }
 
@@ -541,6 +582,23 @@ class ChatViewModel @Inject constructor(
                 publishMessages()
             }
             is ChatEvent.IncomingNotification -> Unit // handled elsewhere
+            is ChatEvent.Typing -> handlePartnerTyping(event)
+        }
+    }
+
+    /** Inbound: show the "typing…" bubble for the other participant, with a 6s safety auto-clear. */
+    private fun handlePartnerTyping(event: ChatEvent.Typing) {
+        val room = chatroomId
+        if (room == null || event.chatroomId != room || event.userId != partnerUserId) return
+        typingClearJob?.cancel()
+        if (event.isTyping) {
+            _state.update { it.copy(partnerIsTyping = true) }
+            typingClearJob = viewModelScope.launch {
+                delay(TYPING_AUTO_CLEAR_MS)
+                _state.update { it.copy(partnerIsTyping = false) }
+            }
+        } else {
+            _state.update { it.copy(partnerIsTyping = false) }
         }
     }
 
@@ -640,9 +698,22 @@ class ChatViewModel @Inject constructor(
     private fun JsonObject.intOrNull(vararg keys: String): Int? =
         keys.firstNotNullOfOrNull { get(it)?.takeIf { el -> !el.isJsonNull }?.asInt }
 
+    override fun onCleared() {
+        super.onCleared()
+        // Best-effort "stopped typing" when leaving the thread.
+        stopLocalTyping()
+        typingClearJob?.cancel()
+    }
+
     private companion object {
         /** http://, https://, and www. URLs — stripped from compose input (handout link-stripping). */
         val URL_REGEX = Regex("""(?i)\b(?:https?://|www\.)\S+""")
+        /** Throttle outbound is_typing=true (server rate-limits ≤1 per 2s — stay above that). */
+        const val TYPING_PING_INTERVAL_MS = 3_000L
+        /** No keystroke for this long → send is_typing=false. */
+        const val TYPING_IDLE_STOP_MS = 5_000L
+        /** Safety net: clear the inbound "typing…" bubble if no fresh frame arrives. */
+        const val TYPING_AUTO_CLEAR_MS = 6_000L
         val ISO_PATTERNS = listOf(
             "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
             "yyyy-MM-dd'T'HH:mm:ssXXX",

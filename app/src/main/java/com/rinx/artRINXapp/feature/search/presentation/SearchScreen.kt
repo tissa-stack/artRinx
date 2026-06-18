@@ -173,6 +173,8 @@ fun SearchScreen(
                 onToggleStyle = viewModel::onToggleStyleExpanded,
                 onToggleShopArt = viewModel::onToggleShopArt,
                 onToggleMedium = viewModel::onToggleMedium,
+                onAddTag = viewModel::onAddTag,
+                onRemoveTag = viewModel::onRemoveTag,
                 onReset = viewModel::onResetFilter,
                 onViewResults = viewModel::onApplyFilter,
                 onDismiss = viewModel::onDismissFilter,

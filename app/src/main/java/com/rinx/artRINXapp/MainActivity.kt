@@ -42,7 +42,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         splashScreen.setKeepOnScreenCondition {
-            mainViewModel.startDestination.value == null
+            // Hold the splash until the start destination is known AND any cold-start push/deep-link
+            // target has been consumed. The nav graph renders its start destination (Home) and then
+            // navigates to the target UNDER the splash, so a tapped notification lands directly on the
+            // relevant screen with no Home flash in between.
+            mainViewModel.startDestination.value == null || hasPendingContentTarget()
         }
 
         enableEdgeToEdge()
@@ -82,6 +86,19 @@ class MainActivity : ComponentActivity() {
      * resolve any deep-link target (invite link, push route/url, or gallery_enterprise_notice) and
      * hand it to the nav graph via [DeepLinkRouter].
      */
+    /**
+     * True while a cold-start push/deep-link points at an in-app screen that the nav graph will route
+     * to. Keeping the splash up until it's consumed avoids a Home-screen flash before the target.
+     * Excludes `Invite` (it has its own signup flow) and null (a normal launch).
+     */
+    private fun hasPendingContentTarget(): Boolean = when (deepLinkRouter.target.value) {
+        is DeepLinkTarget.Route,
+        is DeepLinkTarget.Event,
+        DeepLinkTarget.HomeOnly,
+        DeepLinkTarget.Notifications -> true
+        else -> false
+    }
+
     private fun handleIntentDeepLink(intent: Intent?) {
         intent ?: return
         // A push tapped while the app is backgrounded/killed is shown by the SYSTEM (not our

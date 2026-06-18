@@ -139,9 +139,10 @@ class SearchViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, isError = false) }
             val mediumIds = state.filter.mediumIds.toList()
             val f = state.filter
+            val tags = f.tags.toList()
             when (state.selectedTab) {
                 ResultTab.ART -> {
-                    when (val res = searchRepository.searchArtworks(query, mediumIds, f.shopArtOnly, state.sortOption, f.country, f.state, f.city)) {
+                    when (val res = searchRepository.searchArtworks(query, mediumIds, tags, f.shopArtOnly, state.sortOption, f.country, f.state, f.city)) {
                         is ApiResult.Success -> _uiState.update { it.copy(isLoading = false, isError = false, artResults = res.data) }
                         is ApiResult.Error -> _uiState.update { it.copy(isLoading = false, isError = true) }
                     }
@@ -235,6 +236,21 @@ class SearchViewModel @Inject constructor(
                 if (id in this) remove(id) else add(id)
             }
             state.copy(filter = state.filter.copy(mediumIds = updated))
+        }
+    }
+
+    /** Add a free-text tag to the filter (normalized lowercase; no-op if blank/duplicate). */
+    fun onAddTag(tag: String) {
+        val normalized = tag.trim().lowercase()
+        if (normalized.isEmpty()) return
+        _uiState.update { state ->
+            state.copy(filter = state.filter.copy(tags = state.filter.tags + normalized))
+        }
+    }
+
+    fun onRemoveTag(tag: String) {
+        _uiState.update { state ->
+            state.copy(filter = state.filter.copy(tags = state.filter.tags - tag))
         }
     }
 

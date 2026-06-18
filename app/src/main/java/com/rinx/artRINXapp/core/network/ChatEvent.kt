@@ -38,4 +38,11 @@ sealed interface ChatEvent {
 
     /** `notification` — a new notification (REST shape §8.3). */
     data class IncomingNotification(val data: JsonObject) : ChatEvent
+
+    /** `typing` — the other party started/stopped typing in a chatroom (§12.3). */
+    data class Typing(
+        val chatroomId: String,
+        val userId: Int,
+        val isTyping: Boolean,
+    ) : ChatEvent
 }

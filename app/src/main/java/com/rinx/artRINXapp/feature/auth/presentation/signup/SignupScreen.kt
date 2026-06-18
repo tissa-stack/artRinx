@@ -273,7 +273,8 @@ private fun SignupContent(
 
             OutlinedButton(
                 onClick = onGoogleSignIn,
-                enabled = !uiState.isLoading && !uiState.isGoogleLoading,
+                // Sign-up requires accepting the terms — gate Google sign-up on the checkbox too.
+                enabled = !uiState.isLoading && !uiState.isGoogleLoading && uiState.acceptedTerms,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),

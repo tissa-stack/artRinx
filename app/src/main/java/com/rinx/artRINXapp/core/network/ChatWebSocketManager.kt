@@ -301,8 +301,33 @@ class ChatWebSocketManager @Inject constructor(
                 )
             }
             "notification" -> data?.let { emit(ChatEvent.IncomingNotification(it)) }
+            "typing" -> data?.let {
+                emit(
+                    ChatEvent.Typing(
+                        chatroomId = it.string("chatroom_id") ?: return,
+                        userId = it.int("user_id") ?: return,
+                        isTyping = it.bool("is_typing") ?: false,
+                    ),
+                )
+            }
             else -> Unit // unknown event types are silently dropped (§12.3).
         }
+    }
+
+    /**
+     * Outbound typing signal (§12.3): `{type:"typing", data:{chatroom_id, is_typing}}`. Best-effort —
+     * no-op if the socket isn't open. The ViewModel throttles these (server rate-limits ≤1/2s).
+     */
+    fun sendTyping(chatroomId: String, isTyping: Boolean) {
+        val ws = webSocket ?: return
+        val payload = JsonObject().apply {
+            addProperty("type", "typing")
+            add("data", JsonObject().apply {
+                addProperty("chatroom_id", chatroomId)
+                addProperty("is_typing", isTyping)
+            })
+        }
+        runCatching { ws.send(gson.toJson(payload)) }
     }
 
     private fun emit(event: ChatEvent) {

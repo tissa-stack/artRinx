@@ -21,6 +21,7 @@ interface SearchApiService {
         @Query("search") query: String,
         @Query("category") category: String,
         @Query("medium_ids") mediumIds: List<Int>?,
+        @Query("tags") tags: List<String>?,
         @Query("has_shop_link") hasShopLink: Boolean?,
         @Query("sort_by") sortBy: String,
         @Query("country") country: String? = null,

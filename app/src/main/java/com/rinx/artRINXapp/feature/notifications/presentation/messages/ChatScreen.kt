@@ -416,6 +416,36 @@ fun ChatScreen(
                 )
                 Spacer(Modifier.height(Spacing.sm))
             }
+            if (state.partnerIsTyping) {
+                item(key = "typing_indicator") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        RinxAvatar(
+                            url = state.partnerAvatarUrl,
+                            contentDescription = null,
+                            size = dimens.chatAvatarSize,
+                            name = state.partnerName,
+                        )
+                        Spacer(Modifier.width(Spacing.xs))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(Spacing.lg))
+                                .background(bubbleReceived)
+                                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                        ) {
+                            Text(
+                                text = "typing…",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = receivedTextColor.copy(alpha = 0.6f),
+                                fontStyle = FontStyle.Italic,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(Spacing.sm))
+                }
+            }
         }
         } // when
         } // Box(weight)

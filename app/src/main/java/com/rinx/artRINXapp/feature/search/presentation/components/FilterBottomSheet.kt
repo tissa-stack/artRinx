@@ -25,6 +25,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -39,11 +42,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -60,6 +69,8 @@ fun FilterBottomSheet(
     onToggleStyle: () -> Unit,
     onToggleShopArt: () -> Unit,
     onToggleMedium: (Int) -> Unit,
+    onAddTag: (String) -> Unit,
+    onRemoveTag: (String) -> Unit,
     onReset: () -> Unit,
     onViewResults: () -> Unit,
     onDismiss: () -> Unit,
@@ -198,6 +209,84 @@ fun FilterBottomSheet(
             HorizontalDivider(color = divider)
             Spacer(Modifier.height(Spacing.xl))
 
+            // ── Tags (free-text; sent as repeating `tags=` query) ────────────
+            Text(
+                text = "Tags",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(Spacing.md))
+            var tagInput by remember { mutableStateOf("") }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(Spacing.sm))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = Spacing.md, vertical = Spacing.md),
+                ) {
+                    BasicTextField(
+                        value = tagInput,
+                        onValueChange = { tagInput = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onBackground,
+                        ),
+                        cursorBrush = SolidColor(BrandPrimary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            onAddTag(tagInput); tagInput = ""
+                        }),
+                        modifier = Modifier.fillMaxWidth(),
+                        decorationBox = { inner ->
+                            Box {
+                                if (tagInput.isEmpty()) {
+                                    Text(
+                                        "Add a tag",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                inner()
+                            }
+                        },
+                    )
+                }
+                Spacer(Modifier.width(Spacing.sm))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(BrandPrimary)
+                        .clickable { onAddTag(tagInput); tagInput = "" }
+                        .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "Add",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            if (filter.tags.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.sm))
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    filter.tags.toList().chunked(3).forEach { rowTags ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                            rowTags.forEach { tag ->
+                                FilterTagChip(label = tag, onRemove = { onRemoveTag(tag) })
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(Spacing.xl))
+            HorizontalDivider(color = divider)
+            Spacer(Modifier.height(Spacing.xl))
+
             // ── Location ─────────────────────────────────────────────────
             Text(
                 text = "Location",
@@ -306,6 +395,32 @@ private fun MediumOptionRow(
             modifier = Modifier.weight(1f),
         )
         FilterCheckbox(checked = checked)
+    }
+}
+
+// ── Selected-tag chip (label + remove) ─────────────────────────────────────────
+
+@Composable
+private fun FilterTagChip(label: String, onRemove: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+            .padding(start = Spacing.md, end = Spacing.sm, top = Spacing.xs, bottom = Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.width(Spacing.xs))
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = "Remove $label",
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            modifier = Modifier.size(Spacing.md).clickable { onRemove() },
+        )
     }
 }
 

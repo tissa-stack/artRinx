@@ -150,7 +150,7 @@ fun ProfileCurationCard(
                         imageVector = Icons.Filled.Lock,
                         contentDescription = "Private",
                         tint = Color.White,
-                        modifier = Modifier.size(Spacing.md),
+                        modifier = Modifier.size(Spacing.xl),
                     )
                 }
             }
