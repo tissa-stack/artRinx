@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.home.presentation.detail
 
-import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,6 +53,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
@@ -101,7 +101,7 @@ fun CurationDetailScreen(
     // Curation no longer exists server-side (404) → toast + pop instead of showing stale cached detail.
     LaunchedEffect(Unit) {
         viewModel.gone.collect {
-            Toast.makeText(context, "This curation is no longer available.", Toast.LENGTH_SHORT).show()
+            AppToast.show("This curation is no longer available.")
             onBack()
         }
     }
@@ -109,7 +109,7 @@ fun CurationDetailScreen(
     // Close the sheet and pop back once the curation's author is blocked (toast survives the pop).
     LaunchedEffect(Unit) {
         viewModel.blocked.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            AppToast.show(message)
             showReportSheet = false
             onBack()
         }
@@ -117,7 +117,7 @@ fun CurationDetailScreen(
 
     LaunchedEffect(uiState.actionError) {
         uiState.actionError?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            AppToast.show(it)
             viewModel.onActionErrorShown()
         }
     }

@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.settings.presentation.changephone
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -41,6 +40,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.auth.presentation.otp.components.OtpBoxRow
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.components.PhoneNumberField
@@ -57,13 +57,13 @@ fun ChangePhoneScreen(
 
     LaunchedEffect(uiState.done) {
         if (uiState.done) {
-            Toast.makeText(context, "Phone updated", Toast.LENGTH_SHORT).show()
+            AppToast.show("Phone updated")
             onDone()
         }
     }
     LaunchedEffect(uiState.codeResent) {
         if (uiState.codeResent) {
-            Toast.makeText(context, "Code sent", Toast.LENGTH_SHORT).show()
+            AppToast.show("Code sent")
             viewModel.onCodeResentShown()
         }
     }

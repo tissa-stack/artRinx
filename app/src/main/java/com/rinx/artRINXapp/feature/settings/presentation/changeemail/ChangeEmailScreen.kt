@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.settings.presentation.changeemail
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -48,6 +47,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.auth.presentation.otp.components.OtpBoxRow
 
 @Composable
@@ -63,13 +63,13 @@ fun ChangeEmailScreen(
     LaunchedEffect(uiState.done) {
         if (uiState.done) {
             val msg = if (uiState.isAdding) "Email added" else "Email updated"
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            AppToast.show(msg)
             onDone()
         }
     }
     LaunchedEffect(uiState.codeResent) {
         if (uiState.codeResent) {
-            Toast.makeText(context, "Code sent", Toast.LENGTH_SHORT).show()
+            AppToast.show("Code sent")
             viewModel.onCodeResentShown()
         }
     }

@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.profile.presentation.feedback
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -40,6 +39,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.theme.LocalDimens
+import com.rinx.artRINXapp.core.ui.AppToast
 import androidx.compose.ui.window.Dialog
 
 /** "Leave us feedback" dialog (image #11) → POST /api/feedbacks/. Theme-compliant. */
@@ -53,7 +53,7 @@ fun FeedbackDialog(
     val d = LocalDimens.current
 
     LaunchedEffect(Unit) {
-        viewModel.message.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+        viewModel.message.collect { AppToast.show(it) }
     }
     LaunchedEffect(Unit) {
         viewModel.closed.collect { onDismiss() }

@@ -46,6 +46,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
@@ -69,7 +70,7 @@ fun ArtByArtistScreen(
     var showUnfollowConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        viewModel.message.collect { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() }
+        viewModel.message.collect { AppToast.show(it) }
     }
 
     if (showUnfollowConfirm) {

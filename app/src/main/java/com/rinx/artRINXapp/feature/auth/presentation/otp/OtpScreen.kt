@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.auth.presentation.otp
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -50,6 +49,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.auth.presentation.otp.components.OtpBoxRow
 
 @Composable
@@ -80,7 +80,7 @@ fun OtpScreen(
     val context = LocalContext.current
     LaunchedEffect(uiState.codeResent) {
         if (uiState.codeResent) {
-            Toast.makeText(context, "Code sent", Toast.LENGTH_SHORT).show()
+            AppToast.show("Code sent")
             viewModel.onCodeResentShown()
         }
     }

@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.home.presentation
 
-import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +47,7 @@ import com.rinx.artRINXapp.core.tour.TourStep
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.home.domain.model.MockHomeData
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
@@ -93,7 +93,7 @@ fun HomeScreen(
     val context = LocalContext.current
     LaunchedEffect(uiState.toastMessage) {
         uiState.toastMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            AppToast.show(it)
             viewModel.onToastShown()
         }
     }

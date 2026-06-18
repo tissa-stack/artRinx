@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.home.presentation.components
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -58,6 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.AppToast
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileCurationCard
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
@@ -83,7 +83,7 @@ fun AddToCurationSheet(
     // Toast one-shot messages (errors keep the sheet open).
     LaunchedEffect(state.message) {
         state.message?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            AppToast.show(it)
             viewModel.consumeMessage()
         }
     }
@@ -92,7 +92,7 @@ fun AddToCurationSheet(
     // so the success message is never dropped to the dismissal race.
     LaunchedEffect(Unit) {
         viewModel.closeSheet.collect { successMessage ->
-            Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
+            AppToast.show(successMessage)
             onDismiss()
         }
     }
