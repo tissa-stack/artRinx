@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.userMessage
+import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
@@ -31,6 +32,7 @@ data class OtherProfileUiState(
     val curations: List<ProfileCurationItem> = emptyList(),
     val isBioExpanded: Boolean = false,
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     // pagination
     val isLoadingMore: Boolean = false,
@@ -54,6 +56,7 @@ class OtherProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: ProfileRepository,
     private val profileRefreshBus: ProfileRefreshBus,
+    private val blockedArtworkBus: BlockedArtworkBus,
 ) : ViewModel() {
 
     private val userId: Int? = savedStateHandle.get<String>("userId")?.toIntOrNull()
@@ -71,6 +74,43 @@ class OtherProfileViewModel @Inject constructor(
 
     init {
         load()
+        observeBlocks()
+    }
+
+    /** Drop a blocked artwork from the grid immediately (no refresh wait). */
+    private fun observeBlocks() {
+        viewModelScope.launch {
+            blockedArtworkBus.events.collect { blockedId ->
+                val idStr = blockedId.toString()
+                _uiState.update { it.copy(artItems = it.artItems.filterNot { item -> item.id == idStr }) }
+            }
+        }
+    }
+
+    /** Pull-to-refresh: re-fetch profile + art + curations, keeping content visible (SWR). */
+    fun refresh() {
+        val id = userId ?: return
+        if (_uiState.value.isRefreshing) return
+        _uiState.update { it.copy(isRefreshing = true) }
+        viewModelScope.launch {
+            val profileJob = async { repository.getPublicProfile(id) }
+            val artJob = async { repository.getPublicArtworks(id, 1, PAGE_SIZE) }
+            val curationJob = async { repository.getPublicCurations(id, 1, PAGE_SIZE) }
+            val profileRes = profileJob.await()
+            val art = (artJob.await() as? ApiResult.Success)?.data
+            val cur = (curationJob.await() as? ApiResult.Success)?.data
+            artPage = 1; curationPage = 1
+            _uiState.update { st ->
+                st.copy(
+                    profile = (profileRes as? ApiResult.Success)?.data ?: st.profile,
+                    artItems = art ?: st.artItems,
+                    curations = cur ?: st.curations,
+                    artHasMore = (art?.size ?: st.artItems.size) >= PAGE_SIZE,
+                    curationHasMore = (cur?.size ?: st.curations.size) >= PAGE_SIZE,
+                    isRefreshing = false,
+                )
+            }
+        }
     }
 
     private fun load() {

@@ -32,6 +32,9 @@ data class ProfileDraft(
     val state: String = "",
     val city: String = "",
     val mediumIds: Set<Int> = emptySet(),
+    /** Google profile photo URL captured at OAuth signup — persisted so it survives app kill and
+     *  re-prefills the avatar on the profile-completion screen. Null for non-Google signups. */
+    val googlePhotoUrl: String? = null,
 )
 
 /**

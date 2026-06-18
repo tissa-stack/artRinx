@@ -138,6 +138,10 @@ class ProfileCreationViewModel @Inject constructor(
             val displayName = draft.displayName.ifBlank {
                 (google?.givenName?.takeIf { it.isNotBlank() } ?: google?.fullName).orEmpty()
             }
+            // The Google photo url is delivered once via the (read-once, in-memory) holder; persist it
+            // to the draft so it survives an app kill mid-signup and re-prefills on relaunch. On a
+            // relaunch the holder is empty → fall back to the persisted draft url.
+            val photoUrl = google?.photoUrl?.takeIf { it.isNotBlank() } ?: draft.googlePhotoUrl
             _uiState.update { state ->
                 state.copy(
                     draftLoaded = true,
@@ -153,14 +157,18 @@ class ProfileCreationViewModel @Inject constructor(
                     state = draft.state,
                     city = draft.city,
                     selectedMediumIds = draft.mediumIds,
-                    googlePhotoUrl = google?.photoUrl,
+                    googlePhotoUrl = photoUrl,
                 )
             }
-            // Mirror the prefilled names into the draft so they survive process death.
+            // Mirror the prefilled names + photo url into the draft so they survive process death.
             if (fullName.isNotBlank() && draft.fullName.isBlank()) draftDataSource.saveFullName(fullName)
             if (displayName.isNotBlank() && draft.displayName.isBlank()) draftDataSource.saveDisplayName(displayName)
+            if (!google?.photoUrl.isNullOrBlank() && draft.googlePhotoUrl.isNullOrBlank()) {
+                draftDataSource.saveGooglePhotoUrl(google!!.photoUrl!!)
+            }
             loadCountriesThenRestore(draft.country, draft.state)
-            google?.photoUrl?.let { maybePrefillPhoto(it) }
+            // Download + set the avatar from whichever url we have (fresh holder OR persisted draft).
+            photoUrl?.takeIf { it.isNotBlank() }?.let { maybePrefillPhoto(it) }
         }
         loadProfileTypes()
         loadMediums()

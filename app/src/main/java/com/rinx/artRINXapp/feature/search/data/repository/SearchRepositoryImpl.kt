@@ -19,6 +19,7 @@ import javax.inject.Inject
 
 class SearchRepositoryImpl @Inject constructor(
     private val apiService: SearchApiService,
+    private val blockedStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
 ) : SearchRepository {
 
     // SWR cache for the idle screen — survives navigation (@Singleton); cleared on logout/delete.
@@ -30,7 +31,8 @@ class SearchRepositoryImpl @Inject constructor(
     @Volatile private var countriesCache: List<String>? = null
 
     override fun cachedTrendingTags(): List<String>? = trendingCache
-    override fun cachedRecommended(): List<SearchResultItem>? = recommendedCache
+    override fun cachedRecommended(): List<SearchResultItem>? =
+        recommendedCache?.filterNot { blockedStore.isBlocked(it.id) }
     override fun clearCache() {
         trendingCache = null
         recommendedCache = null
@@ -57,7 +59,7 @@ class SearchRepositoryImpl @Inject constructor(
             city = city?.ifBlank { null },
         )
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.artworks.orEmpty().map { it.toResultItem() })
+            ApiResult.Success(response.body()?.data?.artworks.orEmpty().map { it.toResultItem() }.filterNot { blockedStore.isBlocked(it.id) })
         } else {
             errorFor(response)
         }
@@ -126,6 +128,7 @@ class SearchRepositoryImpl @Inject constructor(
         val response = apiService.getRecommended(page = PAGE, size = SIZE)
         if (response.isSuccessful) {
             val items = response.body()?.data?.items.orEmpty().map { it.toResultItem() }
+                .filterNot { blockedStore.isBlocked(it.id) }
             recommendedCache = items
             ApiResult.Success(items)
         } else {

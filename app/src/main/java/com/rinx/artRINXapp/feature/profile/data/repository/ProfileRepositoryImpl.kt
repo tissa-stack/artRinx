@@ -54,6 +54,7 @@ class ProfileRepositoryImpl @Inject constructor(
     private val profileRefreshBus: ProfileRefreshBus,
     private val session: SessionDataSource,
     private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
+    private val blockedStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
 ) : ProfileRepository {
 
     // SWR cache for the Profile tab (first page only) — survives navigation (@Singleton);
@@ -67,9 +68,12 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override fun cachedCurrentUserId(): Int? = currentUserIdCache
     override fun cachedProfileData(): UserProfileData? = profileDataCache
-    override fun cachedMyArtworks(): List<ProfileArtItem>? = myArtworksCache
+    // Strip blocked artworks from cached reads so a re-seed / back-navigation never resurfaces them.
+    override fun cachedMyArtworks(): List<ProfileArtItem>? =
+        myArtworksCache?.filterNot { blockedStore.isBlocked(it.id) }
     override fun cachedMyCurations(): List<ProfileCurationItem>? = myCurationsCache
-    override fun cachedLikedArtworks(): List<ProfileArtItem>? = likedArtworksCache
+    override fun cachedLikedArtworks(): List<ProfileArtItem>? =
+        likedArtworksCache?.filterNot { blockedStore.isBlocked(it.id) }
     override fun clearCache() {
         profileDataCache = null
         myArtworksCache = null
@@ -525,7 +529,7 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getPublicArtworks(userId, page, size)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() })
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) })
             } else {
                 profileError(response.code())
             }
@@ -540,7 +544,7 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getArtworksByName(name, page, size)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() })
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) })
             } else {
                 profileError(response.code())
             }
@@ -706,6 +710,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getMyArtworks(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
+                    .filterNot { blockedStore.isBlocked(it.id) }
                 if (page == 1) myArtworksCache = items
                 ApiResult.Success(items)
             } else {
@@ -740,6 +745,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getLikedArtworks(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
+                    .filterNot { blockedStore.isBlocked(it.id) }
                 if (page == 1) likedArtworksCache = items
                 ApiResult.Success(items)
             } else {

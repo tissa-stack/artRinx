@@ -2,6 +2,7 @@ package com.rinx.artRINXapp.core.auth
 
 import android.content.Context
 import com.rinx.artRINXapp.core.auth.google.GoogleAuthClient
+import com.rinx.artRINXapp.core.util.BlockedArtworkStore
 import com.rinx.artRINXapp.core.offline.LiveMutationQueue
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.util.BlockedUsersStore
@@ -50,6 +51,7 @@ class LocalDataCleanerTest {
     private val pushTokenManager: PushTokenManager = mockk(relaxed = true)
     private val googleAuthClient: GoogleAuthClient = mockk(relaxed = true)
     private val googlePrefillHolder: GooglePrefillHolder = mockk(relaxed = true)
+    private val blockedArtworkStore: BlockedArtworkStore = mockk(relaxed = true)
     private val appContext: Context = mockk(relaxed = true)
 
     private lateinit var cleaner: LocalDataCleaner
@@ -60,7 +62,7 @@ class LocalDataCleanerTest {
             session, profileDraft, liveMutationQueue, uploadManager, curationManager,
             homeRepository, searchRepository, profileRepository, detailCache, curationPreviewStore,
             chatCache, outgoingMessageStore, blockedUsersStore, unreadNotificationsStore, pushTokenManager,
-            googleAuthClient, googlePrefillHolder, appContext,
+            googleAuthClient, googlePrefillHolder, blockedArtworkStore, appContext,
         )
     }
 

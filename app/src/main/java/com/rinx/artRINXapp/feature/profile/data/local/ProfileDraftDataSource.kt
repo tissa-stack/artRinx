@@ -29,6 +29,7 @@ class ProfileDraftDataSource @Inject constructor(
         val KEY_STATE = stringPreferencesKey("profile_draft_state")
         val KEY_CITY = stringPreferencesKey("profile_draft_city")
         val KEY_MEDIUM_IDS = stringPreferencesKey("profile_draft_medium_ids")
+        val KEY_GOOGLE_PHOTO_URL = stringPreferencesKey("profile_draft_google_photo_url")
     }
 
     suspend fun getDraft(): ProfileDraft = dataStore.data.map { prefs ->
@@ -49,6 +50,7 @@ class ProfileDraftDataSource @Inject constructor(
                 ?.mapNotNull { it.trim().toIntOrNull() }
                 ?.toSet()
                 ?: emptySet(),
+            googlePhotoUrl = prefs[KEY_GOOGLE_PHOTO_URL],
         )
     }.first()
 
@@ -78,10 +80,13 @@ class ProfileDraftDataSource @Inject constructor(
         it[KEY_MEDIUM_IDS] = ids.joinToString(",")
     }
 
+    suspend fun saveGooglePhotoUrl(value: String) = dataStore.edit { it[KEY_GOOGLE_PHOTO_URL] = value }
+
     suspend fun clearDraft() = dataStore.edit { prefs ->
         listOf(
             KEY_STEP, KEY_GROUND_RULES, KEY_TYPE_ID, KEY_FULL_NAME, KEY_USERNAME,
             KEY_DISPLAY_NAME, KEY_BIO, KEY_DOB, KEY_COUNTRY, KEY_STATE, KEY_CITY, KEY_MEDIUM_IDS,
+            KEY_GOOGLE_PHOTO_URL,
         ).forEach { prefs.remove(it) }
     }
 }

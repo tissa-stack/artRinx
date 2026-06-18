@@ -413,7 +413,8 @@ private fun ArtDetailContent(
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
+                    // Show the full title where it fits; ellipsis only guards extreme lengths.
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )

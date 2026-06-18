@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.home.data.local
 
+import com.rinx.artRINXapp.core.util.BlockedArtworkStore
 import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
@@ -26,13 +27,18 @@ data class CurationDetailEntry(val curation: CurationItem, val more: List<Curati
  * Cleared on logout/account-delete (see core/auth/LocalDataCleaner).
  */
 @Singleton
-class DetailCache @Inject constructor() {
+class DetailCache @Inject constructor(
+    private val blockedStore: BlockedArtworkStore,
+) {
 
     private val art = lru<ArtDetailEntry>()
     private val cur = lru<CurationDetailEntry>()
 
     // ── Artwork ──────────────────────────────────────────────────────────────
-    fun peekArtwork(id: Int): ArtDetailEntry? = synchronized(art) { art[id] }
+    // A blocked artwork must never be re-served from cache (e.g. re-opening it).
+    fun peekArtwork(id: Int): ArtDetailEntry? = synchronized(art) {
+        if (blockedStore.isBlocked(id)) null else art[id]
+    }
 
     fun putArtwork(id: Int, post: ShoppablePost, similar: List<ArtworkItem>, isOwn: Boolean) =
         synchronized(art) { art[id] = ArtDetailEntry(post, similar, isOwn) }
@@ -45,7 +51,26 @@ class DetailCache @Inject constructor() {
     fun evictArtwork(id: Int) = synchronized(art) { art.remove(id); Unit }
 
     // ── Curation ─────────────────────────────────────────────────────────────
-    fun peekCuration(id: Int): CurationDetailEntry? = synchronized(cur) { cur[id] }
+    // Strip any blocked artwork from the cached curation deck before serving it.
+    fun peekCuration(id: Int): CurationDetailEntry? = synchronized(cur) {
+        cur[id]?.let { e ->
+            e.copy(curation = e.curation.stripBlocked(), more = e.more.map { it.stripBlocked() })
+        }
+    }
+
+    private fun CurationItem.stripBlocked(): CurationItem {
+        if (artworkUrls.isEmpty()) return this
+        val keptUrls = ArrayList<String>(artworkUrls.size)
+        val keptIds = ArrayList<String>(artworkIds.size)
+        artworkUrls.indices.forEach { i ->
+            val artId = artworkIds.getOrNull(i)
+            if (!blockedStore.isBlocked(artId)) {
+                keptUrls += artworkUrls[i]
+                keptIds += (artId ?: "")
+            }
+        }
+        return copy(artworkUrls = keptUrls, artworkIds = keptIds)
+    }
 
     fun putCuration(id: Int, curation: CurationItem, more: List<CurationItem>) =
         synchronized(cur) { cur[id] = CurationDetailEntry(curation, more) }

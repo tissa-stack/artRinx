@@ -606,7 +606,7 @@ private fun TagsEditor(
                     keyboardActions = KeyboardActions(onDone = { onAdd() }),
                     decorationBox = { inner ->
                         Box {
-                            if (input.isEmpty()) FieldHint("Tags")
+                            if (input.isEmpty()) FieldHint("Tags", required = true)
                             inner()
                         }
                     },

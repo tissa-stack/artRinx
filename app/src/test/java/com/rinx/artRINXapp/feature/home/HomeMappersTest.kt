@@ -21,7 +21,7 @@ import org.junit.Test
  */
 class HomeMappersTest {
 
-    private val repo = HomeRepositoryImpl(mockk(relaxed = true))
+    private val repo = HomeRepositoryImpl(mockk(relaxed = true), com.rinx.artRINXapp.core.util.BlockedArtworkStore())
 
     // ── toArtworkItem ─────────────────────────────────────────────────────────
 

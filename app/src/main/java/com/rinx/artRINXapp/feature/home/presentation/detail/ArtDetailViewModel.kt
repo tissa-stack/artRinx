@@ -70,6 +70,7 @@ class ArtDetailViewModel @Inject constructor(
     private val profileRefreshBus: ProfileRefreshBus,
     private val likeBus: LikeBus,
     private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
+    private val blockedArtworkStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
     private val detailCache: DetailCache,
 ) : ViewModel() {
@@ -282,8 +283,11 @@ class ArtDetailViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = profileRepository.blockArtwork(id, lastReportMessage.ifBlank { "Reported from app" })) {
                 is ApiResult.Success -> {
-                    id.let { detailCache.evictArtwork(it) }
-                    // Drop it from every live list immediately (no refresh wait).
+                    // Record session-wide so the data layer filters it out of EVERY list (cached or
+                    // fresh, any screen, on back-navigation) — not just the currently-live ones.
+                    blockedArtworkStore.add(id)
+                    detailCache.evictArtwork(id)
+                    // Drop it from every live on-screen list immediately (no refresh wait).
                     blockedArtworkBus.signal(id)
                     profileRefreshBus.signal()
                     _blocked.send("Art blocked")

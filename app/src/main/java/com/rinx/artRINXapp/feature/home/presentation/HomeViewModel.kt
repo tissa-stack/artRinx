@@ -8,6 +8,7 @@ import com.rinx.artRINXapp.core.util.LikeBus
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
 import com.rinx.artRINXapp.feature.home.domain.model.BannerItem
+import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 import com.rinx.artRINXapp.feature.home.domain.model.FeedPost
 import com.rinx.artRINXapp.feature.home.domain.model.ForYouItem
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
@@ -77,10 +78,27 @@ class HomeViewModel @Inject constructor(
                         },
                         shoppableItems = state.shoppableItems.filterNot { it.id == idStr },
                         newArtItems = state.newArtItems.filterNot { it.id == idStr },
+                        recentlyViewed = state.recentlyViewed.filterNot { it.id == idStr },
+                        // Also strip it from any curation preview deck on the feed.
+                        popularCurations = state.popularCurations.map { it.removeArtwork(idStr) },
                     )
                 }
             }
         }
+    }
+
+    /** Remove a single artwork (by id) from a curation's index-aligned preview urls + ids. */
+    private fun CurationItem.removeArtwork(artworkId: String): CurationItem {
+        if (artworkId !in artworkIds) return this
+        val keptUrls = ArrayList<String>(artworkUrls.size)
+        val keptIds = ArrayList<String>(artworkIds.size)
+        artworkUrls.indices.forEach { i ->
+            if (artworkIds.getOrNull(i) != artworkId) {
+                keptUrls += artworkUrls[i]
+                keptIds += (artworkIds.getOrNull(i) ?: "")
+            }
+        }
+        return copy(artworkUrls = keptUrls, artworkIds = keptIds)
     }
 
     /** Converge with likes made elsewhere (e.g. the detail screen) while this feed is live. */

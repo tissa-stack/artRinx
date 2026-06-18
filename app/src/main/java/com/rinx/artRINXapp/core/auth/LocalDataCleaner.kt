@@ -2,6 +2,7 @@ package com.rinx.artRINXapp.core.auth
 
 import android.content.Context
 import com.rinx.artRINXapp.core.auth.google.GoogleAuthClient
+import com.rinx.artRINXapp.core.util.BlockedArtworkStore
 import com.rinx.artRINXapp.core.offline.LiveMutationQueue
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.util.BlockedUsersStore
@@ -52,6 +53,7 @@ class LocalDataCleaner @Inject constructor(
     private val pushTokenManager: PushTokenManager,
     private val googleAuthClient: GoogleAuthClient,
     private val googlePrefillHolder: GooglePrefillHolder,
+    private val blockedArtworkStore: BlockedArtworkStore,
     @ApplicationContext private val appContext: Context,
 ) {
     /** Wipe in-memory caches + transient upload/curation state. Keeps the session. */
@@ -76,6 +78,8 @@ class LocalDataCleaner @Inject constructor(
         liveMutationQueue.clear()
         // Invalidate the device's FCM token so a signed-out device stops being a push target.
         pushTokenManager.deleteToken()
+        // Drop the session's blocked-artwork set (the backend filters blocked art on fetch afterwards).
+        blockedArtworkStore.clear()
         // Drop any unconsumed Google prefill + its downloaded avatar so it can't leak into a later signup.
         googlePrefillHolder.clear()
         runCatching { File(appContext.cacheDir, GooglePrefillHolder.AVATAR_CACHE_FILENAME).delete() }

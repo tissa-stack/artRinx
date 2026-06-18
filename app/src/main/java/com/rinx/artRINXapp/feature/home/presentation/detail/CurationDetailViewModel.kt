@@ -63,6 +63,7 @@ class CurationDetailViewModel @Inject constructor(
     private val editTargetStore: EditTargetStore,
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
     private val detailCache: DetailCache,
+    private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
 ) : ViewModel() {
 
     private val curationId: Int? = savedStateHandle.get<String>("curationId")?.toIntOrNull()
@@ -104,6 +105,29 @@ class CurationDetailViewModel @Inject constructor(
 
     init {
         load()
+        observeBlocks()
+    }
+
+    /** If an artwork in this open curation gets blocked, drop it from the live deck immediately. */
+    private fun observeBlocks() {
+        viewModelScope.launch {
+            blockedArtworkBus.events.collect { blockedId ->
+                val idStr = blockedId.toString()
+                _uiState.update { st ->
+                    val cur = st.curation ?: return@update st
+                    if (idStr !in cur.artworkIds) return@update st
+                    val keptUrls = ArrayList<String>(cur.artworkUrls.size)
+                    val keptIds = ArrayList<String>(cur.artworkIds.size)
+                    cur.artworkUrls.indices.forEach { i ->
+                        if (cur.artworkIds.getOrNull(i) != idStr) {
+                            keptUrls += cur.artworkUrls[i]
+                            keptIds += (cur.artworkIds.getOrNull(i) ?: "")
+                        }
+                    }
+                    st.copy(curation = cur.copy(artworkUrls = keptUrls, artworkIds = keptIds))
+                }
+            }
+        }
     }
 
     private fun load() {
@@ -236,7 +260,10 @@ class CurationDetailViewModel @Inject constructor(
             urls += url
             ids += urlToId[url].orEmpty()
         }
-        previewUrls.forEach(::add)   // tapped-card images first
+        // Only reorder preview urls that still exist in the (blocked-filtered) detail set, so a
+        // blocked artwork's url lingering in the preview store can't re-add it to the deck.
+        val detailSet = detailUrls.toHashSet()
+        previewUrls.filter { it in detailSet }.forEach(::add)  // tapped-card images first
         detailUrls.forEach(::add)    // then the canonical remainder
         return urls to ids
     }

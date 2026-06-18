@@ -17,7 +17,7 @@ import org.junit.Test
  */
 class DetailCacheTest {
 
-    private val cache = DetailCache()
+    private val cache = DetailCache(com.rinx.artRINXapp.core.util.BlockedArtworkStore())
 
     private fun post(id: String, liked: Boolean = false, likes: Int = 0) = ShoppablePost(
         id = id, artistName = "Artist", artistHandle = "@artist", imageUrl = "", title = "Title",

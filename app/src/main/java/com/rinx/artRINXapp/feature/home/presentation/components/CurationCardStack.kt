@@ -1,49 +1,33 @@
 package com.rinx.artRINXapp.feature.home.presentation.components
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.sign
+import kotlin.math.ceil
 
 private data class SlotConfig(
     val offsetX: Dp,
@@ -52,24 +36,22 @@ private data class SlotConfig(
     val alpha: Float,
 )
 
-// No rotation, no elevation. Alternating L/R offsets for both-side peek.
+// Pile slots: slot 0 = the centered front card; deeper slots peek with alternating L/R offsets.
 private val STACK_CONFIGS = listOf(
-    SlotConfig(  0.dp,   0.dp, 1.000f, 1.00f),  // top — centered
-    SlotConfig( 20.dp, (-4).dp, 0.960f, 1.00f),  // 2nd — peeks right
-    SlotConfig((-22).dp, (-7).dp, 0.920f, 0.95f),  // 3rd — peeks left
-    SlotConfig( 26.dp,(-10).dp, 0.880f, 0.85f),  // 4th — peeks right
+    SlotConfig(0.dp, 0.dp, 1.000f, 1.00f),       // front — centered
+    SlotConfig(20.dp, (-4).dp, 0.960f, 1.00f),   // 2nd — peeks right
+    SlotConfig((-22).dp, (-7).dp, 0.920f, 0.95f), // 3rd — peeks left
+    SlotConfig(26.dp, (-10).dp, 0.880f, 0.85f),  // 4th — peeks right
 )
-
-private const val MAX_VISIBLE       = 4
-private const val DISMISS_THRESHOLD = 90f    // dp
-private const val DISMISS_VELOCITY  = 500f   // dp/s (rough)
-private const val EXIT_DURATION_MS  = 190
-private const val ADVANCE_AFTER_MS  = 160L
+private val LAST_SLOT = (STACK_CONFIGS.size - 1).toFloat()
 
 /**
- * Physical photo-stack carousel — all cards centered, layered by zIndex.
- * No navigation arrows: user swipes left or right to dismiss the top card.
- * Dismissed card re-enters at the back via snap() — zero visible delay.
+ * Swipeable curation deck — a STACKED photo pile (front card centered, upcoming cards peeking behind)
+ * driven by a [HorizontalPager] underneath. The pager owns the drag/fling/settle physics (no jerk) and
+ * [HorizontalPager.beyondViewportPageCount] keeps neighbor images decoded so the card you swipe to —
+ * in EITHER direction — is already loaded (no wrong-image flash). A per-page transform cancels the
+ * pager's horizontal layout for the pile cards (so they stack centered) while letting the dismissed
+ * card ride the scroll off to the side. Swipe left → next, swipe right → previous.
  */
 @Composable
 fun CurationCardStack(
@@ -82,167 +64,80 @@ fun CurationCardStack(
 ) {
     if (artworks.isEmpty()) return
 
-    val d       = LocalDimens.current
-    val density = LocalDensity.current
-    val scope   = rememberCoroutineScope()
-    val count   = artworks.size
+    val d = LocalDimens.current
+    val pagerState = rememberPagerState(pageCount = { artworks.size })
 
-    var topIndex       by rememberSaveable { mutableIntStateOf(0) }
-    var justDismissed  by remember { mutableStateOf(-1) }
-    var isAnimatingOut by remember { mutableStateOf(false) }
-
-    val dragX = remember { Animatable(0f) }
-    val dragY = remember { Animatable(0f) }
-
-    // Notify parent whenever the focused card changes
-    androidx.compose.runtime.LaunchedEffect(topIndex) { onTopIndexChanged(topIndex % count) }
-
-    val thresholdPx = with(density) { DISMISS_THRESHOLD.dp.toPx() }
-
-    fun dismiss(direction: Int) {
-        if (isAnimatingOut) return
-        isAnimatingOut = true
-        val departingIdx = topIndex % count
-        scope.launch {
-            launch {
-                dragX.animateTo(
-                    targetValue   = direction * with(density) { 800.dp.toPx() },
-                    animationSpec = tween(EXIT_DURATION_MS, easing = FastOutLinearInEasing),
-                )
-            }
-            launch {
-                dragY.animateTo(
-                    targetValue   = dragY.value + with(density) { 40.dp.toPx() },
-                    animationSpec = tween(EXIT_DURATION_MS, easing = FastOutLinearInEasing),
-                )
-            }
-            kotlinx.coroutines.delay(ADVANCE_AFTER_MS)
-
-            // Both in the same snapshot → re-entering card sees snap() in one recomposition.
-            // Directional: swipe left (direction < 0) → next card; swipe right → previous card.
-            justDismissed = departingIdx
-            topIndex      = if (direction < 0) (topIndex + 1) % count
-                            else (topIndex - 1 + count) % count
-            dragX.snapTo(0f)
-            dragY.snapTo(0f)
-
-            kotlinx.coroutines.delay(40)
-            justDismissed  = -1
-            isAnimatingOut = false
-        }
+    // Report the SETTLED focused card (only once the swipe settles — no mid-gesture churn).
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect(onTopIndexChanged)
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val screenWidth = maxWidth
-        val cardWidth   = screenWidth * 0.78f
-        val cardHeight  = d.artDetailImageHeight * 1.08f
+        val cardWidth = maxWidth * 0.78f
+        val cardHeight = d.artDetailImageHeight * 1.08f
+        val cardCorner = d.cardCornerRadius
 
-        Box(
-            modifier         = Modifier
-                .width(screenWidth)
-                .height(cardHeight + Spacing.lg),   // small extra height for the offset peek edges
-            contentAlignment = Alignment.Center,
-        ) {
-            val visibleSlots = minOf(MAX_VISIBLE, count)
+        HorizontalPager(
+            state = pagerState,
+            // Keep the pile cards (+1..+3) AND the previous card composed + image-decoded → no flash.
+            beyondViewportPageCount = 3,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(cardHeight + Spacing.lg),
+        ) { page ->
+            // Live signed position of this page relative to the focused card, in page-width units:
+            //   0  = centered front
+            //  >0  = upcoming → sits in the pile BEHIND the front (peek)
+            //  <0  = already passed → rides the scroll off to the LEFT (dismissed / sliding back in)
+            val pos = (page - pagerState.currentPage) - pagerState.currentPageOffsetFraction
 
-            for (slot in visibleSlots - 1 downTo 0) {
-                val artIndex = (topIndex + slot) % count
-                val isTop    = (slot == 0)
-                val cfg      = STACK_CONFIGS.getOrElse(slot) { STACK_CONFIGS.last() }
-
-                key(artIndex) {
-                    val useSnap = (artIndex == justDismissed)
-                    val posSpec = if (useSnap) snap() else spring<Dp>(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness    = Spring.StiffnessMediumLow,
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Front + dismissed cards draw above the pile; deeper pile cards sink behind.
+                    .zIndex(-pos)
+                    .graphicsLayer {
+                        if (pos >= 0f) {
+                            // Pile / front: cancel the pager's horizontal layout so the card stays
+                            // centered, then apply the slot's peek offset + scale + fade by depth.
+                            val depth = pos.coerceIn(0f, LAST_SLOT)
+                            val lo = depth.toInt()
+                            val hi = ceil(depth).toInt().coerceAtMost(STACK_CONFIGS.size - 1)
+                            val f = depth - lo
+                            val a = STACK_CONFIGS[lo]
+                            val b = STACK_CONFIGS[hi]
+                            translationX = -pos * size.width + lerp(a.offsetX.toPx(), b.offsetX.toPx(), f)
+                            translationY = lerp(a.offsetY.toPx(), b.offsetY.toPx(), f)
+                            val s = lerp(a.scale, b.scale, f)
+                            scaleX = s
+                            scaleY = s
+                            // Hide cards deeper than the visible pile.
+                            alpha = if (pos > LAST_SLOT) 0f else lerp(a.alpha, b.alpha, f)
+                        } else {
+                            // Dismissed / incoming-previous: ride the scroll (slides off-left / back in)
+                            // and cross-fade so it appears/disappears smoothly at the screen edge.
+                            translationX = 0f
+                            scaleX = 1f
+                            scaleY = 1f
+                            alpha = (1f + pos).coerceIn(0f, 1f)
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(cardWidth)
+                        .height(cardHeight)
+                        .clip(RoundedCornerShape(cardCorner))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onCardClick(page) },
+                ) {
+                    AsyncImage(
+                        model = artworks[page],
+                        contentDescription = "Artwork ${page + 1} of ${artworks.size}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
                     )
-                    val fltSpec = if (useSnap) snap() else spring<Float>(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness    = Spring.StiffnessMediumLow,
-                    )
-
-                    val animOffX  by animateDpAsState(
-                        targetValue = cfg.offsetX, animationSpec = posSpec, label = "offX-$artIndex")
-                    val animOffY  by animateDpAsState(
-                        targetValue = cfg.offsetY, animationSpec = posSpec, label = "offY-$artIndex")
-                    val animScale by animateFloatAsState(
-                        targetValue = cfg.scale, animationSpec = fltSpec, label = "scale-$artIndex")
-                    val animAlpha by animateFloatAsState(
-                        targetValue = cfg.alpha, animationSpec = fltSpec, label = "alpha-$artIndex")
-
-                    Box(
-                        modifier = Modifier
-                            .width(cardWidth)
-                            .height(cardHeight)
-                            .zIndex(if (isTop) 100f else (MAX_VISIBLE - slot).toFloat() * 10f)
-                            .graphicsLayer {
-                                if (isTop) {
-                                    translationX = dragX.value
-                                    translationY = dragY.value
-                                    rotationZ    = 0f
-                                    // No shadowElevation — avoids pointed artifact shadows
-                                } else {
-                                    val dragProg = (abs(dragX.value) / thresholdPx).coerceIn(0f, 1f)
-                                    val prevCfg  = STACK_CONFIGS.getOrElse(slot - 1) { STACK_CONFIGS[0] }
-                                    translationX = with(density) { animOffX.toPx() } +
-                                            dragProg * with(density) { (prevCfg.offsetX - cfg.offsetX).toPx() }
-                                    translationY = with(density) { animOffY.toPx() } +
-                                            dragProg * with(density) { (prevCfg.offsetY - cfg.offsetY).toPx() }
-                                    rotationZ    = 0f
-                                    scaleX       = animScale + dragProg * (prevCfg.scale - cfg.scale)
-                                    scaleY       = animScale + dragProg * (prevCfg.scale - cfg.scale)
-                                    alpha        = animAlpha + dragProg * (prevCfg.alpha - cfg.alpha)
-                                    // No shadowElevation — clean edges
-                                }
-                            }
-                            .clip(RoundedCornerShape(d.cardCornerRadius))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .then(
-                                if (isTop && !isAnimatingOut) Modifier
-                                    .pointerInput(topIndex) {
-                                        detectTapGestures { onCardClick(topIndex % count) }
-                                    }
-                                    .pointerInput(topIndex) {
-                                    var velX = 0f
-                                    detectDragGestures(
-                                        onDragStart = { velX = 0f },
-                                        onDrag = { change, amount ->
-                                            change.consume()
-                                            velX = amount.x
-                                            scope.launch {
-                                                dragX.snapTo(dragX.value + amount.x)
-                                                dragY.snapTo(dragY.value + amount.y * 0.3f)
-                                            }
-                                        },
-                                        onDragEnd = {
-                                            val exceeded = abs(dragX.value) > thresholdPx ||
-                                                    abs(velX) * 60f > DISMISS_VELOCITY
-                                            if (exceeded) {
-                                                dismiss(if (dragX.value != 0f) sign(dragX.value).toInt() else 1)
-                                            } else {
-                                                scope.launch {
-                                                    launch { dragX.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)) }
-                                                    launch { dragY.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)) }
-                                                }
-                                            }
-                                        },
-                                        onDragCancel = {
-                                            scope.launch {
-                                                launch { dragX.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)) }
-                                                launch { dragY.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)) }
-                                            }
-                                        },
-                                    )
-                                } else Modifier,
-                            ),
-                    ) {
-                        AsyncImage(
-                            model              = artworks[artIndex],
-                            contentDescription = "Artwork ${slot + 1} of ${artworks.size}",
-                            contentScale       = ContentScale.Crop,
-                            modifier           = Modifier.fillMaxSize(),
-                        )
-                    }
                 }
             }
         }

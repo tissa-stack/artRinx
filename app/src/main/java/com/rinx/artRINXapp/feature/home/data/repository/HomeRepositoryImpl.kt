@@ -2,6 +2,7 @@ package com.rinx.artRINXapp.feature.home.data.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.toApiError
+import com.rinx.artRINXapp.core.util.BlockedArtworkStore
 import com.rinx.artRINXapp.feature.home.data.remote.HomeApiService
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkSizeDto
@@ -23,6 +24,7 @@ import javax.inject.Inject
 
 class HomeRepositoryImpl @Inject constructor(
     private val apiService: HomeApiService,
+    private val blockedStore: BlockedArtworkStore,
 ) : HomeRepository {
 
     // SWR cache — survives navigation (this is @Singleton); cleared on logout/delete.
@@ -30,9 +32,17 @@ class HomeRepositoryImpl @Inject constructor(
     @Volatile private var shopCache: List<ShoppablePost>? = null
     @Volatile private var forYouCache: List<FeedPost>? = null
 
-    override fun cachedFeed(): HomeFeed? = feedCache
-    override fun cachedShop(): List<ShoppablePost>? = shopCache
-    override fun cachedForYou(): List<FeedPost>? = forYouCache
+    // Strip any blocked artwork from cached reads so a re-seed / back-navigation never resurfaces it.
+    override fun cachedFeed(): HomeFeed? = feedCache?.let { f ->
+        f.copy(
+            newArt = f.newArt.filterNot { blockedStore.isBlocked(it.id) },
+            posts = f.posts.filterNot { blockedStore.isBlocked(it.id) },
+            recentlyViewed = f.recentlyViewed.filterNot { blockedStore.isBlocked(it.id) },
+            curations = f.curations.map { it.stripBlocked() },
+        )
+    }
+    override fun cachedShop(): List<ShoppablePost>? = shopCache?.filterNot { blockedStore.isBlocked(it.id) }
+    override fun cachedForYou(): List<FeedPost>? = forYouCache?.filterNot { blockedStore.isBlocked(it.id) }
     override fun clearCache() {
         feedCache = null
         shopCache = null
@@ -58,14 +68,14 @@ class HomeRepositoryImpl @Inject constructor(
         val response = apiService.getDiscoverFeed()
         if (response.isSuccessful) {
             val data = response.body()?.data
-            val newArt = data?.newArt.orEmpty()
+            val newArt = data?.newArt.orEmpty().notBlocked()
             val feed = HomeFeed(
                 banners = data?.sponsored.orEmpty().map { it.toBannerItem() },
                 newArt = newArt.map { it.toArtworkItem() },
                 curations = data?.popularCurations.orEmpty().map { it.toCurationItem() },
                 posts = newArt.map { it.toFeedPost() },
                 // Render in the exact order the backend returns recently_viewed.
-                recentlyViewed = data?.recentlyViewed.orEmpty().map { it.toArtworkItem() },
+                recentlyViewed = data?.recentlyViewed.orEmpty().notBlocked().map { it.toArtworkItem() },
             )
             feedCache = feed
             ApiResult.Success(feed)
@@ -77,7 +87,7 @@ class HomeRepositoryImpl @Inject constructor(
     override suspend fun getShopArtworks(page: Int, size: Int): ApiResult<List<ShoppablePost>> = safeCall {
         val response = apiService.getShopArtworks(page, size)
         if (response.isSuccessful) {
-            val items = response.body()?.data?.items.orEmpty().map { it.toShoppablePost() }
+            val items = response.body()?.data?.items.orEmpty().notBlocked().map { it.toShoppablePost() }
             if (page == PAGE) shopCache = items // cache only the first page (what the tab seeds from)
             ApiResult.Success(items)
         } else {
@@ -88,7 +98,7 @@ class HomeRepositoryImpl @Inject constructor(
     override suspend fun getRecommendedArtworks(page: Int, size: Int): ApiResult<List<FeedPost>> = safeCall {
         val response = apiService.getRecommendedArtworks(page, size)
         if (response.isSuccessful) {
-            val items = response.body()?.data?.items.orEmpty().map { it.toFeedPost() }
+            val items = response.body()?.data?.items.orEmpty().notBlocked().map { it.toFeedPost() }
             if (page == PAGE) forYouCache = items // cache only the first page (what the tab seeds from)
             ApiResult.Success(items)
         } else {
@@ -121,7 +131,7 @@ class HomeRepositoryImpl @Inject constructor(
     override suspend fun getSimilarArtworks(id: Int): ApiResult<List<ArtworkItem>> = safeCall {
         val response = apiService.getSimilarArtworks(id, PAGE, SIZE)
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toArtworkItem() })
+            ApiResult.Success(response.body()?.data?.items.orEmpty().notBlocked().map { it.toArtworkItem() })
         } else {
             errorFor(response)
         }
@@ -157,6 +167,25 @@ class HomeRepositoryImpl @Inject constructor(
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Drop blocked artworks from a DTO list (by artwork id) before mapping to domain. */
+    private fun List<ArtworkDto>.notBlocked(): List<ArtworkDto> =
+        filterNot { it.id != null && blockedStore.isBlocked(it.id) }
+
+    /** Remove any blocked artwork from a cached curation's (index-aligned) urls + ids. */
+    private fun CurationItem.stripBlocked(): CurationItem {
+        if (artworkUrls.isEmpty()) return this
+        val keptUrls = ArrayList<String>(artworkUrls.size)
+        val keptIds = ArrayList<String>(artworkIds.size)
+        artworkUrls.indices.forEach { i ->
+            val id = artworkIds.getOrNull(i)
+            if (!blockedStore.isBlocked(id)) {
+                keptUrls += artworkUrls[i]
+                keptIds += (id ?: "")
+            }
+        }
+        return copy(artworkUrls = keptUrls, artworkIds = keptIds)
+    }
 
     private inline fun <T> safeCall(block: () -> ApiResult<T>): ApiResult<T> = try {
         block()
@@ -256,7 +285,8 @@ class HomeRepositoryImpl @Inject constructor(
         val ordered = artworks.orEmpty()
         val styleList = ordered.mapNotNull { it.medium?.title }.distinct()
         // Keep ids index-aligned with urls: filter the two together so a missing image can't shift them.
-        val withImages = ordered.filter { (it.imageUrl ?: it.thumbnailUrl) != null }
+        // Also drop any blocked artwork so it never shows in the curation deck.
+        val withImages = ordered.notBlocked().filter { (it.imageUrl ?: it.thumbnailUrl) != null }
         return CurationItem(
             id = id?.toString() ?: "",
             title = title.orEmpty(),

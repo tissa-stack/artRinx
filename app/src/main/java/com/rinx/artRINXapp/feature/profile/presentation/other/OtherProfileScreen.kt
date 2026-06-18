@@ -35,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -206,8 +207,10 @@ fun OtherProfileScreen(
                 val pagerState = rememberPagerState(
                     initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
                 ) { tabs.size }
-                LaunchedEffect(pagerState.currentPage) {
-                    val swiped = tabs[pagerState.currentPage]
+                // Key on settledPage (not currentPage) so a non-adjacent tab jump doesn't fire for
+                // intermediate pages and leave the header stuck mid-way.
+                LaunchedEffect(pagerState.settledPage) {
+                    val swiped = tabs[pagerState.settledPage]
                     if (swiped != uiState.activeTab) viewModel.onTabSelected(swiped)
                 }
                 LaunchedEffect(uiState.activeTab) {
@@ -223,6 +226,11 @@ fun OtherProfileScreen(
                     snapshotFlow { activeListState.canScrollForward }
                         .collect { canScroll -> if (!canScroll) viewModel.loadMore() }
                 }
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = viewModel::refresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                 ProfileHeaderTabsPager(
                     pagerState = pagerState,
                     listStateFor = { listStateFor(tabs[it]) },
@@ -294,6 +302,7 @@ fun OtherProfileScreen(
                             }
                         }
                     }
+                }
                 }
             }
         }

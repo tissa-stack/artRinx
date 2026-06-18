@@ -400,25 +400,29 @@ private fun HomeTabPage(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = bottomPadding.calculateBottomPadding()),
     ) {
-        // ── Uploading row (public uploads) — pinned at the very top of the feed ──
-        uiState.uploadProgress?.let { progress ->
-            item(key = "upload-progress") {
-                UploadProgressRow(
-                    progress = progress,
-                    onRetry = onRetryUpload,
-                    onDismiss = onDismissUpload,
-                )
+        // Upload / curation progress belongs only to the Discover feed — not Shop or For You (the
+        // same HomeTabPage composable backs every tab, so gate the rows to the Discover page).
+        if (tab == HomeTab.DISCOVER) {
+            // ── Uploading row (public uploads) — pinned at the very top of the feed ──
+            uiState.uploadProgress?.let { progress ->
+                item(key = "upload-progress") {
+                    UploadProgressRow(
+                        progress = progress,
+                        onRetry = onRetryUpload,
+                        onDismiss = onDismissUpload,
+                    )
+                }
             }
-        }
 
-        // ── Creating row (public curations) — directly below the upload row ──
-        uiState.curationProgress?.let { progress ->
-            item(key = "curation-progress") {
-                CurationProgressRow(
-                    progress = progress,
-                    onRetry = onRetryCuration,
-                    onDismiss = onDismissCuration,
-                )
+            // ── Creating row (public curations) — directly below the upload row ──
+            uiState.curationProgress?.let { progress ->
+                item(key = "curation-progress") {
+                    CurationProgressRow(
+                        progress = progress,
+                        onRetry = onRetryCuration,
+                        onDismiss = onDismissCuration,
+                    )
+                }
             }
         }
 

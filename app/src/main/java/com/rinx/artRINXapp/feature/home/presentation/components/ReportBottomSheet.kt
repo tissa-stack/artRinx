@@ -283,7 +283,7 @@ private fun ReportSent(
                     .clip(RoundedCornerShape(50))
                     .background(BrandPrimary)
                     .clickable(enabled = !isBlocking, onClick = onBlockArt)
-                    .padding(vertical = Spacing.md),
+                    .padding(horizontal = Spacing.xl, vertical = Spacing.md),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -305,7 +305,7 @@ private fun ReportSent(
                 .clip(RoundedCornerShape(50))
                 .background(BrandPrimary)
                 .clickable(enabled = !isBlocking, onClick = onBlockUser)
-                .padding(vertical = Spacing.md),
+                .padding(horizontal = Spacing.xl, vertical = Spacing.md),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -326,7 +326,7 @@ private fun ReportSent(
                     .clip(RoundedCornerShape(50))
                     .background(BrandPrimary)
                     .clickable(enabled = !isBlocking, onClick = onUnfollowUser)
-                    .padding(vertical = Spacing.md),
+                    .padding(horizontal = Spacing.xl, vertical = Spacing.md),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
