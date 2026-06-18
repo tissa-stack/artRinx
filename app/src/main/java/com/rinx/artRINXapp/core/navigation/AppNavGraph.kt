@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.core.navigation
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
@@ -66,7 +67,6 @@ import com.rinx.artRINXapp.feature.upload.presentation.newart.NewArtViewModel
 import com.rinx.artRINXapp.feature.upload.presentation.tags.AddTagsScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.remember
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationProgress
 import com.rinx.artRINXapp.feature.upload.domain.model.UploadProgress

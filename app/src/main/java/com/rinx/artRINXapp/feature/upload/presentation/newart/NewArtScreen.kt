@@ -276,11 +276,7 @@ fun NewArtScreen(
                         ShopLinkVisibility.LOCKED -> {
                             val shopCtx = LocalContext.current
                             LockedShopLinkField(onTap = {
-                                Toast.makeText(
-                                    shopCtx,
-                                    "Adding a shop link requires Artist Pro.",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                Toast.makeText(context, "Adding a shop link requires Artist Pro.", Toast.LENGTH_SHORT).show()
                             })
                             Spacer(Modifier.height(Spacing.md))
                         }

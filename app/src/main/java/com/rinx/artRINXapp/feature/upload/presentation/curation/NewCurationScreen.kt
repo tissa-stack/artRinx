@@ -183,11 +183,7 @@ fun NewCurationScreen(
                                 onDeleteArt = if (state.isEditing) {
                                     { index ->
                                         if (state.selectedArts.size <= 1) {
-                                            Toast.makeText(
-                                                context,
-                                                "A curation needs at least one artwork.",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                            Toast.makeText(context, "A curation needs at least one artwork.", Toast.LENGTH_SHORT).show()
                                         } else {
                                             pendingDeleteIndex = index
                                         }

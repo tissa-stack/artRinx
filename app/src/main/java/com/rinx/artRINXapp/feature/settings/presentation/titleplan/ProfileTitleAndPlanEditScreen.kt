@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.settings.presentation.titleplan
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -40,7 +41,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Intent
-import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
