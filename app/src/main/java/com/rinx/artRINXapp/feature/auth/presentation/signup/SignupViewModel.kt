@@ -17,6 +17,8 @@ import com.rinx.artRINXapp.feature.auth.domain.usecase.RequestOtpUseCase
 import com.rinx.artRINXapp.feature.auth.domain.usecase.SaveSessionUseCase
 import com.rinx.artRINXapp.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodeProvider
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,12 +35,31 @@ class SignupViewModel @Inject constructor(
     private val signInWithGoogle: SignInWithGoogleUseCase,
     private val saveSession: SaveSessionUseCase,
     private val googlePrefillHolder: GooglePrefillHolder,
+    private val countryCodeProvider: CountryCodeProvider,
 ) : ViewModel() {
 
     private val inviteCode: String = savedStateHandle.get<String>("inviteCode") ?: ""
 
     private val _uiState = MutableStateFlow(SignupUiState())
     val uiState: StateFlow<SignupUiState> = _uiState.asStateFlow()
+
+    init {
+        loadCountryCodes()
+    }
+
+    /** Populate the phone-code picker from the master catalog (falls back to the bundled list). */
+    private fun loadCountryCodes() {
+        viewModelScope.launch {
+            val countries = countryCodeProvider.load()
+            _uiState.update { state ->
+                val selected = countries.firstOrNull { it.code == state.selectedCountry.code }
+                    ?: countries.firstOrNull { it.code == CountryCodes.default.code }
+                    ?: countries.firstOrNull()
+                    ?: state.selectedCountry
+                state.copy(availableCountries = countries, selectedCountry = selected)
+            }
+        }
+    }
 
     fun onContactTypeToggle() {
         _uiState.update {

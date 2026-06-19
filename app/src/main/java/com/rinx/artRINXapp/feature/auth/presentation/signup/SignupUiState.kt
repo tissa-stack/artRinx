@@ -11,6 +11,8 @@ data class SignupUiState(
     val email: String = "",
     val rawPhone: String = "",
     val selectedCountry: CountryCode = CountryCodes.default,
+    /** Dial-code options; bundled fallback list, replaced by the master catalog once it loads. */
+    val availableCountries: List<CountryCode> = CountryCodes.all,
     val acceptedTerms: Boolean = false,
     val isLoading: Boolean = false,
     val isGoogleLoading: Boolean = false,

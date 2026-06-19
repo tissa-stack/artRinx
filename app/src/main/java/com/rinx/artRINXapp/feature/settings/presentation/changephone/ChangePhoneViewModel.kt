@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodeProvider
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -22,6 +23,8 @@ data class ChangePhoneUiState(
     val step: ChangePhoneStep = ChangePhoneStep.PHONE,
     val currentPhone: String = "",
     val selectedCountry: CountryCode = CountryCodes.default,
+    /** Dial-code options; bundled fallback list, replaced by the master catalog once it loads. */
+    val availableCountries: List<CountryCode> = CountryCodes.all,
     val rawPhone: String = "",
     val otp: String = "",
     val isSubmitting: Boolean = false,
@@ -45,6 +48,7 @@ data class ChangePhoneUiState(
 @HiltViewModel
 class ChangePhoneViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val countryCodeProvider: CountryCodeProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -53,6 +57,24 @@ class ChangePhoneViewModel @Inject constructor(
     val uiState: StateFlow<ChangePhoneUiState> = _uiState.asStateFlow()
 
     private var cooldownJob: Job? = null
+
+    init {
+        loadCountryCodes()
+    }
+
+    /** Populate the phone-code picker from the master catalog (falls back to the bundled list). */
+    private fun loadCountryCodes() {
+        viewModelScope.launch {
+            val countries = countryCodeProvider.load()
+            _uiState.update { state ->
+                val selected = countries.firstOrNull { it.code == state.selectedCountry.code }
+                    ?: countries.firstOrNull { it.code == CountryCodes.default.code }
+                    ?: countries.firstOrNull()
+                    ?: state.selectedCountry
+                state.copy(availableCountries = countries, selectedCountry = selected)
+            }
+        }
+    }
 
     fun onCountryChange(country: CountryCode) =
         _uiState.update { it.copy(selectedCountry = country, errorMessage = null) }

@@ -199,6 +199,8 @@ private fun SignupContent(
                     onPhoneChange = onPhoneChange,
                     selectedCountry = uiState.selectedCountry,
                     onCountryChange = onCountryChange,
+                    countries = uiState.availableCountries,
+                    searchable = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

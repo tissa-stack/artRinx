@@ -6,8 +6,6 @@ import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistRequest
 import com.rinx.artRINXapp.feature.auth.domain.model.ProfileType
 import com.rinx.artRINXapp.feature.auth.domain.usecase.JoinWaitlistUseCase
-import com.rinx.artRINXapp.feature.profile.domain.repository.CountryOption
-import com.rinx.artRINXapp.feature.profile.domain.repository.MasterLocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class WaitlistViewModel @Inject constructor(
     private val joinWaitlist: JoinWaitlistUseCase,
-    private val masterLocationRepository: MasterLocationRepository,
+    private val countryCodeProvider: CountryCodeProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WaitlistUiState())
@@ -30,30 +28,21 @@ class WaitlistViewModel @Inject constructor(
     }
 
     /**
-     * Replace the bundled fallback dial-code list with the full master catalog. Only countries that
-     * ship a phone code are usable here; the flag emoji is optional. On any failure we silently keep
-     * the fallback list so the picker is always usable (e.g. offline). The current selection is
-     * re-pointed at the matching catalog entry (same ISO2) so the dial code stays consistent.
+     * Replace the bundled fallback dial-code list with the full master catalog (loaded via
+     * [CountryCodeProvider], which falls back to the bundled list when offline). The current
+     * selection is re-pointed at the matching catalog entry (same ISO2) so the dial code is stable.
      */
     private fun loadCountryCodes() {
         viewModelScope.launch {
-            val result = masterLocationRepository.getCountries()
-            if (result !is ApiResult.Success) return@launch
-            val countries = result.data.mapNotNull { it.toCountryCode() }
-            if (countries.isEmpty()) return@launch
+            val countries = countryCodeProvider.load()
             _uiState.update { state ->
                 val selected = countries.firstOrNull { it.code == state.selectedCountry.code }
                     ?: countries.firstOrNull { it.code == CountryCodes.default.code }
-                    ?: countries.first()
+                    ?: countries.firstOrNull()
+                    ?: state.selectedCountry
                 state.copy(availableCountries = countries, selectedCountry = selected)
             }
         }
-    }
-
-    /** Map a master-catalog country to a dial-code option; drops entries without a phone code. */
-    private fun CountryOption.toCountryCode(): CountryCode? {
-        val dial = phoneCode?.takeIf { it.isNotBlank() } ?: return null
-        return CountryCode(flag = emoji.orEmpty(), code = iso2, dialCode = dial, name = name)
     }
 
     fun onEmailChange(value: String) =

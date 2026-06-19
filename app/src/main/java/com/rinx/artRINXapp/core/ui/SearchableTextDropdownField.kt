@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -77,11 +78,22 @@ fun SearchableTextDropdownField(
             enabled = enabled,
             label = { Text(text = label, style = MaterialTheme.typography.labelMedium) },
             trailingIcon = {
-                Icon(
-                    imageVector = if (showSuggestions) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Show a clear (X) once there's text to wipe the search; fall back to the
+                // open/closed dropdown chevron when the field is empty.
+                if (value.isNotEmpty() && enabled) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Clear",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable { onQueryChange("") },
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (showSuggestions) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             },
             singleLine = true,
             shape = RoundedCornerShape(dimens.authButtonHeight / 4),

@@ -194,6 +194,8 @@ private fun LoginContent(
                     onPhoneChange = onPhoneChange,
                     selectedCountry = uiState.selectedCountry,
                     onCountryChange = onCountryChange,
+                    countries = uiState.availableCountries,
+                    searchable = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

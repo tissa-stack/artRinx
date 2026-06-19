@@ -113,6 +113,7 @@ fun ChangePhoneScreen(
                     currentPhone = uiState.currentPhone,
                     rawPhone = uiState.rawPhone,
                     selectedCountry = uiState.selectedCountry,
+                    availableCountries = uiState.availableCountries,
                     isSubmitting = uiState.isSubmitting,
                     onRawPhoneChange = viewModel::onRawPhoneChange,
                     onCountryChange = viewModel::onCountryChange,
@@ -153,6 +154,7 @@ private fun PhoneStep(
     currentPhone: String,
     rawPhone: String,
     selectedCountry: CountryCode,
+    availableCountries: List<CountryCode>,
     isSubmitting: Boolean,
     onRawPhoneChange: (String) -> Unit,
     onCountryChange: (CountryCode) -> Unit,
@@ -184,6 +186,8 @@ private fun PhoneStep(
         onPhoneChange = onRawPhoneChange,
         selectedCountry = selectedCountry,
         onCountryChange = onCountryChange,
+        countries = availableCountries,
+        searchable = true,
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(Spacing.xl))
