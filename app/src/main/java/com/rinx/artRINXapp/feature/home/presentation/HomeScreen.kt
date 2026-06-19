@@ -35,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -299,8 +300,15 @@ fun HomeContent(
     }
 
     // Re-tapping the Home tab while already on Home scrolls the active list back to the top.
+    // Guard on an ACTUAL increment (tracked in rememberSaveable, persisted across nav dispose/restore)
+    // so returning here via Back — which re-creates this composition with the same tick — does NOT
+    // re-fire and clobber the restored scroll position.
+    var handledReselectTick by rememberSaveable { mutableStateOf(reselectTick) }
     LaunchedEffect(reselectTick) {
-        if (reselectTick > 0) listState.animateScrollToItem(0)
+        if (reselectTick > handledReselectTick) {
+            handledReselectTick = reselectTick
+            listState.animateScrollToItem(0)
+        }
     }
 
     // When a public upload/curation progress row appears (e.g. the user just landed here after
