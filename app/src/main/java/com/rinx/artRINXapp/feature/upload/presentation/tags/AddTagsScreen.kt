@@ -2,6 +2,7 @@ package com.rinx.artRINXapp.feature.upload.presentation.tags
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -58,6 +61,7 @@ fun AddTagsScreen(
 ) {
     val state          by viewModel.state.collectAsState()
     val focusRequester = remember { FocusRequester() }
+    val focusManager   = LocalFocusManager.current
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
@@ -65,6 +69,8 @@ fun AddTagsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            // Tap anywhere outside the input → drop focus and hide the keyboard.
+            .pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding(),
@@ -106,7 +112,10 @@ fun AddTagsScreen(
                     cursorBrush     = SolidColor(BrandPrimary),
                     singleLine      = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { viewModel.onAddTag() }),
+                    keyboardActions = KeyboardActions(onDone = {
+                        viewModel.onAddTag()
+                        focusManager.clearFocus()
+                    }),
                     decorationBox   = { inner ->
                         Box {
                             if (state.currentTagInput.isEmpty()) {
