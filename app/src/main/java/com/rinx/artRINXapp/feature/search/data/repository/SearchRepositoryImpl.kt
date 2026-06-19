@@ -20,7 +20,12 @@ import javax.inject.Inject
 class SearchRepositoryImpl @Inject constructor(
     private val apiService: SearchApiService,
     private val blockedStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
+    private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
 ) : SearchRepository {
+
+    /** True if any of the given user ids belongs to a user I've blocked (nulls ignored). */
+    private fun isUserBlocked(vararg ids: Int?): Boolean =
+        ids.any { it != null && blockedUsersStore.isBlocked(it) }
 
     // SWR cache for the idle screen — survives navigation (@Singleton); cleared on logout/delete.
     @Volatile private var trendingCache: List<String>? = null
@@ -32,7 +37,7 @@ class SearchRepositoryImpl @Inject constructor(
 
     override fun cachedTrendingTags(): List<String>? = trendingCache
     override fun cachedRecommended(): List<SearchResultItem>? =
-        recommendedCache?.filterNot { blockedStore.isBlocked(it.id) }
+        recommendedCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
     override fun clearCache() {
         trendingCache = null
         recommendedCache = null
@@ -61,7 +66,10 @@ class SearchRepositoryImpl @Inject constructor(
             city = city?.ifBlank { null },
         )
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.artworks.orEmpty().map { it.toResultItem() }.filterNot { blockedStore.isBlocked(it.id) })
+            ApiResult.Success(
+                response.body()?.data?.artworks.orEmpty().map { it.toResultItem() }
+                    .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
+            )
         } else {
             errorFor(response)
         }
@@ -87,7 +95,10 @@ class SearchRepositoryImpl @Inject constructor(
             city = city?.ifBlank { null },
         )
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.curations.orEmpty().map { it.toCurationItem() })
+            ApiResult.Success(
+                response.body()?.data?.curations.orEmpty().map { it.toCurationItem() }
+                    .filterNot { isUserBlocked(it.authorId) },
+            )
         } else {
             errorFor(response)
         }
@@ -111,7 +122,10 @@ class SearchRepositoryImpl @Inject constructor(
             city = city?.ifBlank { null },
         )
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.users.orEmpty().map { it.toUserItem() })
+            ApiResult.Success(
+                response.body()?.data?.users.orEmpty().map { it.toUserItem() }
+                    .filterNot { isUserBlocked(it.id.toIntOrNull()) },
+            )
         } else {
             errorFor(response)
         }
@@ -132,7 +146,7 @@ class SearchRepositoryImpl @Inject constructor(
         val response = apiService.getRecommended(page = PAGE, size = SIZE)
         if (response.isSuccessful) {
             val items = response.body()?.data?.items.orEmpty().map { it.toResultItem() }
-                .filterNot { blockedStore.isBlocked(it.id) }
+                .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
             recommendedCache = items
             ApiResult.Success(items)
         } else {
@@ -186,6 +200,8 @@ class SearchRepositoryImpl @Inject constructor(
         artistName = artist?.artistName ?: displayName.orEmpty(),
         cardHeight = aspectRatio.toCardHeight(),
         artId = id?.toString().orEmpty(),
+        ownerId = userId,
+        artistId = artist?.artistId,
     )
 
     private fun CurationDto.toCurationItem(): CurationItem {
@@ -200,6 +216,7 @@ class SearchRepositoryImpl @Inject constructor(
             styles = ordered.mapNotNull { it.medium?.title }.distinct().joinToString(", ").ifBlank { "Mixed" },
             likeCount = likesCount ?: 0,
             isLiked = isLiked ?: false,
+            authorId = author?.id,
         )
     }
 

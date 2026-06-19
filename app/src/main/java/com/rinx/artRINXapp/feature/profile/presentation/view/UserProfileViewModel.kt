@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
+import com.rinx.artRINXapp.core.util.BlockedUserBus
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
@@ -30,6 +31,7 @@ class UserProfileViewModel @Inject constructor(
     private val curationManager: CurationManager,
     private val profileRefreshBus: ProfileRefreshBus,
     private val blockedArtworkBus: BlockedArtworkBus,
+    private val blockedUserBus: BlockedUserBus,
 ) : ViewModel() {
 
     // Seed synchronously from cache so returning to the Profile tab renders instantly (SWR).
@@ -64,6 +66,7 @@ class UserProfileViewModel @Inject constructor(
         observeCurations()
         observeRefreshes()
         observeBlocks()
+        observeUserBlocks()
     }
 
     /** Drop a blocked artwork from the art + liked grids immediately (no refresh wait). */
@@ -75,6 +78,22 @@ class UserProfileViewModel @Inject constructor(
                     it.copy(
                         artItems = it.artItems.filterNot { item -> item.id == idStr },
                         likedItems = it.likedItems.filterNot { item -> item.id == idStr },
+                    )
+                }
+            }
+        }
+    }
+
+    /** When I block a user, drop their art from the Liked grid immediately. My own art (artItems)
+     *  can't be by a blocked user, so it's left untouched. */
+    private fun observeUserBlocks() {
+        viewModelScope.launch {
+            blockedUserBus.events.collect { blockedUserId ->
+                _uiState.update {
+                    it.copy(
+                        likedItems = it.likedItems.filterNot { item ->
+                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                        },
                     )
                 }
             }

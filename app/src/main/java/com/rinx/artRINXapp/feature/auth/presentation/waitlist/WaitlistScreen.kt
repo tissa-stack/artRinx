@@ -171,6 +171,8 @@ private fun WaitlistFormContent(
                 onPhoneChange = viewModel::onPhoneChange,
                 selectedCountry = uiState.selectedCountry,
                 onCountryChange = viewModel::onCountryChange,
+                countries = uiState.availableCountries,
+                searchable = true,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -351,11 +353,12 @@ private fun AvatarRow(modifier: Modifier = Modifier) {
 @Composable
 private fun WaitlistSuccessContent(onBack: () -> Unit) {
     val dimens = LocalDimens.current
+    val isDark = isSystemInDarkTheme()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0A))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
@@ -371,11 +374,13 @@ private fun WaitlistSuccessContent(onBack: () -> Unit) {
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Back",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Image(
-                painter = painterResource(R.drawable.artrinx_logo_dark_theme),
+                painter = painterResource(
+                    if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
+                ),
                 contentDescription = "RiNX logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
@@ -395,7 +400,7 @@ private fun WaitlistSuccessContent(onBack: () -> Unit) {
             Text(
                 text = "You've joined the waitlist!",
                 style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
 
@@ -404,7 +409,7 @@ private fun WaitlistSuccessContent(onBack: () -> Unit) {
             Text(
                 text = "What's next? Follow us on our socials to stay up to date.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
 
@@ -435,21 +440,21 @@ private fun SocialIconButton(
         modifier = Modifier
             .size(Spacing.giant)
             .clip(RoundedCornerShape(Spacing.md))
-            .background(Color(0xFF1A1A1A)),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
         if (iconRes != null) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = contentDescription,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(Spacing.xl),
             )
         } else {
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }

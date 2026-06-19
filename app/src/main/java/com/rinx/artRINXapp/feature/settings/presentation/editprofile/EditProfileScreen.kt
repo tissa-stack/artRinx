@@ -19,6 +19,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -326,8 +327,17 @@ private fun ColumnScope.EditProfileContent(
                             modifier = Modifier.size(avatarSize).clip(CircleShape),
                             contentScale = ContentScale.Crop,
                             loading = {
-                                // Band tinted with onSurfaceVariant so it stays visible against the
-                                // avatar's surfaceVariant circle (surface ≈ surfaceVariant here).
+                                // The sweep band must read as a LIGHTER glint than the avatar's
+                                // surfaceVariant circle in BOTH themes. onSurfaceVariant is a
+                                // foreground colour: light-grey on dark (fine) but dark-grey on
+                                // light (a harsh dark band). In light theme sweep toward the bright
+                                // background instead; the default brush's `surface` highlight is too
+                                // close to surfaceVariant here to be visible.
+                                val band = if (isSystemInDarkTheme()) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)
+                                } else {
+                                    MaterialTheme.colorScheme.background
+                                }
                                 Box(
                                     Modifier
                                         .fillMaxSize()
@@ -335,7 +345,7 @@ private fun ColumnScope.EditProfileContent(
                                             rememberShimmerBrush(
                                                 colors = listOf(
                                                     MaterialTheme.colorScheme.surfaceVariant,
-                                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f),
+                                                    band,
                                                     MaterialTheme.colorScheme.surfaceVariant,
                                                 ),
                                             ),

@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.home.data.repository
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.toApiError
 import com.rinx.artRINXapp.core.util.BlockedArtworkStore
+import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.feature.home.data.remote.HomeApiService
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkSizeDto
@@ -25,6 +26,7 @@ import javax.inject.Inject
 class HomeRepositoryImpl @Inject constructor(
     private val apiService: HomeApiService,
     private val blockedStore: BlockedArtworkStore,
+    private val blockedUsersStore: BlockedUsersStore,
 ) : HomeRepository {
 
     // SWR cache — survives navigation (this is @Singleton); cleared on logout/delete.
@@ -32,17 +34,20 @@ class HomeRepositoryImpl @Inject constructor(
     @Volatile private var shopCache: List<ShoppablePost>? = null
     @Volatile private var forYouCache: List<FeedPost>? = null
 
-    // Strip any blocked artwork from cached reads so a re-seed / back-navigation never resurfaces it.
+    // Strip any blocked artwork (by id) AND any blocked user's content (by owner/author) from cached
+    // reads so a re-seed / back-navigation never resurfaces it before the next network refresh.
     override fun cachedFeed(): HomeFeed? = feedCache?.let { f ->
         f.copy(
-            newArt = f.newArt.filterNot { blockedStore.isBlocked(it.id) },
-            posts = f.posts.filterNot { blockedStore.isBlocked(it.id) },
-            recentlyViewed = f.recentlyViewed.filterNot { blockedStore.isBlocked(it.id) },
-            curations = f.curations.map { it.stripBlocked() },
+            newArt = f.newArt.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
+            posts = f.posts.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) },
+            recentlyViewed = f.recentlyViewed.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
+            curations = f.curations.filterNot { isUserBlocked(it.authorId) }.map { it.stripBlocked() },
         )
     }
-    override fun cachedShop(): List<ShoppablePost>? = shopCache?.filterNot { blockedStore.isBlocked(it.id) }
-    override fun cachedForYou(): List<FeedPost>? = forYouCache?.filterNot { blockedStore.isBlocked(it.id) }
+    override fun cachedShop(): List<ShoppablePost>? =
+        shopCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+    override fun cachedForYou(): List<FeedPost>? =
+        forYouCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
     override fun clearCache() {
         feedCache = null
         shopCache = null
@@ -72,7 +77,8 @@ class HomeRepositoryImpl @Inject constructor(
             val feed = HomeFeed(
                 banners = data?.sponsored.orEmpty().map { it.toBannerItem() },
                 newArt = newArt.map { it.toArtworkItem() },
-                curations = data?.popularCurations.orEmpty().map { it.toCurationItem() },
+                curations = data?.popularCurations.orEmpty().map { it.toCurationItem() }
+                    .filterNot { isUserBlocked(it.authorId) },
                 posts = newArt.map { it.toFeedPost() },
                 // Render in the exact order the backend returns recently_viewed.
                 recentlyViewed = data?.recentlyViewed.orEmpty().notBlocked().map { it.toArtworkItem() },
@@ -168,9 +174,13 @@ class HomeRepositoryImpl @Inject constructor(
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /** Drop blocked artworks from a DTO list (by artwork id) before mapping to domain. */
+    /** Drop blocked artworks from a DTO list (by artwork id, or by a blocked owner/artist) before mapping. */
     private fun List<ArtworkDto>.notBlocked(): List<ArtworkDto> =
-        filterNot { it.id != null && blockedStore.isBlocked(it.id) }
+        filterNot { (it.id != null && blockedStore.isBlocked(it.id)) || isUserBlocked(it.userId, it.artist?.artistId) }
+
+    /** True if any of the given user ids belongs to a user I've blocked (nulls ignored). */
+    private fun isUserBlocked(vararg ids: Int?): Boolean =
+        ids.any { it != null && blockedUsersStore.isBlocked(it) }
 
     /** Remove any blocked artwork from a cached curation's (index-aligned) urls + ids. */
     private fun CurationItem.stripBlocked(): CurationItem {
@@ -223,6 +233,8 @@ class HomeRepositoryImpl @Inject constructor(
         title = title.orEmpty(),
         artistName = artistDisplay(),
         artistAvatarUrl = profilePictureUrl,
+        ownerId = userId,
+        artistId = artist?.artistId,
     )
 
     @VisibleForTesting

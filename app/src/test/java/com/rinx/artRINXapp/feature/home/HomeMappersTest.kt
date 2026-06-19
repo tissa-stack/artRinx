@@ -21,7 +21,11 @@ import org.junit.Test
  */
 class HomeMappersTest {
 
-    private val repo = HomeRepositoryImpl(mockk(relaxed = true), com.rinx.artRINXapp.core.util.BlockedArtworkStore())
+    private val repo = HomeRepositoryImpl(
+        mockk(relaxed = true),
+        com.rinx.artRINXapp.core.util.BlockedArtworkStore(),
+        com.rinx.artRINXapp.core.util.BlockedUsersStore(),
+    )
 
     // ── toArtworkItem ─────────────────────────────────────────────────────────
 
@@ -48,6 +52,21 @@ class HomeMappersTest {
     @Test
     fun `toArtworkItem renders a null id as an empty string`() = with(repo) {
         assertEquals("", ArtworkDto(id = null).toArtworkItem().id)
+    }
+
+    @Test
+    fun `toArtworkItem carries owner and credited-artist ids for block filtering`() = with(repo) {
+        val dto = ArtworkDto(id = 1, userId = 42, artist = ArtistDto(artistId = 7, artistName = "Picasso"))
+        val item = dto.toArtworkItem()
+        assertEquals(42, item.ownerId)
+        assertEquals(7, item.artistId)
+    }
+
+    @Test
+    fun `toArtworkItem leaves owner ids null when the dto has none`() = with(repo) {
+        val item = ArtworkDto(id = 1).toArtworkItem()
+        assertNull(item.ownerId)
+        assertNull(item.artistId)
     }
 
     // ── toFeedPost ────────────────────────────────────────────────────────────

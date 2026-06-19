@@ -26,7 +26,11 @@ class MasterLocationRepositoryImpl @Inject constructor(
                 val items = response.body()?.data?.items.orEmpty().mapNotNull { dto ->
                     val name = dto.name?.trim()?.ifBlank { null } ?: return@mapNotNull null
                     val iso2 = dto.iso2?.trim()?.ifBlank { null } ?: return@mapNotNull null
-                    CountryOption(name, iso2)
+                    // Normalize the dial code to a leading "+" (the catalog ships it bare, e.g. "91").
+                    val phoneCode = dto.phoneCode?.trim()?.ifBlank { null }
+                        ?.let { "+" + it.removePrefix("+") }
+                    val emoji = dto.emoji?.trim()?.ifBlank { null }
+                    CountryOption(name, iso2, phoneCode, emoji)
                 }
                 countriesCache = items
                 ApiResult.Success(items)

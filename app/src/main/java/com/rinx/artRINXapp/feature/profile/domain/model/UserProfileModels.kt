@@ -37,6 +37,10 @@ data class ProfileArtItem(
     val cardHeight: CardHeight = CardHeight.MEDIUM,
     /** Remote image URL (real artworks). Preferred over [imageRes] when present. */
     val imageUrl: String? = null,
+    /** Uploader's user id — used to drop this art when its owner is blocked (e.g. on the Liked tab). */
+    val ownerId: Int? = null,
+    /** Credited artist's RINX profile id (null when they have no profile). */
+    val artistId: Int? = null,
 )
 
 @Immutable

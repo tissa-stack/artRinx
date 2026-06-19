@@ -48,6 +48,10 @@ data class SearchResultItem(
     val artistName: String,
     val cardHeight: CardHeight,
     val artId: String = "",   // artwork id used for detail navigation
+    /** Uploader's user id — used to drop this art when its owner is blocked. */
+    val ownerId: Int? = null,
+    /** Credited artist's RINX profile id (null when they have no profile). */
+    val artistId: Int? = null,
 )
 
 /**

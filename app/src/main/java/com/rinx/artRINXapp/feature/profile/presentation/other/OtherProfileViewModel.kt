@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
+import com.rinx.artRINXapp.core.util.BlockedUserBus
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
@@ -57,6 +58,7 @@ class OtherProfileViewModel @Inject constructor(
     private val repository: ProfileRepository,
     private val profileRefreshBus: ProfileRefreshBus,
     private val blockedArtworkBus: BlockedArtworkBus,
+    private val blockedUserBus: BlockedUserBus,
 ) : ViewModel() {
 
     private val userId: Int? = savedStateHandle.get<String>("userId")?.toIntOrNull()
@@ -75,6 +77,7 @@ class OtherProfileViewModel @Inject constructor(
     init {
         load()
         observeBlocks()
+        observeUserBlocks()
     }
 
     /** Drop a blocked artwork from the grid immediately (no refresh wait). */
@@ -83,6 +86,22 @@ class OtherProfileViewModel @Inject constructor(
             blockedArtworkBus.events.collect { blockedId ->
                 val idStr = blockedId.toString()
                 _uiState.update { it.copy(artItems = it.artItems.filterNot { item -> item.id == idStr }) }
+            }
+        }
+    }
+
+    /** If this profile's user gets blocked (e.g. from chat while this screen is in the backstack),
+     *  drop their art from the grid immediately. A self-initiated block() pops the screen outright. */
+    private fun observeUserBlocks() {
+        viewModelScope.launch {
+            blockedUserBus.events.collect { blockedUserId ->
+                _uiState.update {
+                    it.copy(
+                        artItems = it.artItems.filterNot { item ->
+                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                        },
+                    )
+                }
             }
         }
     }

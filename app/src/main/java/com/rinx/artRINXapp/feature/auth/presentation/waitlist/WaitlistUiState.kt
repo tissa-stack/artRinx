@@ -7,6 +7,9 @@ data class WaitlistUiState(
     val email: String = "",
     val rawPhone: String = "",
     val selectedCountry: CountryCode = CountryCodes.default,
+    /** Dial-code options for the picker. Seeded with the bundled fallback list, replaced by the full
+     *  master catalog (GET /api/locations/master/countries) once it loads. */
+    val availableCountries: List<CountryCode> = CountryCodes.all,
     val firstName: String = "",
     val profileType: ProfileType? = null,
     val instagramHandle: String = "",

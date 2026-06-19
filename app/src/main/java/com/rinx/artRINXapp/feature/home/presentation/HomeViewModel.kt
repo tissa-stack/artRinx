@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
+import com.rinx.artRINXapp.core.util.BlockedUserBus
 import com.rinx.artRINXapp.core.util.LikeBus
 import com.rinx.artRINXapp.feature.home.data.local.CurationPreviewStore
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
@@ -34,6 +35,7 @@ class HomeViewModel @Inject constructor(
     private val curationManager: CurationManager,
     private val likeBus: LikeBus,
     private val blockedArtworkBus: BlockedArtworkBus,
+    private val blockedUserBus: BlockedUserBus,
     private val detailCache: DetailCache,
     private val profileRepository: ProfileRepository,
 ) : ViewModel() {
@@ -63,6 +65,7 @@ class HomeViewModel @Inject constructor(
         observeCurations()
         observeLikes()
         observeBlocks()
+        observeUserBlocks()
     }
 
     /** Drop a blocked artwork from every list the moment it's blocked (no refresh wait). */
@@ -81,6 +84,34 @@ class HomeViewModel @Inject constructor(
                         recentlyViewed = state.recentlyViewed.filterNot { it.id == idStr },
                         // Also strip it from any curation preview deck on the feed.
                         popularCurations = state.popularCurations.map { it.removeArtwork(idStr) },
+                    )
+                }
+            }
+        }
+    }
+
+    /** Drop every artwork/curation owned by a user the moment I block them (no refresh wait). */
+    private fun observeUserBlocks() {
+        viewModelScope.launch {
+            blockedUserBus.events.collect { blockedUserId ->
+                _uiState.update { state ->
+                    state.copy(
+                        feedItems = state.feedItems.filterNot { it.ownerId == blockedUserId },
+                        forYouItems = state.forYouItems.filterNot {
+                            it is ForYouItem.Post && it.post.ownerId == blockedUserId
+                        },
+                        shoppableItems = state.shoppableItems.filterNot {
+                            it.ownerId == blockedUserId || it.artistId == blockedUserId
+                        },
+                        newArtItems = state.newArtItems.filterNot {
+                            it.ownerId == blockedUserId || it.artistId == blockedUserId
+                        },
+                        recentlyViewed = state.recentlyViewed.filterNot {
+                            it.ownerId == blockedUserId || it.artistId == blockedUserId
+                        },
+                        // Drop whole curations authored by the blocked user (deck artworks lack a per-art
+                        // owner, so a blocked user's single piece inside someone else's deck clears on refresh).
+                        popularCurations = state.popularCurations.filterNot { it.authorId == blockedUserId },
                     )
                 }
             }

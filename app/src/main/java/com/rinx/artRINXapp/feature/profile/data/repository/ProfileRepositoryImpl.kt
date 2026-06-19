@@ -55,6 +55,7 @@ class ProfileRepositoryImpl @Inject constructor(
     private val session: SessionDataSource,
     private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
     private val blockedStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
+    private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
 ) : ProfileRepository {
 
     // SWR cache for the Profile tab (first page only) — survives navigation (@Singleton);
@@ -73,7 +74,7 @@ class ProfileRepositoryImpl @Inject constructor(
         myArtworksCache?.filterNot { blockedStore.isBlocked(it.id) }
     override fun cachedMyCurations(): List<ProfileCurationItem>? = myCurationsCache
     override fun cachedLikedArtworks(): List<ProfileArtItem>? =
-        likedArtworksCache?.filterNot { blockedStore.isBlocked(it.id) }
+        likedArtworksCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
     override fun clearCache() {
         profileDataCache = null
         myArtworksCache = null
@@ -529,7 +530,7 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getPublicArtworks(userId, page, size)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) })
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) })
             } else {
                 profileError(response.code())
             }
@@ -544,7 +545,7 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getArtworksByName(name, page, size)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) })
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) })
             } else {
                 profileError(response.code())
             }
@@ -661,6 +662,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.block(BlockRequest(userId = userId))
             if (response.isSuccessful) {
                 blockedUsersStore.markBlocked(userId) // authoritative local record (survives profile 500s)
+                blockedUserBus.signal(userId) // drop their content from live screens now (no refresh wait)
                 ApiResult.Success(Unit)
             } else {
                 response.toApiError()
@@ -745,7 +747,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getLikedArtworks(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
-                    .filterNot { blockedStore.isBlocked(it.id) }
+                    .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
                 if (page == 1) likedArtworksCache = items
                 ApiResult.Success(items)
             } else {
@@ -775,7 +777,13 @@ class ProfileRepositoryImpl @Inject constructor(
         artistName = artist?.artistName?.takeIf { it.isNotBlank() } ?: displayName.orEmpty(),
         isPrivate = privacy ?: false,
         cardHeight = aspectRatio.toCardHeight(),
+        ownerId = userId,
+        artistId = artist?.artistId,
     )
+
+    /** True if any of the given user ids belongs to a user I've blocked (nulls ignored). */
+    private fun isUserBlocked(vararg ids: Int?): Boolean =
+        ids.any { it != null && blockedUsersStore.isBlocked(it) }
 
     /** aspect_ratio is width/height: <1 = portrait (tall), >1 = landscape (short). */
     private fun Double?.toCardHeight(): CardHeight = when {

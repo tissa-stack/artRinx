@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
+import com.rinx.artRINXapp.core.util.BlockedUserBus
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.model.ResultTab
 import com.rinx.artRINXapp.feature.search.domain.model.SearchFilter
@@ -25,6 +26,7 @@ class SearchViewModel @Inject constructor(
     private val searchRepository: SearchRepository,
     private val profileRepository: ProfileRepository,
     private val blockedArtworkBus: BlockedArtworkBus,
+    private val blockedUserBus: BlockedUserBus,
 ) : ViewModel() {
 
     // Seed idle content synchronously from cache so re-entering the tab shows it instantly (SWR).
@@ -45,6 +47,7 @@ class SearchViewModel @Inject constructor(
         loadMediums()
         loadCountries()
         observeBlocks()
+        observeUserBlocks()
     }
 
     /** Drop a blocked artwork from results + recommendations the moment it's blocked. */
@@ -56,6 +59,27 @@ class SearchViewModel @Inject constructor(
                     it.copy(
                         artResults = it.artResults.filterNot { item -> item.id == idStr },
                         recommended = it.recommended.filterNot { item -> item.id == idStr },
+                    )
+                }
+            }
+        }
+    }
+
+    /** Drop a blocked user's art, curations, and the user themselves from results the moment I block them. */
+    private fun observeUserBlocks() {
+        viewModelScope.launch {
+            blockedUserBus.events.collect { blockedUserId ->
+                val idStr = blockedUserId.toString()
+                _uiState.update {
+                    it.copy(
+                        artResults = it.artResults.filterNot { item ->
+                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                        },
+                        recommended = it.recommended.filterNot { item ->
+                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                        },
+                        curationResults = it.curationResults.filterNot { c -> c.authorId == blockedUserId },
+                        userResults = it.userResults.filterNot { u -> u.id == idStr },
                     )
                 }
             }

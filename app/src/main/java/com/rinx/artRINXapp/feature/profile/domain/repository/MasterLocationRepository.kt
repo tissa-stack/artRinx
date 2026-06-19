@@ -2,8 +2,17 @@ package com.rinx.artRINXapp.feature.profile.domain.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
 
-/** A country from the master catalog; [iso2] is needed to fetch its states. */
-data class CountryOption(val name: String, val iso2: String)
+/**
+ * A country from the master catalog; [iso2] is needed to fetch its states. [phoneCode] (e.g. "+91")
+ * and [emoji] flag are present so phone-number pickers can build a dial-code list from the catalog;
+ * both are null when the backend omits them (the location cascade only needs name + iso2).
+ */
+data class CountryOption(
+    val name: String,
+    val iso2: String,
+    val phoneCode: String? = null,
+    val emoji: String? = null,
+)
 
 /** A state/province from the master catalog; [stateCode] is needed to fetch its cities. */
 data class StateOption(val name: String, val stateCode: String)
