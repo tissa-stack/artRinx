@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.home.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.ConnectivityChecker
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.BlockedUserBus
 import com.rinx.artRINXapp.core.util.LikeBus
@@ -20,6 +21,7 @@ import com.rinx.artRINXapp.feature.upload.domain.model.CurationProgress
 import com.rinx.artRINXapp.feature.upload.domain.model.UploadProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +40,7 @@ class HomeViewModel @Inject constructor(
     private val blockedUserBus: BlockedUserBus,
     private val detailCache: DetailCache,
     private val profileRepository: ProfileRepository,
+    private val connectivity: ConnectivityChecker,
 ) : ViewModel() {
 
     // Seed synchronously from cache so returning to the tab renders instantly with no shimmer (SWR).
@@ -263,9 +266,13 @@ class HomeViewModel @Inject constructor(
             }
 
             // Discover tab comes from one call; shop + recommended feeds from others. Run concurrently.
-            val feedJob = async { repository.getDiscoverFeed() }
-            val shopJob = async { repository.getShopArtworks(PAGE, SIZE) }
-            val recommendedJob = async { repository.getRecommendedArtworks(PAGE, SIZE) }
+            // On a first load with no cache (the only case that would show the offline screen), ride
+            // out a transient network failure — e.g. DNS not yet resolvable just after the device
+            // wakes — so we recover into content instead of flashing "offline".
+            val retryTransient = !hasCache && !isRefresh
+            val feedJob = async { withResumeRetry(retryTransient) { repository.getDiscoverFeed() } }
+            val shopJob = async { withResumeRetry(retryTransient) { repository.getShopArtworks(PAGE, SIZE) } }
+            val recommendedJob = async { withResumeRetry(retryTransient) { repository.getRecommendedArtworks(PAGE, SIZE) } }
             val feedRes = feedJob.await()
             val shopRes = shopJob.await()
             val recommendedRes = recommendedJob.await()
@@ -314,6 +321,29 @@ class HomeViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Retry a *transient* network failure (e.g. DNS not yet resolvable in the moments right after the
+     * device wakes) with short backoff — but only while the device actually has a network, so a real
+     * offline returns immediately. Only invoked on the first, cache-less load (the sole path that
+     * would otherwise show the offline screen); success/refresh/cached loads pass [retry] = false and
+     * behave exactly as before. The shimmer stays up during retries (no error is set until they're
+     * exhausted), so the user never sees a false "offline" flash.
+     */
+    private suspend fun <T> withResumeRetry(
+        retry: Boolean,
+        call: suspend () -> ApiResult<T>,
+    ): ApiResult<T> {
+        var res = call()
+        if (!retry) return res
+        var i = 0
+        while (res is ApiResult.Error.Network && connectivity.isOnline() && i < RESUME_RETRY_DELAYS_MS.size) {
+            delay(RESUME_RETRY_DELAYS_MS[i])
+            i++
+            res = call()
+        }
+        return res
     }
 
     /**
@@ -412,5 +442,9 @@ class HomeViewModel @Inject constructor(
     private companion object {
         const val PAGE = 1
         const val SIZE = 10
+
+        // Backoff for riding out a transient network failure on a cold/resume load (~5.5s total).
+        // Covers the brief window where the just-woken device can't resolve DNS yet.
+        val RESUME_RETRY_DELAYS_MS = longArrayOf(300, 700, 1500, 3000)
     }
 }
