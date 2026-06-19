@@ -46,9 +46,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.zIndex
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.rinx.artRINXapp.feature.home.presentation.detail.components.ZoomableImage
+import coil.compose.AsyncImage
+import com.rinx.artRINXapp.feature.home.presentation.detail.components.FullImageViewerDialog
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.DangerRed
@@ -330,10 +332,8 @@ private fun ArtDetailContent(
 ) {
     val d = LocalDimens.current
     val post = uiState.post ?: return
-    // Lift the hero above sibling items only while the image is actually zoomed, so a zoomed
-    // image overlays the content below it — yet when not zoomed the like-heart pop (which hops
-    // upward into the hero's region) still draws above the image instead of behind it.
-    var imageZoomed by remember { mutableStateOf(false) }
+    // Tapping the hero opens a full-screen zoomable viewer with the whole image.
+    var showFullImage by remember { mutableStateOf(false) }
     var descExpanded by remember { mutableStateOf(false) }
     var showSendSheet by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
@@ -348,6 +348,14 @@ private fun ArtDetailContent(
             artistName = post.artistName,
             shopUrl    = post.shopUrl,
             onDismiss  = { showShopDialog = false },
+        )
+    }
+
+    if (showFullImage) {
+        FullImageViewerDialog(
+            imageUrl = post.imageUrl,
+            contentDescription = post.title,
+            onDismiss = { showFullImage = false },
         )
     }
 
@@ -371,20 +379,21 @@ private fun ArtDetailContent(
 
     LazyColumn(modifier = modifier) {
 
-        // ── Hero image — full bleed from top of screen ─────────────────
+        // ── Hero image — edge-to-edge bounded preview; tap to open the full image ──
         item(key = "hero") {
             Box(
                 modifier = Modifier
-                    // Above detail items only while zoomed; otherwise the like-heart pop wins.
-                    .zIndex(if (imageZoomed) 1f else 0f)
                     .fillMaxWidth()
                     .height(d.artDetailImageHeight),
             ) {
-                ZoomableImage(
+                AsyncImage(
                     model = post.imageUrl,
                     contentDescription = post.title,
-                    onZoomedChange = { imageZoomed = it },
-                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,        // fill width, no side bars (center-cropped)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { showFullImage = true },
                 )
                 // Subtle top gradient so back button stays readable
                 Box(
@@ -397,6 +406,21 @@ private fun ArtDetailContent(
                             ),
                         ),
                 )
+                // Hint that the preview opens the full image (matches the hero's other overlay buttons).
+                IconButton(
+                    onClick = { showFullImage = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(Spacing.sm)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.55f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Fullscreen,
+                        contentDescription = "View full image",
+                        tint = Color.White,
+                    )
+                }
             }
         }
 

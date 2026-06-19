@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
@@ -42,8 +43,12 @@ fun ZoomableImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    /** Backdrop behind the image (e.g. fills letterbox margins). Defaults to `surfaceVariant`;
+     *  pass a transparent/black color for a full-screen lightbox. */
+    backgroundColor: Color = Color.Unspecified,
     onZoomedChange: (Boolean) -> Unit = {},
 ) {
+    val bg = if (backgroundColor == Color.Unspecified) MaterialTheme.colorScheme.surfaceVariant else backgroundColor
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
@@ -66,7 +71,7 @@ fun ZoomableImage(
         contentScale = contentScale,
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(bg)
             .onSizeChanged { boxSize = it }
             .graphicsLayer {
                 scaleX = scale
