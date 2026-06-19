@@ -266,14 +266,20 @@ class UserProfileViewModel @Inject constructor(
                 if (forProfile is CurationProgress.Success) {
                     _uiState.update { state ->
                         val newItem = forProfile.toProfileCurationItem()
-                        val deduped = state.curations.filterNot { it.id == newItem.id }
+                        // Idempotent: a private Success now lingers in the shared flow until the
+                        // create screen dismisses it (we deliberately don't dismiss here — that race
+                        // could starve NewCurationViewModel's overlay collector via StateFlow
+                        // conflation). So guard against re-inserting / double-counting on re-emission.
+                        val alreadyThere = state.curations.any { it.id == newItem.id }
                         state.copy(
-                            curations = listOf(newItem) + deduped,
-                            profile = state.profile?.let { it.copy(curationCount = it.curationCount + 1) },
+                            curations = if (alreadyThere) state.curations else listOf(newItem) + state.curations,
+                            profile = if (alreadyThere) state.profile
+                            else state.profile?.let { it.copy(curationCount = it.curationCount + 1) },
                             curationProgress = null,
                         )
                     }
-                    curationManager.dismiss()
+                    // NOTE: no curationManager.dismiss() here — the create-screen owner
+                    // (NewCurationViewModel.onCreationDone) / the next enqueue() clears the flow.
                 }
             }
         }
