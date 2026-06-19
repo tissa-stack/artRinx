@@ -57,10 +57,12 @@ import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.feature.home.domain.model.SendMode
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
+import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
 import androidx.compose.foundation.clickable
 
 private const val MAX_CHARS = 1000
@@ -178,6 +180,7 @@ private fun InvitationForm(
     val d = LocalDimens.current
     val isInvite = mode == SendMode.INVITE
     val focusManager = LocalFocusManager.current
+    var showQuotaInfo by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -355,25 +358,42 @@ private fun InvitationForm(
 
         Spacer(Modifier.height(Spacing.sm))
 
-        // New-chats-this-month count — only for a fresh invite (active chats don't spend quota).
-        if (isInvite) {
+        // New-chats-this-month note — centered, with a tappable info icon that opens the app's
+        // tooltip bubble (the same InfoTooltip used in profile setup) above the row.
+        if (isInvite && invitationsLeft != null) {
+            val capReached = invitationsLeft <= 0
+            if (showQuotaInfo) {
+                InfoTooltip(
+                    text = "You get a fresh allotment of new chats every month, starting on your " +
+                        "initial sign-up date. Messages within your active chats are unlimited.",
+                    onClose = { showQuotaInfo = false },
+                    tailAtBottom = true,
+                )
+            }
             Row(
-                modifier          = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                modifier              = Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
             ) {
                 Text(
-                    text  = invitationsLeft?.let { "You have $it new chats this month" }
-                        ?: "New chats are limited each month",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text      = if (capReached) {
+                        "You've reached your monthly limit for new chats. " +
+                            "Unlimited messages within your active chats."
+                    } else {
+                        "You have $invitationsLeft new chats this month"
+                    },
+                    style     = MaterialTheme.typography.bodySmall,
+                    color     = if (capReached) ErrorDark else MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.width(Spacing.xs))
                 Icon(
                     painter            = painterResource(R.drawable.ic_help),
-                    contentDescription = "Info",
+                    contentDescription = "What does this mean?",
                     tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier           = Modifier.size(Spacing.md),
+                    modifier           = Modifier
+                        .size(Spacing.md)
+                        .clickable { showQuotaInfo = !showQuotaInfo },
                 )
             }
             Spacer(Modifier.height(Spacing.lg))
