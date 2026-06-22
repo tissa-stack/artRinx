@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.paging.ListPage
+import com.rinx.artRINXapp.core.paging.toLoadMoreMessage
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.upload.domain.CurationSeedStore
@@ -27,6 +29,8 @@ data class AddToCurationUiState(
     val isAdding: Boolean = false,
     /** One-shot user-facing message (added / failed). Cleared via [consumeMessage]. */
     val message: String? = null,
+    /** Infinite-scroll state for the curation list. */
+    val paging: ListPage = ListPage(),
 )
 
 @HiltViewModel
@@ -56,12 +60,49 @@ class AddToCurationViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val result = profileRepository.getMyCurations(PAGE, SIZE)
             _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    curations = (result as? ApiResult.Success)?.data ?: it.curations,
-                )
+                if (result is ApiResult.Success) {
+                    it.copy(
+                        isLoading = false,
+                        curations = result.data,
+                        paging = ListPage(page = PAGE, hasMore = result.data.size >= SIZE),
+                    )
+                } else {
+                    it.copy(isLoading = false) // keep any prior list; the empty/error state covers it
+                }
             }
         }
+    }
+
+    /** Load the next page of the user's curations on scroll-to-bottom (append, dedupe by id). */
+    fun loadMore() {
+        val st = _uiState.value
+        if (st.isLoading || st.paging.blocked) return
+        _uiState.update { it.copy(paging = it.paging.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            val next = st.paging.page + 1
+            when (val res = profileRepository.getMyCurations(next, SIZE)) {
+                is ApiResult.Success -> _uiState.update { s ->
+                    val seen = s.curations.mapTo(HashSet()) { it.id }
+                    val merged = s.curations + res.data.filter { seen.add(it.id) }
+                    s.copy(
+                        curations = merged,
+                        paging = s.paging.copy(
+                            page = next, isLoadingMore = false,
+                            hasMore = res.data.size >= SIZE, loadMoreError = null,
+                        ),
+                    )
+                }
+                is ApiResult.Error -> _uiState.update { s ->
+                    s.copy(paging = s.paging.copy(isLoadingMore = false, loadMoreError = res.toLoadMoreMessage()))
+                }
+            }
+        }
+    }
+
+    /** Footer "Retry": clear the error and try the same next page again. */
+    fun retryLoadMore() {
+        _uiState.update { it.copy(paging = it.paging.copy(loadMoreError = null)) }
+        loadMore()
     }
 
     /** Add the [source]'s artwork(s) to the chosen [target] curation. */
@@ -118,6 +159,6 @@ class AddToCurationViewModel @Inject constructor(
 
     private companion object {
         const val PAGE = 1
-        const val SIZE = 50
+        const val SIZE = 20
     }
 }

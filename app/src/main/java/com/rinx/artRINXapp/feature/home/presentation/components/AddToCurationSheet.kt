@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,9 +59,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.PagingFooter
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileCurationCard
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,9 +79,20 @@ fun AddToCurationSheet(
     val focusManager = LocalFocusManager.current
     var query by remember { mutableStateOf("") }
     var pendingTarget by remember { mutableStateOf<ProfileCurationItem?>(null) }
+    val gridScrollState = rememberScrollState()
 
     // Fixed sheet height (status-bar-safe) so it doesn't fluctuate with content — the grid scrolls inside.
     val sheetHeight = (LocalConfiguration.current.screenHeightDp * 0.8f).dp
+
+    // Load the next page of curations when the grid is scrolled near its bottom. Disabled while
+    // searching (the visible list is a client-side filter over the loaded pages, so a short filtered
+    // list must not trigger endless next-page loads).
+    LaunchedEffect(gridScrollState, query) {
+        if (query.isNotBlank()) return@LaunchedEffect
+        snapshotFlow { gridScrollState.maxValue > 0 && gridScrollState.value >= gridScrollState.maxValue - 200 }
+            .distinctUntilChanged()
+            .collect { nearBottom -> if (nearBottom) viewModel.loadMore() }
+    }
 
     // Toast one-shot messages (errors keep the sheet open).
     LaunchedEffect(state.message) {
@@ -257,7 +271,7 @@ fun AddToCurationSheet(
                     else -> Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(gridScrollState),
                         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                     ) {
                         filtered.chunked(2).forEach { rowItems ->
@@ -276,6 +290,10 @@ fun AddToCurationSheet(
                                 // Keep the last odd card half-width.
                                 if (rowItems.size == 1) Spacer(Modifier.weight(1f))
                             }
+                        }
+                        // Loader / network-error+Retry footer for the next page (only when not searching).
+                        if (query.isBlank()) {
+                            PagingFooter(state.paging, onRetry = viewModel::retryLoadMore)
                         }
                         Spacer(Modifier.height(Spacing.lg))
                     }
