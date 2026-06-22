@@ -22,6 +22,13 @@ interface HomeApiService {
     @GET("api/feed/discover")
     suspend fun getDiscoverFeed(): Response<EnvelopeDto<DiscoverFeedDto>>
 
+    /** All public artworks — the paginated source for the Discover tab's vertical feed. */
+    @GET("api/artworks/all")
+    suspend fun getAllArtworks(
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+    ): Response<EnvelopeDto<PageDto<ArtworkDto>>>
+
     @GET("api/artworks/shop")
     suspend fun getShopArtworks(
         @Query("page") page: Int,

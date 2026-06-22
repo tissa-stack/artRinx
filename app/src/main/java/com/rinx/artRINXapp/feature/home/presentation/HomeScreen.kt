@@ -6,15 +6,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -37,18 +42,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.core.push.NotificationPermissionEffect
 import com.rinx.artRINXapp.core.tour.TourTarget
 import com.rinx.artRINXapp.core.tour.TourViewModel
 import com.rinx.artRINXapp.core.tour.TourStep
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
+import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.rinx.artRINXapp.feature.home.domain.model.MockHomeData
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
@@ -73,6 +84,9 @@ import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.FeedShim
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.HorizontalListShimmer
 import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
 import com.rinx.artRINXapp.feature.home.presentation.components.state.ErrorView
+
+/** Prefetch the next page once the user is within this many items of the bottom of a feed. */
+private const val PREFETCH_AHEAD = 4
 
 @Composable
 fun HomeScreen(
@@ -138,6 +152,8 @@ fun HomeScreen(
         onRetry = viewModel::onRetry,
         onLike = viewModel::onLikeToggled,
         onShopLike = viewModel::onShopLikeToggled,
+        onLoadMore = viewModel::loadMore,
+        onRetryLoadMore = viewModel::retryLoadMore,
         onRefresh = viewModel::refresh,
         onRetryUpload = viewModel::onRetryUpload,
         onDismissUpload = viewModel::onDismissUpload,
@@ -166,6 +182,8 @@ fun HomeScreenContent(
     onTabBounds: ((HomeTab, Rect) -> Unit)? = null,
     onItemBounds: ((String, Rect) -> Unit)? = null,
     onShopLike: (String) -> Unit = {},
+    onLoadMore: (HomeTab) -> Unit = {},
+    onRetryLoadMore: (HomeTab) -> Unit = {},
     onRefresh: () -> Unit = {},
     onRetryUpload: () -> Unit = {},
     onDismissUpload: () -> Unit = {},
@@ -211,6 +229,8 @@ fun HomeScreenContent(
             reselectTick = reselectTick,
             swipeEnabled = swipeEnabled,
             onShopLike = onShopLike,
+            onLoadMore = onLoadMore,
+            onRetryLoadMore = onRetryLoadMore,
             onRefresh = onRefresh,
             onRetryUpload = onRetryUpload,
             onDismissUpload = onDismissUpload,
@@ -258,6 +278,8 @@ fun HomeContent(
     reselectTick: Int = 0,
     swipeEnabled: Boolean = true,
     onShopLike: (String) -> Unit = {},
+    onLoadMore: (HomeTab) -> Unit = {},
+    onRetryLoadMore: (HomeTab) -> Unit = {},
     onRefresh: () -> Unit = {},
     onRetryUpload: () -> Unit = {},
     onDismissUpload: () -> Unit = {},
@@ -363,6 +385,8 @@ fun HomeContent(
                         onOpenProfile = onOpenProfile,
                         onAddToCuration = { addToCurationSource = it },
                         onShare = { shareTarget = it },
+                        onLoadMore = onLoadMore,
+                        onRetryLoadMore = onRetryLoadMore,
                     )
                 }
             }
@@ -404,8 +428,26 @@ private fun HomeTabPage(
     onOpenProfile: (Int) -> Unit,
     onAddToCuration: (CurationSource) -> Unit,
     onShare: (ShareTarget) -> Unit,
+    onLoadMore: (HomeTab) -> Unit = {},
+    onRetryLoadMore: (HomeTab) -> Unit = {},
 ) {
     val d = LocalDimens.current
+
+    // Infinite scroll: trigger the next page when the user nears the bottom of this tab's list.
+    // The ViewModel guards against duplicate/end-of-list calls, so firing eagerly is cheap.
+    val paging = when (tab) {
+        HomeTab.DISCOVER -> uiState.discoverPaging
+        HomeTab.SHOP -> uiState.shopPaging
+        HomeTab.FOR_YOU -> uiState.forYouPaging
+    }
+    LaunchedEffect(listState, tab) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            info.totalItemsCount > 0 && last >= info.totalItemsCount - PREFETCH_AHEAD
+        }.distinctUntilChanged().collect { nearEnd -> if (nearEnd) onLoadMore(tab) }
+    }
+
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -469,6 +511,7 @@ private fun HomeTabPage(
                             onShare = onShare,
                         )
                     }
+                    loadMoreFooter("shop", paging, hasContent = uiState.shoppableItems.isNotEmpty()) { onRetryLoadMore(tab) }
                 }
             }
 
@@ -537,6 +580,7 @@ private fun HomeTabPage(
                             }
                         }
                     }
+                    loadMoreFooter("foryou", paging, hasContent = uiState.forYouItems.isNotEmpty()) { onRetryLoadMore(tab) }
                 }
             }
 
@@ -671,11 +715,89 @@ private fun HomeTabPage(
                                 onShare = onShare,
                             )
                         }
+                        loadMoreFooter("discover", paging, hasContent = uiState.feedItems.isNotEmpty()) { onRetryLoadMore(tab) }
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Trailing footer for a paginated list: a spinner while the next page loads, an inline error + Retry
+ * row when that fetch failed, or a subtle "you've seen everything" row once all pages are loaded.
+ * Renders nothing while idle mid-list, or when the list is empty (the empty state covers that).
+ * Being the last list item, the end-of-feed message only becomes visible when scrolled to the bottom.
+ */
+private fun LazyListScope.loadMoreFooter(
+    keyPrefix: String,
+    paging: PageState,
+    hasContent: Boolean,
+    onRetry: () -> Unit,
+) {
+    val err = paging.loadMoreError
+    when {
+        paging.isLoadingMore -> item(key = "$keyPrefix-loadmore") { LoadMoreFooter() }
+        err != null -> item(key = "$keyPrefix-loadmore-error") { LoadMoreError(error = err, onRetry = onRetry) }
+        paging.endReached && hasContent -> item(key = "$keyPrefix-end") { EndOfFeedFooter() }
+    }
+}
+
+/** A small centered spinner row shown at the bottom of a paginated feed while the next page loads. */
+@Composable
+private fun LoadMoreFooter() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Spacing.md),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(
+            color = BrandPrimary,
+            strokeWidth = 2.dp,
+            modifier = Modifier.size(Spacing.lg),
+        )
+    }
+}
+
+/** Inline "couldn't load more" footer with a Retry button (shown when a next-page fetch fails). */
+@Composable
+private fun LoadMoreError(error: HomeError, onRetry: () -> Unit) {
+    val message = when (error) {
+        is HomeError.NoInternet -> "No internet connection."
+        is HomeError.Generic -> "Couldn't load more."
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Spacing.md, horizontal = Spacing.md),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(Spacing.sm))
+        OutlinedButton(onClick = onRetry) {
+            Text(text = "Retry", style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+/** End-of-list marker shown once every page is loaded — only visible when scrolled to the bottom. */
+@Composable
+private fun EndOfFeedFooter() {
+    Text(
+        text = "You've seen everything",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Spacing.lg, horizontal = Spacing.md),
+    )
 }
 
 @Preview(showBackground = true)

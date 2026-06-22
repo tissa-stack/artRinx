@@ -54,7 +54,8 @@ class HomeViewModel @Inject constructor(
             bannerItems = feed.banners,
             newArtItems = feed.newArt,
             popularCurations = feed.curations,
-            feedItems = feed.posts,
+            // Discover vertical feed = /artworks/all (cached page 1); fall back to discover posts.
+            feedItems = repository.cachedDiscover() ?: feed.posts,
             shoppableItems = repository.cachedShop().orEmpty(),
             // Prefer cached recommendations; fall back to discover posts until they load.
             forYouItems = buildForYou(repository.cachedForYou() ?: feed.posts, feed.banners),
@@ -271,9 +272,11 @@ class HomeViewModel @Inject constructor(
             // wakes — so we recover into content instead of flashing "offline".
             val retryTransient = !hasCache && !isRefresh
             val feedJob = async { withResumeRetry(retryTransient) { repository.getDiscoverFeed() } }
+            val discoverJob = async { withResumeRetry(retryTransient) { repository.getDiscoverArtworks(PAGE, SIZE) } }
             val shopJob = async { withResumeRetry(retryTransient) { repository.getShopArtworks(PAGE, SIZE) } }
             val recommendedJob = async { withResumeRetry(retryTransient) { repository.getRecommendedArtworks(PAGE, SIZE) } }
             val feedRes = feedJob.await()
+            val discoverRes = discoverJob.await()
             val shopRes = shopJob.await()
             val recommendedRes = recommendedJob.await()
 
@@ -299,6 +302,10 @@ class HomeViewModel @Inject constructor(
             // same first images the user saw on the home deck.
             feed.curations.forEach { curationPreviewStore.put(it.id, it.artworkUrls) }
 
+            val discoverPage = (discoverRes as? ApiResult.Success)?.data
+            val shopPage = (shopRes as? ApiResult.Success)?.data
+            val forYouPage = (recommendedRes as? ApiResult.Success)?.data
+
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -307,20 +314,132 @@ class HomeViewModel @Inject constructor(
                     bannerItems = feed.banners,
                     newArtItems = feed.newArt,
                     popularCurations = feed.curations,
-                    feedItems = feed.posts,
-                    shoppableItems = (shopRes as? ApiResult.Success)?.data.orEmpty(),
+                    // Discover vertical feed = /artworks/all; fall back to discover posts only if it
+                    // failed/empty so the tab is never blank.
+                    feedItems = discoverPage?.items?.takeIf { l -> l.isNotEmpty() } ?: feed.posts,
+                    shoppableItems = shopPage?.items.orEmpty(),
                     // For You = personalized recommendations; fall back to discover posts if the
                     // recommendation call failed or returned nothing, so the tab is never empty.
                     forYouItems = buildForYou(
-                        (recommendedRes as? ApiResult.Success)?.data?.takeIf { it.isNotEmpty() } ?: feed.posts,
+                        forYouPage?.items?.takeIf { l -> l.isNotEmpty() } ?: feed.posts,
                         feed.banners,
                     ),
                     // Recorded server-side when a detail screen calls the similar-artworks endpoint;
                     // returned here in the same discover-feed payload.
                     recentlyViewed = feed.recentlyViewed,
+                    // Reset paging — page 1 just loaded; next is page 2. If a feed failed to load
+                    // (null page), don't end it: allow a later loadMore to retry from page 2.
+                    discoverPaging = PageState(nextPage = 2, endReached = discoverPage?.endReached ?: false),
+                    shopPaging = PageState(nextPage = 2, endReached = shopPage?.endReached ?: false),
+                    forYouPaging = PageState(nextPage = 2, endReached = forYouPage?.endReached ?: false),
                 )
             }
         }
+    }
+
+    /**
+     * Infinite scroll: load the next page for [tab] and append (de-duped by id). No-op while the
+     * first load is running, while a page is already in flight, or once the end is reached.
+     */
+    fun loadMore(tab: HomeTab) {
+        val state = _uiState.value
+        if (state.isLoading) return
+        val paging = when (tab) {
+            HomeTab.DISCOVER -> state.discoverPaging
+            HomeTab.SHOP -> state.shopPaging
+            HomeTab.FOR_YOU -> state.forYouPaging
+        }
+        // Don't auto-load while a page is in flight, at the end, or sitting on a failed page — a
+        // failed page waits for an explicit [retryLoadMore] so scrolling can't spam retries.
+        if (paging.isLoadingMore || paging.endReached || paging.loadMoreError != null) return
+
+        setLoadingMore(tab, true)
+        viewModelScope.launch {
+            val page = paging.nextPage
+            when (tab) {
+                HomeTab.DISCOVER -> {
+                    val res = repository.getDiscoverArtworks(page, SIZE)
+                    _uiState.update { s ->
+                        if (res is ApiResult.Success) {
+                            val merged = appendDistinct(s.feedItems, res.data.items) { it.id }
+                            s.copy(feedItems = merged, discoverPaging = s.discoverPaging.copy(
+                                nextPage = page + 1, isLoadingMore = false,
+                                endReached = res.data.endReached, loadMoreError = null,
+                            ))
+                        } else {
+                            s.copy(discoverPaging = s.discoverPaging.copy(
+                                isLoadingMore = false, loadMoreError = (res as ApiResult.Error).toHomeError(),
+                            ))
+                        }
+                    }
+                }
+                HomeTab.SHOP -> {
+                    val res = repository.getShopArtworks(page, SIZE)
+                    _uiState.update { s ->
+                        if (res is ApiResult.Success) {
+                            val merged = appendDistinct(s.shoppableItems, res.data.items) { it.id }
+                            s.copy(shoppableItems = merged, shopPaging = s.shopPaging.copy(
+                                nextPage = page + 1, isLoadingMore = false,
+                                endReached = res.data.endReached, loadMoreError = null,
+                            ))
+                        } else {
+                            s.copy(shopPaging = s.shopPaging.copy(
+                                isLoadingMore = false, loadMoreError = (res as ApiResult.Error).toHomeError(),
+                            ))
+                        }
+                    }
+                }
+                HomeTab.FOR_YOU -> {
+                    val res = repository.getRecommendedArtworks(page, SIZE)
+                    _uiState.update { s ->
+                        if (res is ApiResult.Success) {
+                            val existing = s.forYouItems.mapNotNull { (it as? ForYouItem.Post)?.post }
+                            val merged = appendDistinct(existing, res.data.items) { it.id }
+                            s.copy(forYouItems = buildForYou(merged, s.bannerItems), forYouPaging = s.forYouPaging.copy(
+                                nextPage = page + 1, isLoadingMore = false,
+                                endReached = res.data.endReached, loadMoreError = null,
+                            ))
+                        } else {
+                            s.copy(forYouPaging = s.forYouPaging.copy(
+                                isLoadingMore = false, loadMoreError = (res as ApiResult.Error).toHomeError(),
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Clear a failed page's error and try the same page again (the footer Retry button). */
+    fun retryLoadMore(tab: HomeTab) {
+        _uiState.update { s ->
+            when (tab) {
+                HomeTab.DISCOVER -> s.copy(discoverPaging = s.discoverPaging.copy(loadMoreError = null))
+                HomeTab.SHOP -> s.copy(shopPaging = s.shopPaging.copy(loadMoreError = null))
+                HomeTab.FOR_YOU -> s.copy(forYouPaging = s.forYouPaging.copy(loadMoreError = null))
+            }
+        }
+        loadMore(tab)
+    }
+
+    private fun ApiResult.Error.toHomeError(): HomeError =
+        if (this is ApiResult.Error.Network) HomeError.NoInternet else HomeError.Generic()
+
+    private fun setLoadingMore(tab: HomeTab, loading: Boolean) {
+        _uiState.update { s ->
+            when (tab) {
+                HomeTab.DISCOVER -> s.copy(discoverPaging = s.discoverPaging.copy(isLoadingMore = loading))
+                HomeTab.SHOP -> s.copy(shopPaging = s.shopPaging.copy(isLoadingMore = loading))
+                HomeTab.FOR_YOU -> s.copy(forYouPaging = s.forYouPaging.copy(isLoadingMore = loading))
+            }
+        }
+    }
+
+    /** Append [next] onto [current], skipping any whose [key] already appears (overlap/refresh-safe). */
+    private fun <T> appendDistinct(current: List<T>, next: List<T>, key: (T) -> String): List<T> {
+        if (next.isEmpty()) return current
+        val seen = current.mapTo(HashSet()) { key(it) }
+        return current + next.filter { seen.add(key(it)) }
     }
 
     /**

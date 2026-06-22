@@ -16,6 +16,7 @@ import com.rinx.artRINXapp.feature.home.domain.model.BannerItem
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 import com.rinx.artRINXapp.feature.home.domain.model.FeedPost
 import com.rinx.artRINXapp.feature.home.domain.model.HomeFeed
+import com.rinx.artRINXapp.feature.home.domain.model.Paged
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
 import androidx.annotation.VisibleForTesting
@@ -31,6 +32,7 @@ class HomeRepositoryImpl @Inject constructor(
 
     // SWR cache — survives navigation (this is @Singleton); cleared on logout/delete.
     @Volatile private var feedCache: HomeFeed? = null
+    @Volatile private var discoverCache: List<FeedPost>? = null
     @Volatile private var shopCache: List<ShoppablePost>? = null
     @Volatile private var forYouCache: List<FeedPost>? = null
 
@@ -44,12 +46,15 @@ class HomeRepositoryImpl @Inject constructor(
             curations = f.curations.filterNot { isUserBlocked(it.authorId) }.map { it.stripBlocked() },
         )
     }
+    override fun cachedDiscover(): List<FeedPost>? =
+        discoverCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
     override fun cachedShop(): List<ShoppablePost>? =
         shopCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
     override fun cachedForYou(): List<FeedPost>? =
         forYouCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
     override fun clearCache() {
         feedCache = null
+        discoverCache = null
         shopCache = null
         forYouCache = null
     }
@@ -60,6 +65,9 @@ class HomeRepositoryImpl @Inject constructor(
             f.copy(posts = f.posts.map {
                 if (it.id == idStr) it.copy(isLiked = isLiked, likeCount = likeCount) else it
             })
+        }
+        discoverCache = discoverCache?.map {
+            if (it.id == idStr) it.copy(isLiked = isLiked, likeCount = likeCount) else it
         }
         shopCache = shopCache?.map {
             if (it.id == idStr) it.copy(isLiked = isLiked, likeCount = likeCount) else it
@@ -90,23 +98,37 @@ class HomeRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getShopArtworks(page: Int, size: Int): ApiResult<List<ShoppablePost>> = safeCall {
-        val response = apiService.getShopArtworks(page, size)
+    override suspend fun getDiscoverArtworks(page: Int, size: Int): ApiResult<Paged<FeedPost>> = safeCall {
+        val response = apiService.getAllArtworks(page, size)
         if (response.isSuccessful) {
-            val items = response.body()?.data?.items.orEmpty().notBlocked().map { it.toShoppablePost() }
-            if (page == PAGE) shopCache = items // cache only the first page (what the tab seeds from)
-            ApiResult.Success(items)
+            val body = response.body()?.data
+            val items = body?.items.orEmpty().notBlocked().map { it.toFeedPost() }
+            if (page == PAGE) discoverCache = items // cache only the first page (what the tab seeds from)
+            ApiResult.Success(Paged(items, page, size, body?.total ?: 0))
         } else {
             errorFor(response)
         }
     }
 
-    override suspend fun getRecommendedArtworks(page: Int, size: Int): ApiResult<List<FeedPost>> = safeCall {
+    override suspend fun getShopArtworks(page: Int, size: Int): ApiResult<Paged<ShoppablePost>> = safeCall {
+        val response = apiService.getShopArtworks(page, size)
+        if (response.isSuccessful) {
+            val body = response.body()?.data
+            val items = body?.items.orEmpty().notBlocked().map { it.toShoppablePost() }
+            if (page == PAGE) shopCache = items // cache only the first page (what the tab seeds from)
+            ApiResult.Success(Paged(items, page, size, body?.total ?: 0))
+        } else {
+            errorFor(response)
+        }
+    }
+
+    override suspend fun getRecommendedArtworks(page: Int, size: Int): ApiResult<Paged<FeedPost>> = safeCall {
         val response = apiService.getRecommendedArtworks(page, size)
         if (response.isSuccessful) {
-            val items = response.body()?.data?.items.orEmpty().notBlocked().map { it.toFeedPost() }
+            val body = response.body()?.data
+            val items = body?.items.orEmpty().notBlocked().map { it.toFeedPost() }
             if (page == PAGE) forYouCache = items // cache only the first page (what the tab seeds from)
-            ApiResult.Success(items)
+            ApiResult.Success(Paged(items, page, size, body?.total ?: 0))
         } else {
             errorFor(response)
         }

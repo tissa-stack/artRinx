@@ -41,7 +41,7 @@ class BlockedUserFilterTest {
         )
 
         val result = repo.getShopArtworks(1, 20) as ApiResult.Success
-        assertEquals(listOf("2"), result.data.map { it.id })
+        assertEquals(listOf("2"), result.data.items.map { it.id })
     }
 
     @Test
@@ -53,7 +53,7 @@ class BlockedUserFilterTest {
         )
 
         val result = repo.getShopArtworks(1, 20) as ApiResult.Success
-        assertEquals(listOf("2"), result.data.map { it.id })
+        assertEquals(listOf("2"), result.data.items.map { it.id })
     }
 
     @Test
@@ -64,6 +64,46 @@ class BlockedUserFilterTest {
         )
 
         val result = repo.getShopArtworks(1, 20) as ApiResult.Success
-        assertEquals(listOf("1", "2"), result.data.map { it.id })
+        assertEquals(listOf("1", "2"), result.data.items.map { it.id })
+    }
+
+    // ── Discover pagination (GET /artworks/all) ────────────────────────────────
+
+    private fun allPage(total: Int, vararg dtos: ArtworkDto) =
+        Response.success(EnvelopeDto(success = true, code = 200, data = PageDto(items = dtos.toList(), total = total)))
+
+    @Test
+    fun `getDiscoverArtworks maps items and reports not-ended when more pages remain`() = runTest {
+        coEvery { api.getAllArtworks(1, 10) } returns allPage(
+            total = 25,
+            ArtworkDto(id = 1, userId = 99),
+            ArtworkDto(id = 2, userId = 99),
+        )
+
+        val result = repo.getDiscoverArtworks(1, 10) as ApiResult.Success
+        assertEquals(listOf("1", "2"), result.data.items.map { it.id })
+        assertEquals(false, result.data.endReached) // 1*10 < 25
+    }
+
+    @Test
+    fun `getDiscoverArtworks reports ended on the last page per total`() = runTest {
+        coEvery { api.getAllArtworks(3, 10) } returns allPage(
+            total = 25,
+            ArtworkDto(id = 21, userId = 99),
+        )
+
+        val result = repo.getDiscoverArtworks(3, 10) as ApiResult.Success
+        assertEquals(true, result.data.endReached) // 3*10 >= 25
+    }
+
+    @Test
+    fun `getDiscoverArtworks does not falsely end when total is zero but items returned`() = runTest {
+        coEvery { api.getAllArtworks(1, 10) } returns allPage(
+            total = 0, // endpoint omitted/zeroed total → must not stop while a full page came back
+            ArtworkDto(id = 1, userId = 99),
+        )
+
+        val result = repo.getDiscoverArtworks(1, 10) as ApiResult.Success
+        assertEquals(false, result.data.endReached)
     }
 }

@@ -5,19 +5,26 @@ import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 import com.rinx.artRINXapp.feature.home.domain.model.FeedPost
 import com.rinx.artRINXapp.feature.home.domain.model.HomeFeed
+import com.rinx.artRINXapp.feature.home.domain.model.Paged
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
 
 interface HomeRepository {
-    /** Discover tab — banners, new art, and popular curations in a single request. */
+    /** Discover tab top sections — banners, new art, popular curations, recently viewed (one request). */
     suspend fun getDiscoverFeed(): ApiResult<HomeFeed>
-    suspend fun getShopArtworks(page: Int, size: Int): ApiResult<List<ShoppablePost>>
+
+    /** Discover tab vertical feed — all public artworks, paginated (GET /api/artworks/all). */
+    suspend fun getDiscoverArtworks(page: Int, size: Int): ApiResult<Paged<FeedPost>>
+
+    suspend fun getShopArtworks(page: Int, size: Int): ApiResult<Paged<ShoppablePost>>
 
     /** "For You" tab — personalized recommendations (GET /api/artworks/recommended). */
-    suspend fun getRecommendedArtworks(page: Int, size: Int): ApiResult<List<FeedPost>>
+    suspend fun getRecommendedArtworks(page: Int, size: Int): ApiResult<Paged<FeedPost>>
 
     // ── In-memory SWR cache (survives navigation; cleared on logout/delete) ───
     /** Last successful discover feed, or null if never loaded this session. */
     fun cachedFeed(): HomeFeed?
+    /** Last successful discover vertical-feed (artworks/all) page 1, or null. */
+    fun cachedDiscover(): List<FeedPost>?
     /** Last successful shop page, or null. */
     fun cachedShop(): List<ShoppablePost>?
     /** Last successful "For You" recommendations page, or null. */
