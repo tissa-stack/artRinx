@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -715,8 +714,10 @@ private fun ArtDetailContent(
                     if (railPaging.isLoadingMore) {
                         item(key = "more-loading") {
                             Box(
+                                // Match the card height so the spinner sits centered against the cards,
+                                // not at the top (a LazyRow item wraps content, so fillMaxHeight collapses).
                                 modifier = Modifier
-                                    .fillMaxHeight()
+                                    .height(d.artCardHeight)
                                     .padding(horizontal = Spacing.md),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -731,7 +732,7 @@ private fun ArtDetailContent(
                         item(key = "more-error") {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxHeight()
+                                    .height(d.artCardHeight)
                                     .padding(horizontal = Spacing.md),
                                 contentAlignment = Alignment.Center,
                             ) {
