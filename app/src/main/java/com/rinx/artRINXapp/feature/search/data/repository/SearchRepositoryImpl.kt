@@ -213,7 +213,7 @@ class SearchRepositoryImpl @Inject constructor(
             curatorName = author?.displayName ?: author?.username ?: "Curator",
             curatorAvatarUrl = author?.profilePicture,
             artworkUrls = ordered.mapNotNull { it.imageUrl ?: it.thumbnailUrl },
-            styles = ordered.mapNotNull { it.medium?.title }.distinct().joinToString(", ").ifBlank { "Mixed" },
+            styles = ordered.mapNotNull { it.medium?.title }.distinct().joinToString(", "),
             likeCount = likesCount ?: 0,
             isLiked = isLiked ?: false,
             authorId = author?.id,

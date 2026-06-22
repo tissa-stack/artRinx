@@ -390,28 +390,33 @@ private fun CurationDetailContent(
         }
 
         // ── Styles ─────────────────────────────────────────────────────────
-        item(key = "styles") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.md, vertical = Spacing.xs),
-            ) {
-                Text(
-                    text  = "Styles",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text       = curation.styles,
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onBackground,
-                )
+        // Hidden when the curation has no real style info (e.g. empty curation) — no fabricated text.
+        if (curation.styles.isNotBlank()) {
+            item(key = "styles") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                ) {
+                    Text(
+                        text  = "Styles",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text       = curation.styles,
+                        style      = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
             }
         }
 
         // ── Description ────────────────────────────────────────────────────
-        item(key = "desc") {
+        // Hidden when the API gives no description — no fabricated placeholder sentence.
+        if (curation.description.isNotBlank()) {
+            item(key = "desc") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -444,6 +449,7 @@ private fun CurationDetailContent(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.animateContentSize(),
                 )
+                }
             }
         }
 

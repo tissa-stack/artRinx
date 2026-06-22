@@ -167,11 +167,11 @@ class HomeMappersTest {
     }
 
     @Test
-    fun `toCurationItem applies friendly defaults when fields are missing`() = with(repo) {
+    fun `toCurationItem leaves styles and description blank when not provided`() = with(repo) {
         val c = CurationDto(id = 12).toCurationItem()
-        assertEquals("Curator", c.curatorName)
-        assertEquals("Painting", c.styles)
-        assertEquals("A carefully curated collection of remarkable artworks.", c.description)
+        assertEquals("Curator", c.curatorName) // friendly default kept
+        assertEquals("", c.styles) // no fabricated "Painting" — UI hides the Styles section
+        assertEquals("", c.description) // no fabricated placeholder sentence
         assertTrue(c.artworkUrls.isEmpty())
     }
 }

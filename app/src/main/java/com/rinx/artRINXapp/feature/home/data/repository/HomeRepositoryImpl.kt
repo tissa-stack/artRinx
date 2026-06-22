@@ -307,8 +307,10 @@ class HomeRepositoryImpl @Inject constructor(
             curatorAvatarUrl = author?.profilePicture,
             artworkUrls = withImages.map { (it.imageUrl ?: it.thumbnailUrl)!! },
             artworkIds = withImages.map { it.id?.toString() ?: "" },
-            styles = styleList.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: "Painting",
-            description = description ?: "A carefully curated collection of remarkable artworks.",
+            // Blank when the API gives no real style/description — the UI hides those sections
+            // rather than showing a fabricated placeholder (e.g. "Painting" for an empty curation).
+            styles = styleList.joinToString(", "),
+            description = description.orEmpty(),
             likeCount = likesCount ?: 0,
             isLiked = isLiked ?: false,
             authorId = author?.id,

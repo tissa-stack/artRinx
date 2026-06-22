@@ -38,8 +38,8 @@ data class CurationItem(
     val artworkUrls: List<String>,
     /** Artwork ids index-aligned with [artworkUrls] (for tapping a card → that art's detail). */
     val artworkIds: List<String> = emptyList(),
-    val styles: String = "Painting",
-    val description: String = "A carefully curated collection of remarkable artworks.",
+    val styles: String = "",
+    val description: String = "",
     val likeCount: Int = 0,
     val isLiked: Boolean = false,
     /** Curation owner's user id — used to detect "this is my own curation". */
