@@ -43,7 +43,7 @@ interface HomeRepository {
 
     // ── Detail screens ──────────────────────────────────────────────────────
     suspend fun getArtworkDetail(id: Int): ApiResult<ShoppablePost>
-    suspend fun getSimilarArtworks(id: Int): ApiResult<List<ArtworkItem>>
+    suspend fun getSimilarArtworks(id: Int, page: Int, size: Int): ApiResult<Paged<ArtworkItem>>
     suspend fun getCurationDetail(id: Int): ApiResult<CurationItem>
     suspend fun getMoreCurations(): ApiResult<List<CurationItem>>
     suspend fun likeCuration(curationId: Int): ApiResult<Unit>

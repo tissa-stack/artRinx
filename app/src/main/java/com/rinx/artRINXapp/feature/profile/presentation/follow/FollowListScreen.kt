@@ -38,6 +38,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +55,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.PagingFooter
 import com.rinx.artRINXapp.core.ui.ProfileHeaderTabsPager
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.domain.model.FollowUser
@@ -87,6 +89,17 @@ fun FollowListScreen(
     // One scroll state per tab → the two lists scroll independently and keep their positions.
     val followersListState = rememberLazyListState()
     val followingListState = rememberLazyListState()
+
+    // Infinite scroll for the active tab. Disabled while searching (the visible list is a client-side
+    // filter over the loaded pages, so a short filtered list must not trigger endless next-page loads).
+    LaunchedEffect(pagerState.currentPage, state.query) {
+        if (state.query.isNotBlank()) return@LaunchedEffect
+        val tab = tabs[pagerState.currentPage]
+        val activeListState = if (pagerState.currentPage == 0) followersListState else followingListState
+        snapshotFlow { activeListState.canScrollForward }.collect { canScroll ->
+            if (!canScroll) viewModel.loadMore(tab)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -194,12 +207,23 @@ fun FollowListScreen(
                     }
                 }
 
-                else -> items(list, key = { it.userId }) { user ->
-                    FollowUserRow(
-                        user = user,
-                        modifier = Modifier.padding(horizontal = dimens.screenPaddingHorizontal),
-                        onClick = { onOpenProfile(user.userId) },
-                    )
+                else -> {
+                    items(list, key = { it.userId }) { user ->
+                        FollowUserRow(
+                            user = user,
+                            modifier = Modifier.padding(horizontal = dimens.screenPaddingHorizontal),
+                            onClick = { onOpenProfile(user.userId) },
+                        )
+                    }
+                    // Footer only on the unfiltered list (search filters the loaded set client-side).
+                    if (state.query.isBlank()) {
+                        item(key = "paging-footer-$page") {
+                            PagingFooter(
+                                state.pagingFor(tabs[page]),
+                                onRetry = { viewModel.retryLoadMore(tabs[page]) },
+                            )
+                        }
+                    }
                 }
             }
         }

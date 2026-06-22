@@ -3,6 +3,9 @@ package com.rinx.artRINXapp.feature.settings.presentation.blocked
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.paging.ListPage
+import com.rinx.artRINXapp.core.paging.toLoadMoreMessage
+import com.rinx.artRINXapp.feature.profile.domain.model.BlockedUser
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.settings.domain.model.BlockedAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +25,8 @@ data class BlockedAccountsUiState(
     val unblockError: String? = null,
     /** One-shot: name of the just-unblocked account so the screen can toast a success message. */
     val unblockedName: String? = null,
+    /** Infinite-scroll state for the list. */
+    val paging: ListPage = ListPage(),
 )
 
 @HiltViewModel
@@ -36,22 +41,23 @@ class BlockedAccountsViewModel @Inject constructor(
         load()
     }
 
+    private fun BlockedUser.toAccount() = BlockedAccount(
+        id = userId.toString(),
+        name = name,
+        role = role,
+        userId = userId,
+        avatarUrl = avatarUrl,
+    )
+
     private fun load() {
         _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            when (val result = repository.getBlockedUsers(page = 1, size = 50)) {
+            when (val result = repository.getBlockedUsers(page = 1, size = SIZE)) {
                 is ApiResult.Success -> _state.update {
                     it.copy(
-                        accounts = result.data.map { u ->
-                            BlockedAccount(
-                                id = u.userId.toString(),
-                                name = u.name,
-                                role = u.role,
-                                userId = u.userId,
-                                avatarUrl = u.avatarUrl,
-                            )
-                        },
+                        accounts = result.data.map { u -> u.toAccount() },
                         isLoading = false,
+                        paging = ListPage(page = 1, hasMore = result.data.size >= SIZE),
                     )
                 }
                 is ApiResult.Error -> _state.update {
@@ -62,6 +68,38 @@ class BlockedAccountsViewModel @Inject constructor(
     }
 
     fun onRetry() = load()
+
+    /** Load the next page when the user scrolls to the bottom (no-op while loading / at end / errored). */
+    fun loadMore() {
+        val st = _state.value
+        if (st.isLoading || st.paging.blocked) return
+        _state.update { it.copy(paging = it.paging.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            val next = st.paging.page + 1
+            when (val result = repository.getBlockedUsers(page = next, size = SIZE)) {
+                is ApiResult.Success -> _state.update { s ->
+                    val seen = s.accounts.mapTo(HashSet()) { it.id }
+                    val merged = s.accounts + result.data.map { it.toAccount() }.filter { seen.add(it.id) }
+                    s.copy(
+                        accounts = merged,
+                        paging = s.paging.copy(
+                            page = next, isLoadingMore = false,
+                            hasMore = result.data.size >= SIZE, loadMoreError = null,
+                        ),
+                    )
+                }
+                is ApiResult.Error -> _state.update { s ->
+                    s.copy(paging = s.paging.copy(isLoadingMore = false, loadMoreError = result.toLoadMoreMessage()))
+                }
+            }
+        }
+    }
+
+    /** Footer "Retry": clear the error and try the same next page again. */
+    fun retryLoadMore() {
+        _state.update { it.copy(paging = it.paging.copy(loadMoreError = null)) }
+        loadMore()
+    }
 
     fun onUnblockRequest(account: BlockedAccount) =
         _state.update { it.copy(pendingUnblock = account) }
@@ -97,6 +135,10 @@ class BlockedAccountsViewModel @Inject constructor(
 
     fun onUnblockErrorShown() = _state.update { it.copy(unblockError = null) }
     fun onUnblockMessageShown() = _state.update { it.copy(unblockedName = null) }
+
+    private companion object {
+        const val SIZE = 20
+    }
 }
 
 private fun ApiResult.Error.toMessage(): String = when (this) {

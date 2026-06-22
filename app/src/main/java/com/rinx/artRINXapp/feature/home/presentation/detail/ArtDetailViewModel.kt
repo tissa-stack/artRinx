@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.userMessage
+import com.rinx.artRINXapp.core.paging.ListPage
+import com.rinx.artRINXapp.core.paging.toLoadMoreMessage
 import com.rinx.artRINXapp.core.util.LikeBus
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.home.data.local.DetailCache
@@ -33,6 +35,8 @@ import javax.inject.Inject
 data class ArtDetailUiState(
     val post: ShoppablePost? = null,
     val moreLikeThis: List<ArtworkItem> = emptyList(),
+    /** Horizontal infinite-scroll state for the "More like this" rail. */
+    val moreLikeThisPaging: ListPage = ListPage(),
     val isLoading: Boolean = true,
     val error: Boolean = false,
     /** True when the current user owns this artwork → show Edit/Delete instead of Report. */
@@ -132,7 +136,7 @@ class ArtDetailViewModel @Inject constructor(
             if (!hasCache) _uiState.update { it.copy(isLoading = true, error = false) }
             val detailJob = async { repository.getArtworkDetail(id) }
             // Opened from Profile → no "More like this" (it should read like a clean preview).
-            val similarJob = if (isFromProfile) null else async { repository.getSimilarArtworks(id) }
+            val similarJob = if (isFromProfile) null else async { repository.getSimilarArtworks(id, 1, SIMILAR_SIZE) }
             val meJob = async { profileRepository.getMyProfile() }
             val detailRes = detailJob.await()
             val similarRes = similarJob?.await()
@@ -146,12 +150,19 @@ class ArtDetailViewModel @Inject constructor(
                     post = post.copy(isLiked = liked, likeCount = _uiState.value.post?.likeCount ?: post.likeCount)
                 }
                 // Keep prior similar list if this refresh's similar call failed/absent.
-                val similar = (similarRes as? ApiResult.Success)?.data ?: _uiState.value.moreLikeThis
+                val similarPage = (similarRes as? ApiResult.Success)?.data
+                val similar = similarPage?.items ?: _uiState.value.moreLikeThis
                 val isOwn = meId != null && post.ownerId == meId
                 detailCache.putArtwork(id, post, similar, isOwn)
                 _uiState.update {
                     it.copy(
                         isLoading = false, error = false, post = post, moreLikeThis = similar,
+                        // Reset the rail's paging to page 1 when we got a fresh page; else keep prior.
+                        moreLikeThisPaging = if (similarPage != null) {
+                            ListPage(page = 1, hasMore = !similarPage.endReached)
+                        } else {
+                            it.moreLikeThisPaging
+                        },
                         isOwn = isOwn, isFromProfile = isFromProfile, ownershipResolved = true,
                     )
                 }
@@ -363,4 +374,43 @@ class ArtDetailViewModel @Inject constructor(
     }
 
     fun onActionErrorShown() = _uiState.update { it.copy(actionError = null) }
+
+    /** Load the next page of "More like this" as the rail scrolls right (append, dedupe by id). */
+    fun loadMoreSimilar() {
+        val id = artworkId ?: return
+        val st = _uiState.value
+        if (st.moreLikeThisPaging.blocked) return
+        _uiState.update { it.copy(moreLikeThisPaging = it.moreLikeThisPaging.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            val next = st.moreLikeThisPaging.page + 1
+            when (val res = repository.getSimilarArtworks(id, next, SIMILAR_SIZE)) {
+                is ApiResult.Success -> _uiState.update { s ->
+                    val seen = s.moreLikeThis.mapTo(HashSet()) { it.id }
+                    val merged = s.moreLikeThis + res.data.items.filter { seen.add(it.id) }
+                    s.copy(
+                        moreLikeThis = merged,
+                        moreLikeThisPaging = s.moreLikeThisPaging.copy(
+                            page = next, isLoadingMore = false,
+                            hasMore = !res.data.endReached, loadMoreError = null,
+                        ),
+                    )
+                }
+                is ApiResult.Error -> _uiState.update { s ->
+                    s.copy(moreLikeThisPaging = s.moreLikeThisPaging.copy(
+                        isLoadingMore = false, loadMoreError = res.toLoadMoreMessage(),
+                    ))
+                }
+            }
+        }
+    }
+
+    /** Rail "Retry": clear the error and try the same next page again. */
+    fun retryLoadMoreSimilar() {
+        _uiState.update { it.copy(moreLikeThisPaging = it.moreLikeThisPaging.copy(loadMoreError = null)) }
+        loadMoreSimilar()
+    }
+
+    private companion object {
+        const val SIMILAR_SIZE = 10
+    }
 }

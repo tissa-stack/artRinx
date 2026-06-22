@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +50,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.PagingFooter
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.settings.domain.model.BlockedAccount
 
@@ -59,6 +62,14 @@ fun BlockedAccountsScreen(
     val state by viewModel.state.collectAsState()
     val dimens = LocalDimens.current
     val context = LocalContext.current
+    val listState = rememberLazyListState()
+
+    // Load the next page when the list reaches the bottom.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.canScrollForward }.collect { canScroll ->
+            if (!canScroll) viewModel.loadMore()
+        }
+    }
 
     LaunchedEffect(state.unblockError) {
         state.unblockError?.let {
@@ -140,6 +151,7 @@ fun BlockedAccountsScreen(
             }
 
             else -> LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -153,6 +165,9 @@ fun BlockedAccountsScreen(
                         onUnblock = { viewModel.onUnblockRequest(account) },
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                }
+                item(key = "paging-footer") {
+                    PagingFooter(state.paging, onRetry = viewModel::retryLoadMore)
                 }
             }
         }

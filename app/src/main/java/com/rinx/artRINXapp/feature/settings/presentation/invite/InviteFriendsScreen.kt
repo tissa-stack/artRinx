@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,8 +31,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +53,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.PagingFooter
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.core.util.shareText
 import com.rinx.artRINXapp.feature.settings.domain.model.Invitee
@@ -64,6 +68,14 @@ fun InviteFriendsScreen(
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     val hasCode = state.code.isNotBlank()
+    val listState = rememberLazyListState()
+
+    // Load the next page of invitees when the list reaches the bottom.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.canScrollForward }.collect { canScroll ->
+            if (!canScroll) viewModel.loadMore()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -120,6 +132,7 @@ fun InviteFriendsScreen(
             }
 
             else -> LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -236,6 +249,9 @@ fun InviteFriendsScreen(
                 } else {
                     items(state.invitees, key = { it.id }) { invitee ->
                         InviteeRow(invitee = invitee, avatarSize = dimens.avatarSize)
+                    }
+                    item(key = "paging-footer") {
+                        PagingFooter(state.paging, onRetry = viewModel::retryLoadMore)
                     }
                 }
 

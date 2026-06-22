@@ -3,6 +3,9 @@ package com.rinx.artRINXapp.feature.settings.presentation.invite
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.paging.ListPage
+import com.rinx.artRINXapp.core.paging.toLoadMoreMessage
+import com.rinx.artRINXapp.feature.profile.domain.model.InvitedUser
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.settings.domain.model.Invitee
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +24,8 @@ data class InviteFriendsUiState(
     val invitesMonthlyCap: Int? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
+    /** Infinite-scroll state for the invitee list. */
+    val paging: ListPage = ListPage(),
 ) {
     /** Invites consumed this month (sent/joined) = cap − remaining. Null when unknown. */
     val invitesUsed: Int?
@@ -54,8 +59,19 @@ class InviteFriendsViewModel @Inject constructor(
                         )
                     }
                     // Only fetch the invitee list when there's a usable code (null for agent users).
-                    val invitees = if (code.isNotBlank()) loadInvitees(code) else emptyList()
-                    _state.update { it.copy(invitees = invitees, isLoading = false) }
+                    val result = if (code.isNotBlank()) {
+                        repository.getInvitedUsers(code, page = 1, size = SIZE)
+                    } else {
+                        ApiResult.Success(emptyList())
+                    }
+                    val invitees = (result as? ApiResult.Success)?.data?.map { it.toInvitee() }.orEmpty()
+                    _state.update {
+                        it.copy(
+                            invitees = invitees,
+                            isLoading = false,
+                            paging = ListPage(page = 1, hasMore = invitees.size >= SIZE),
+                        )
+                    }
                 }
                 is ApiResult.Error -> _state.update {
                     it.copy(isLoading = false, error = info.toMessage())
@@ -64,21 +80,51 @@ class InviteFriendsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadInvitees(code: String): List<Invitee> =
-        when (val result = repository.getInvitedUsers(code, page = 1, size = 50)) {
-            is ApiResult.Success -> result.data.map {
-                Invitee(
-                    id = it.id,
-                    name = it.name,
-                    handle = it.handle,
-                    date = it.joinedDate,
-                    avatarUrl = it.avatarUrl,
-                )
-            }
-            is ApiResult.Error -> emptyList()
-        }
+    private fun InvitedUser.toInvitee() = Invitee(
+        id = id,
+        name = name,
+        handle = handle,
+        date = joinedDate,
+        avatarUrl = avatarUrl,
+    )
 
     fun onRetry() = load()
+
+    /** Load the next page of invitees on scroll-to-bottom (no-op while loading / at end / errored). */
+    fun loadMore() {
+        val st = _state.value
+        if (st.isLoading || st.paging.blocked || st.code.isBlank()) return
+        _state.update { it.copy(paging = it.paging.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            val next = st.paging.page + 1
+            when (val result = repository.getInvitedUsers(st.code, page = next, size = SIZE)) {
+                is ApiResult.Success -> _state.update { s ->
+                    val seen = s.invitees.mapTo(HashSet()) { it.id }
+                    val merged = s.invitees + result.data.map { it.toInvitee() }.filter { seen.add(it.id) }
+                    s.copy(
+                        invitees = merged,
+                        paging = s.paging.copy(
+                            page = next, isLoadingMore = false,
+                            hasMore = result.data.size >= SIZE, loadMoreError = null,
+                        ),
+                    )
+                }
+                is ApiResult.Error -> _state.update { s ->
+                    s.copy(paging = s.paging.copy(isLoadingMore = false, loadMoreError = result.toLoadMoreMessage()))
+                }
+            }
+        }
+    }
+
+    /** Footer "Retry": clear the error and try the same next page again. */
+    fun retryLoadMore() {
+        _state.update { it.copy(paging = it.paging.copy(loadMoreError = null)) }
+        loadMore()
+    }
+
+    private companion object {
+        const val SIZE = 20
+    }
 }
 
 private fun ApiResult.Error.toMessage(): String = when (this) {

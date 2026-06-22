@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,12 +22,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -72,6 +77,10 @@ import com.rinx.artRINXapp.feature.home.presentation.components.SectionHeader
 import com.rinx.artRINXapp.feature.home.presentation.components.SendMessageBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.ShopLinkDialog
 import com.rinx.artRINXapp.feature.upload.presentation.components.DeleteConfirmDialog
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+/** Prefetch the next "More like this" page once within this many cards of the rail's right end. */
+private const val SIMILAR_PREFETCH = 3
 
 @Composable
 fun ArtDetailScreen(
@@ -218,6 +227,8 @@ fun ArtDetailScreen(
                     onInviteSheetOpened = viewModel::onInviteSheetOpened,
                     onSendInvite = viewModel::onSendInvite,
                     onInviteSheetClosed = viewModel::onInviteSheetClosed,
+                    onLoadMoreSimilar = viewModel::loadMoreSimilar,
+                    onRetryLoadMoreSimilar = viewModel::retryLoadMoreSimilar,
                     // Add-to-curation / Share / Like show on every artwork, including your own.
                     showActions = true,
                     // Send-message + Shop-Art only make sense on someone else's art — you can't
@@ -326,6 +337,8 @@ private fun ArtDetailContent(
     onInviteSheetOpened: () -> Unit = {},
     onSendInvite: (String) -> Unit = {},
     onInviteSheetClosed: () -> Unit = {},
+    onLoadMoreSimilar: () -> Unit = {},
+    onRetryLoadMoreSimilar: () -> Unit = {},
     showActions: Boolean = true,
     showContactActions: Boolean = true,
     modifier: Modifier = Modifier,
@@ -338,6 +351,17 @@ private fun ArtDetailContent(
     var showSendSheet by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
+
+    // Horizontal infinite scroll for the "More like this" rail — fetch the next page as it nears its
+    // right edge. The ViewModel guards against duplicate/end/errored loads, so firing eagerly is cheap.
+    val similarRowState = rememberLazyListState()
+    LaunchedEffect(similarRowState) {
+        snapshotFlow {
+            val info = similarRowState.layoutInfo
+            info.totalItemsCount > 0 &&
+                (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - SIMILAR_PREFETCH
+        }.distinctUntilChanged().collect { nearEnd -> if (nearEnd) onLoadMoreSimilar() }
+    }
 
     shareTarget?.let { target ->
         ShareSheet(target = target, onDismiss = { shareTarget = null })
@@ -676,6 +700,7 @@ private fun ArtDetailContent(
             }
             item(key = "more-content") {
                 LazyRow(
+                    state = similarRowState,
                     contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
@@ -684,6 +709,37 @@ private fun ArtDetailContent(
                             item = artItem,
                             onClick = { onNavigateToDetail(artItem.id) },
                         )
+                    }
+                    // Trailing rail footer: spinner while the next page loads, or a Retry chip on failure.
+                    val railPaging = uiState.moreLikeThisPaging
+                    if (railPaging.isLoadingMore) {
+                        item(key = "more-loading") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(horizontal = Spacing.md),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    color = BrandPrimary,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(Spacing.lg),
+                                )
+                            }
+                        }
+                    } else if (railPaging.loadMoreError != null) {
+                        item(key = "more-error") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(horizontal = Spacing.md),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                OutlinedButton(onClick = onRetryLoadMoreSimilar) {
+                                    Text(text = "Retry", style = MaterialTheme.typography.labelLarge)
+                                }
+                            }
+                        }
                     }
                 }
             }

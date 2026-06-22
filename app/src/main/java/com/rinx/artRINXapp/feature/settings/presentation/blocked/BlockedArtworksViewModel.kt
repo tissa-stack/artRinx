@@ -3,6 +3,8 @@ package com.rinx.artRINXapp.feature.settings.presentation.blocked
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.paging.ListPage
+import com.rinx.artRINXapp.core.paging.toLoadMoreMessage
 import com.rinx.artRINXapp.feature.profile.domain.model.BlockedArtwork
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +24,8 @@ data class BlockedArtworksUiState(
     val unblockError: String? = null,
     /** One-shot: title of the just-unblocked artwork so the screen can toast a success message. */
     val unblockedTitle: String? = null,
+    /** Infinite-scroll state for the list. */
+    val paging: ListPage = ListPage(),
 )
 
 @HiltViewModel
@@ -39,9 +43,13 @@ class BlockedArtworksViewModel @Inject constructor(
     private fun load() {
         _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            when (val result = repository.getBlockedArtworks(page = 1, size = 50)) {
+            when (val result = repository.getBlockedArtworks(page = 1, size = SIZE)) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(artworks = result.data, isLoading = false)
+                    it.copy(
+                        artworks = result.data,
+                        isLoading = false,
+                        paging = ListPage(page = 1, hasMore = result.data.size >= SIZE),
+                    )
                 }
                 is ApiResult.Error -> _state.update {
                     it.copy(isLoading = false, error = result.toMessage())
@@ -51,6 +59,38 @@ class BlockedArtworksViewModel @Inject constructor(
     }
 
     fun onRetry() = load()
+
+    /** Load the next page when the user scrolls to the bottom (no-op while loading / at end / errored). */
+    fun loadMore() {
+        val st = _state.value
+        if (st.isLoading || st.paging.blocked) return
+        _state.update { it.copy(paging = it.paging.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            val next = st.paging.page + 1
+            when (val result = repository.getBlockedArtworks(page = next, size = SIZE)) {
+                is ApiResult.Success -> _state.update { s ->
+                    val seen = s.artworks.mapTo(HashSet()) { it.artId }
+                    val merged = s.artworks + result.data.filter { seen.add(it.artId) }
+                    s.copy(
+                        artworks = merged,
+                        paging = s.paging.copy(
+                            page = next, isLoadingMore = false,
+                            hasMore = result.data.size >= SIZE, loadMoreError = null,
+                        ),
+                    )
+                }
+                is ApiResult.Error -> _state.update { s ->
+                    s.copy(paging = s.paging.copy(isLoadingMore = false, loadMoreError = result.toLoadMoreMessage()))
+                }
+            }
+        }
+    }
+
+    /** Footer "Retry": clear the error and try the same next page again. */
+    fun retryLoadMore() {
+        _state.update { it.copy(paging = it.paging.copy(loadMoreError = null)) }
+        loadMore()
+    }
 
     fun onUnblockRequest(artwork: BlockedArtwork) =
         _state.update { it.copy(pendingUnblock = artwork) }
@@ -86,6 +126,10 @@ class BlockedArtworksViewModel @Inject constructor(
 
     fun onUnblockErrorShown() = _state.update { it.copy(unblockError = null) }
     fun onUnblockMessageShown() = _state.update { it.copy(unblockedTitle = null) }
+
+    private companion object {
+        const val SIZE = 20
+    }
 }
 
 private fun ApiResult.Error.toMessage(): String = when (this) {

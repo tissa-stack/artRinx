@@ -156,10 +156,12 @@ class HomeRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getSimilarArtworks(id: Int): ApiResult<List<ArtworkItem>> = safeCall {
-        val response = apiService.getSimilarArtworks(id, PAGE, SIZE)
+    override suspend fun getSimilarArtworks(id: Int, page: Int, size: Int): ApiResult<Paged<ArtworkItem>> = safeCall {
+        val response = apiService.getSimilarArtworks(id, page, size)
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.items.orEmpty().notBlocked().map { it.toArtworkItem() })
+            val body = response.body()?.data
+            val items = body?.items.orEmpty().notBlocked().map { it.toArtworkItem() }
+            ApiResult.Success(Paged(items, page, size, body?.total ?: 0))
         } else {
             errorFor(response)
         }
