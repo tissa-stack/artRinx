@@ -282,6 +282,7 @@ private fun CurationDetailContent(
     modifier: Modifier = Modifier,
 ) {
     val curation = uiState.curation ?: return
+    val d = LocalDimens.current
     var descExpanded by remember { mutableStateOf(true) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
 
@@ -292,16 +293,34 @@ private fun CurationDetailContent(
     LazyColumn(modifier = modifier.fillMaxSize()) {
 
         // ── Card stack — directly below the top bar, clean start ──────────
+        // Empty curation → show a placeholder message in the deck's place (the stack itself
+        // renders nothing when empty), so the screen never looks broken/blank.
         item(key = "card-stack") {
-            CurationCardStack(
-                artworks           = curation.artworkUrls,
-                modifier           = Modifier.fillMaxWidth(),
-                onCardClick        = { index ->
-                    curation.artworkIds.getOrNull(index)
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let(onNavigateToArtDetail)
-                },
-            )
+            if (curation.artworkUrls.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(d.artDetailImageHeight)
+                        .padding(horizontal = Spacing.md),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text  = "No artworks in this curation yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                CurationCardStack(
+                    artworks           = curation.artworkUrls,
+                    modifier           = Modifier.fillMaxWidth(),
+                    onCardClick        = { index ->
+                        curation.artworkIds.getOrNull(index)
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let(onNavigateToArtDetail)
+                    },
+                )
+            }
         }
 
         // ── Title + action icons ───────────────────────────────────────────
