@@ -15,13 +15,36 @@ import javax.inject.Singleton
 class SessionDataSource @Inject constructor(
     @ApplicationContext context: Context,
 ) {
+    /**
+     * Encrypted token store. Building it can throw AEADBadTagException (and other Tink
+     * crypto/IO errors) when the on-disk keyset can no longer be decrypted by the Keystore master
+     * key — e.g. after a backup/restore or keystore reset, where the encrypted prefs come back but
+     * the non-exportable master key does not. That used to crash launch on first read; instead we
+     * wipe the unreadable store and rebuild it empty (the tokens are cryptographically
+     * unrecoverable anyway, so the user simply re-authenticates).
+     *
+     * This recovery fires ONLY when [EncryptedSharedPreferences.create] itself throws. Normal token
+     * expiry decrypts fine and never reaches this path.
+     */
     private val prefs: SharedPreferences by lazy {
+        try {
+            buildEncryptedPrefs(context)
+        } catch (e: Exception) {
+            // Corrupt/unreadable keyset: drop the encrypted prefs file and rebuild empty. The Tink
+            // keyset is stored inside this same prefs file, so deleting it clears the keyset too;
+            // MasterKey.Builder then reuses (or regenerates) the Keystore master key on rebuild.
+            context.deleteSharedPreferences(SECURE_PREFS_NAME)
+            buildEncryptedPrefs(context)
+        }
+    }
+
+    private fun buildEncryptedPrefs(context: Context): SharedPreferences {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
-        EncryptedSharedPreferences.create(
+        return EncryptedSharedPreferences.create(
             context,
-            "artrinx_secure_prefs",
+            SECURE_PREFS_NAME,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
@@ -104,6 +127,7 @@ class SessionDataSource @Inject constructor(
     }
 
     private companion object {
+        const val SECURE_PREFS_NAME = "artrinx_secure_prefs"
         const val KEY_ACCESS_TOKEN = "access_token"
         const val KEY_REFRESH_TOKEN = "refresh_token"
         const val KEY_ACCESS_EXPIRY = "access_token_expiry_epoch"
