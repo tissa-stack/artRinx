@@ -38,8 +38,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,8 +45,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.core.tour.TourTarget
-import com.rinx.artRINXapp.core.tour.TourViewModel
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.search.presentation.components.CurationGridCard
 import com.rinx.artRINXapp.feature.search.domain.model.ResultTab
@@ -79,10 +75,6 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
-
-    // First-launch tour: report the search-bar bounds so the global overlay can spotlight it.
-    val tour: TourViewModel = hiltViewModel()
-    val tourState by tour.state.collectAsState()
 
     // Intercept back when results are visible (return to the idle content) or the filter is open.
     BackHandler(enabled = uiState.phase == SearchPhase.RESULTS || uiState.isFilterSheetVisible) {
@@ -118,16 +110,7 @@ fun SearchScreen(
                     onClear = viewModel::onClearQuery,
                     onFocused = viewModel::onFocused,
                     modifier = Modifier
-                        .padding(horizontal = Spacing.md, vertical = Spacing.sm)
-                        .then(
-                            if (tourState.active) {
-                                Modifier.onGloballyPositioned {
-                                    tour.report(TourTarget.SEARCH_BAR, it.boundsInWindow())
-                                }
-                            } else {
-                                Modifier
-                            },
-                        ),
+                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 )
 
                 AnimatedContent(

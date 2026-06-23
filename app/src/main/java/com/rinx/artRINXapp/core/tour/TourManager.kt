@@ -73,8 +73,6 @@ class TourManager @Inject constructor(
         _state.value = _state.value.copy(step = (_state.value.step - 1).coerceAtLeast(0))
     }
 
-    fun skip() = finish()
-
     fun report(target: TourTarget, rect: Rect) {
         bounds[target] = rect
     }

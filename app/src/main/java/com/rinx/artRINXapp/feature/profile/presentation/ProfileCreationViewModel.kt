@@ -47,8 +47,6 @@ sealed class UsernameCheckState {
 data class ProfileCreationUiState(
     val draftLoaded: Boolean = false,
     val currentStep: Int = 0,
-    val showGroundRules: Boolean = false,
-    val groundRulesChecked: Boolean = false,
 
     // Step 0 – Profile Title
     val profileTypes: List<ProfileType> = emptyList(),
@@ -149,7 +147,6 @@ class ProfileCreationViewModel @Inject constructor(
                 state.copy(
                     draftLoaded = true,
                     currentStep = draft.step,
-                    showGroundRules = !draft.groundRulesAccepted,
                     selectedProfileTypeId = draft.profileTypeId,
                     fullName = fullName,
                     username = draft.username,
@@ -217,19 +214,6 @@ class ProfileCreationViewModel @Inject constructor(
     private fun upscaleGooglePhotoUrl(url: String, size: Int): String =
         if (url.contains("=s")) url.replace(Regex("=s\\d+(-c)?"), "=s$size-c")
         else "$url=s$size-c"
-
-    // ── Ground Rules ─────────────────────────────────────────────────────────
-
-    fun onGroundRulesCheckedChange(checked: Boolean) {
-        _uiState.update { it.copy(groundRulesChecked = checked) }
-    }
-
-    fun onGroundRulesContinue() {
-        viewModelScope.launch {
-            draftDataSource.saveGroundRulesAccepted()
-            _uiState.update { it.copy(showGroundRules = false) }
-        }
-    }
 
     // ── Profile Types ─────────────────────────────────────────────────────────
 
@@ -616,7 +600,6 @@ class ProfileCreationViewModel @Inject constructor(
         viewModelScope.launch {
             val draft = ProfileDraft(
                 step = 3,
-                groundRulesAccepted = true,
                 profileTypeId = state.selectedProfileTypeId,
                 fullName = state.fullName,
                 username = state.username,
@@ -654,7 +637,7 @@ class ProfileCreationViewModel @Inject constructor(
         }
     }
 
-    /** Step 5 "Explore RINX" exit. Profile is already created + marked complete; just route Home. */
+    /** Step 5 "Explore artRinx" exit. Profile is already created + marked complete; just route Home. */
     fun onExploreRinx() {
         _uiState.update { it.copy(navigateToHome = true) }
     }

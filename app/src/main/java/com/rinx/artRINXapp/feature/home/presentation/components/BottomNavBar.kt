@@ -133,6 +133,7 @@ fun BottomNavBar(
                         entry = entry,
                         isActive = entry.route == activeRoute,
                         onNavigate = onNavigate,
+                        onBounds = onItemBounds,
                         badgeCount = if (entry.route == "notifications") unreadCount else 0,
                         modifier = Modifier.weight(1f),
                     )

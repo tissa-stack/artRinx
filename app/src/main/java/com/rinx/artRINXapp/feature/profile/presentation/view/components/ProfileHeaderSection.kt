@@ -31,7 +31,10 @@ import com.rinx.artRINXapp.feature.profile.presentation.components.PortfolioLink
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +54,8 @@ fun ProfileHeaderSection(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
     onInviteFriendsClick: () -> Unit = {},
+    /** Reports the invite button's window bounds so the first-launch tour can spotlight it. */
+    onInviteBounds: ((Rect) -> Unit)? = null,
     onFollowersClick: () -> Unit = {},
     onFollowingClick: () -> Unit = {},
     /** When non-null (own profile opened as a pushed screen), a Back arrow renders inline at the
@@ -107,7 +112,15 @@ fun ProfileHeaderSection(
             )
             IconButton(
                 onClick = onInviteFriendsClick,
-                modifier = Modifier.size(Spacing.huge),
+                modifier = Modifier
+                    .size(Spacing.huge)
+                    .then(
+                        if (onInviteBounds != null) {
+                            Modifier.onGloballyPositioned { onInviteBounds(it.boundsInWindow()) }
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_invite_friends),

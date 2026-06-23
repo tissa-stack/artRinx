@@ -22,6 +22,5 @@ class TourViewModel @Inject constructor(
     fun restart() = manager.restart()
     fun next() = manager.next()
     fun back() = manager.back()
-    fun skip() = manager.skip()
     fun report(target: TourTarget, rect: Rect) = manager.report(target, rect)
 }

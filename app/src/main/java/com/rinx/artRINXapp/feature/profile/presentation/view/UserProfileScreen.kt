@@ -32,12 +32,15 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.navigation.NavRoutes
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.tour.TourTarget
+import com.rinx.artRINXapp.core.tour.TourViewModel
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.profile.presentation.feedback.FeedbackDialog
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
@@ -72,11 +75,21 @@ fun UserProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // First-launch tour: report the invite button's bounds so the global overlay can spotlight it
+    // (the final tour step navigates to the Profile tab and highlights "Invite friends").
+    val tour: TourViewModel = hiltViewModel()
+    val tourState by tour.state.collectAsState()
+
     UserProfileContent(
         uiState = uiState,
         onBack = onBack,
         activeRoute = activeRoute,
         onNavigateToProfile = onNavigateToProfile,
+        onInviteBounds = if (tourState.active) {
+            { rect -> tour.report(TourTarget.PROFILE_INVITE, rect) }
+        } else {
+            null
+        },
         onTabSelected = viewModel::onTabSelected,
         onBioExpandToggle = viewModel::onBioExpandToggle,
         onRetryUpload = viewModel::onRetryUpload,
@@ -117,6 +130,7 @@ private fun UserProfileContent(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToSettings: () -> Unit,
     onNavigateToInviteFriends: () -> Unit = {},
+    onInviteBounds: ((Rect) -> Unit)? = null,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCurationDetail: (String) -> Unit,
     onOpenFollowers: () -> Unit = {},
@@ -203,6 +217,7 @@ private fun UserProfileContent(
                             onExpandBio = onBioExpandToggle,
                             onSettingsClick = onNavigateToSettings,
                             onInviteFriendsClick = onNavigateToInviteFriends,
+                            onInviteBounds = onInviteBounds,
                             onFollowersClick = onOpenFollowers,
                             onFollowingClick = onOpenFollowing,
                             onBack = onBack,

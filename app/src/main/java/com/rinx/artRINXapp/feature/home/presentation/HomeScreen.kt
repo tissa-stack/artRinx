@@ -54,7 +54,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.core.push.NotificationPermissionEffect
 import com.rinx.artRINXapp.core.tour.TourTarget
 import com.rinx.artRINXapp.core.tour.TourViewModel
-import com.rinx.artRINXapp.core.tour.TourStep
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
@@ -113,14 +112,11 @@ fun HomeScreen(
         }
     }
 
-    // First-launch tour (global overlay lives above the NavHost; here we just start it, mirror the
-    // active flag for bounds-reporting, and keep the Home segment in sync with the tour step).
+    // First-launch tour (global overlay lives above the NavHost; here we just start it and mirror the
+    // active flag so Home's bottom-nav items report their bounds for the spotlight).
     val tour: TourViewModel = hiltViewModel()
     val tourState by tour.state.collectAsState()
     LaunchedEffect(Unit) { tour.startIfFirstTime() }
-    LaunchedEffect(tourState.active, tourState.step) {
-        if (tourState.active) segmentForTourStep(tourState.step)?.let(viewModel::onTabSelected)
-    }
 
     // Ask for notification permission only AFTER the first-launch tour has resolved/finished —
     // `completed` stays false until the tour is done, so the OS dialog never appears before or
@@ -139,11 +135,6 @@ fun HomeScreen(
         // fight the tour's own segment changes / coach-marks.
         swipeEnabled = !tourActive,
         onTabSelected = viewModel::onTabSelected,
-        onTabBounds = if (tourActive) {
-            { tab, rect -> tour.report(tab.toTourTarget(), rect) }
-        } else {
-            null
-        },
         onItemBounds = if (tourActive) {
             { route, rect -> route.toTourTarget()?.let { tour.report(it, rect) } }
         } else {
@@ -250,20 +241,7 @@ fun HomeScreenContent(
 private fun String.toTourTarget(): TourTarget? = when (this) {
     "home" -> TourTarget.HOME_NAV
     "create" -> TourTarget.CREATE_NAV
-    else -> null
-}
-
-private fun HomeTab.toTourTarget(): TourTarget = when (this) {
-    HomeTab.DISCOVER -> TourTarget.DISCOVER_TAB
-    HomeTab.SHOP -> TourTarget.SHOP_TAB
-    HomeTab.FOR_YOU -> TourTarget.FORYOU_TAB
-}
-
-/** Home top-segment to show for each tour step (null = leave the segment unchanged). */
-private fun segmentForTourStep(step: Int): HomeTab? = when (TourStep.ordered.getOrNull(step)) {
-    TourStep.SHOP -> HomeTab.SHOP
-    TourStep.FOR_YOU -> HomeTab.FOR_YOU
-    TourStep.WELCOME, TourStep.DISCOVER, TourStep.CREATE -> HomeTab.DISCOVER
+    "profile" -> TourTarget.PROFILE_NAV
     else -> null
 }
 

@@ -27,7 +27,9 @@ fun InviteCodeTextField(
 
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        // Invite codes are case-insensitive but displayed/submitted upper-case — force every
+        // keystroke (and pasted text) to upper case here so casing is handled entirely in the field.
+        onValueChange = { onValueChange(it.uppercase()) },
         modifier = modifier.heightIn(min = dimens.textFieldHeight),
         label = {
             Text(

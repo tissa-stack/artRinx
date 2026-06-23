@@ -3,12 +3,13 @@ package com.rinx.artRINXapp.core.tour
 import com.rinx.artRINXapp.core.navigation.NavRoutes
 
 /** Elements the tour can spotlight. Bounds are reported by the screen that owns each element. */
-enum class TourTarget { HOME_NAV, DISCOVER_TAB, SHOP_TAB, FORYOU_TAB, SEARCH_BAR, CREATE_NAV }
+enum class TourTarget { HOME_NAV, CREATE_NAV, PROFILE_NAV, PROFILE_INVITE }
 
 /**
- * The six tour steps, in order. [route] is the bottom-tab destination the step lives on — the host
- * navigates there before showing the step (Discover→Shop→For You happen on Home; the Search step
- * runs on the Search screen and spotlights its search bar; the Create step returns to Home).
+ * The four tour steps, in order. [route] is the destination the step lives on — the host navigates
+ * there before showing the step, so each step is shown ON its own tab: Welcome on Home, Upload on
+ * the Create tab, and Profile + Invite on the Profile tab. The spotlight uses the matching nav-bar
+ * bounds (reported by Home's bottom nav, identical across tabs) and the Invite button's own bounds.
  */
 enum class TourStep(
     val target: TourTarget,
@@ -16,17 +17,13 @@ enum class TourStep(
     val body: String,
 ) {
     WELCOME(TourTarget.HOME_NAV, NavRoutes.HOME,
-        "Welcome to RINX! Learn about what's new, recommended, and trending."),
-    DISCOVER(TourTarget.DISCOVER_TAB, NavRoutes.HOME,
-        "Get inspired by art and curations (collections of art) shared by the entire RINX community."),
-    SHOP(TourTarget.SHOP_TAB, NavRoutes.HOME,
-        "Browse artists' latest creations available to purchase."),
-    FOR_YOU(TourTarget.FORYOU_TAB, NavRoutes.HOME,
-        "See what artists and collectors you follow are sharing."),
-    SEARCH(TourTarget.SEARCH_BAR, NavRoutes.SEARCH,
-        "Find art, curations, artists, collectors, or galleries by entering key words or names."),
-    CREATE(TourTarget.CREATE_NAV, NavRoutes.HOME,
-        "Upload art from your collection and create curations.");
+        "Welcome! Here's a quick tour of artRinx. Your homepage has three feeds to explore global art, shop, and find curated works for you!"),
+    UPLOAD(TourTarget.CREATE_NAV, NavRoutes.CREATE,
+        "Upload art and create collections."),
+    PROFILE(TourTarget.PROFILE_NAV, NavRoutes.PROFILE,
+        "View your uploaded art and collections. Your likes are private."),
+    INVITE(TourTarget.PROFILE_INVITE, NavRoutes.PROFILE,
+        "Invite people who believe in supporting the budding art community.");
 
     companion object {
         val ordered = entries

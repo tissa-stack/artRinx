@@ -148,7 +148,7 @@ private fun WaitlistFormContent(
             )
             Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
-                text = "Be among the first to experience RINX.",
+                text = "Be among the first to experience artRinx.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

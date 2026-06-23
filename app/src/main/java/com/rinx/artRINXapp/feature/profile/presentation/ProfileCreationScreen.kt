@@ -52,7 +52,6 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.PlanCard
-import com.rinx.artRINXapp.feature.profile.presentation.steps.GroundRulesDialog
 import com.rinx.artRINXapp.feature.profile.presentation.steps.MediumSelectionStep
 import com.rinx.artRINXapp.feature.profile.presentation.steps.PersonalInfoStep
 import com.rinx.artRINXapp.feature.profile.presentation.steps.ProfileInfoStep
@@ -76,8 +75,6 @@ fun ProfileCreationScreen(
     ArtRinxTheme {
         ProfileCreationContent(
             uiState = uiState,
-            onGroundRulesCheckedChange = viewModel::onGroundRulesCheckedChange,
-            onGroundRulesContinue = viewModel::onGroundRulesContinue,
             onProfileTypeSelected = viewModel::onProfileTypeSelected,
             onRetryProfileTypes = viewModel::retryLoadProfileTypes,
             onAvatarTapped = viewModel::onAvatarTapped,
@@ -114,8 +111,6 @@ fun ProfileCreationScreen(
 @Composable
 private fun ProfileCreationContent(
     uiState: ProfileCreationUiState,
-    onGroundRulesCheckedChange: (Boolean) -> Unit,
-    onGroundRulesContinue: () -> Unit,
     onProfileTypeSelected: (Int) -> Unit,
     onRetryProfileTypes: () -> Unit,
     onAvatarTapped: () -> Unit,
@@ -325,27 +320,6 @@ private fun ProfileCreationContent(
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Step-progress dots — filled circles, active = BrandPrimary
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(dimens.pillSpacing),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    repeat(totalSteps) { index ->
-                        val isActive = index == currentStep
-                        val dotColor by animateColorAsState(
-                            targetValue = if (isActive) BrandPrimary
-                            else MaterialTheme.colorScheme.outline,
-                            animationSpec = tween(250),
-                            label = "dot_$index",
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(Spacing.sm)
-                                .background(dotColor, CircleShape),
-                        )
-                    }
-                }
-
                 // Action button
                 Button(
                     onClick = {
@@ -376,8 +350,29 @@ private fun ProfileCreationContent(
                             strokeWidth = Spacing.xs / 2,
                         )
                     } else {
-                        val label = if (currentStep == ProfileCreationViewModel.PLAN_STEP) "Explore RINX >" else "Continue"
+                        val label = if (currentStep == ProfileCreationViewModel.PLAN_STEP) "Explore artRinx >" else "Continue"
                         Text(text = label, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+
+                // Step-progress dots — filled circles, active = BrandPrimary. Shown below the button.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(dimens.pillSpacing),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    repeat(totalSteps) { index ->
+                        val isActive = index == currentStep
+                        val dotColor by animateColorAsState(
+                            targetValue = if (isActive) BrandPrimary
+                            else MaterialTheme.colorScheme.outline,
+                            animationSpec = tween(250),
+                            label = "dot_$index",
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(Spacing.sm)
+                                .background(dotColor, CircleShape),
+                        )
                     }
                 }
             }
@@ -397,21 +392,12 @@ private fun ProfileCreationContent(
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
-
-        // Ground Rules dialog overlay
-        if (uiState.showGroundRules) {
-            GroundRulesDialog(
-                checked = uiState.groundRulesChecked,
-                onCheckedChange = onGroundRulesCheckedChange,
-                onContinue = onGroundRulesContinue,
-            )
-        }
     }
 }
 
 /**
  * Step 5 (informational only — no API). Confirms the profile is set up and shows the plans available
- * for the picked role. Exit via the "Explore RINX" button (handout §Profile Setup Wizard, step 5).
+ * for the picked role. Exit via the "Explore artRinx" button (handout §Profile Setup Wizard, step 5).
  */
 @Composable
 private fun PlanInfoStep(

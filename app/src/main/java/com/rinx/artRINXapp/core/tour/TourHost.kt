@@ -36,6 +36,5 @@ fun TourHost(
         targets = viewModel.bounds,
         onNext = viewModel::next,
         onBack = viewModel::back,
-        onSkip = viewModel::skip,
     )
 }

@@ -21,7 +21,6 @@ data class Medium(
 
 data class ProfileDraft(
     val step: Int = 0,
-    val groundRulesAccepted: Boolean = false,
     val profileTypeId: Int? = null,
     val fullName: String = "",
     val username: String = "",

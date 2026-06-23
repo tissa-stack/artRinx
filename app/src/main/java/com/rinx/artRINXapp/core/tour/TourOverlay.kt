@@ -57,14 +57,15 @@ fun TourOverlay(
     targets: Map<TourTarget, Rect>,
     onNext: () -> Unit,
     onBack: () -> Unit,
-    onSkip: () -> Unit,
 ) {
     val step = TourStep.ordered.getOrNull(stepIndex) ?: return
     val targetRect = targets[step.target]
     val density = LocalDensity.current
     val d = LocalDimens.current
 
-    val scrim = Color.Black.copy(alpha = 0.78f)
+    // Dim the background enough to focus attention on the spotlight, but keep it clearly visible
+    // (not a near-black blackout) so users still see the screen they're being walked through.
+    val scrim = Color.Black.copy(alpha = 0.45f)
     // Highlight hugs the target itself — no padding gap between the ring and the icon (per design).
     val padPx = 0f
     val cornerPx = with(density) { Spacing.md.toPx() }
@@ -152,7 +153,6 @@ fun TourOverlay(
                 caretAtTop = targetIsTopHalf,
                 onNext = onNext,
                 onBack = onBack,
-                onSkip = onSkip,
             )
         }
     }
@@ -166,7 +166,6 @@ private fun TourCard(
     caretAtTop: Boolean,
     onNext: () -> Unit,
     onBack: () -> Unit,
-    onSkip: () -> Unit,
 ) {
     val cardColor = MaterialTheme.colorScheme.inverseSurface
     val onCard = MaterialTheme.colorScheme.inverseOnSurface
@@ -192,26 +191,18 @@ private fun TourCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "Skip tour",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = onCard.copy(alpha = 0.7f),
-                    modifier = Modifier.clickable { onSkip() },
-                )
-                Spacer(Modifier.weight(1f))
                 if (stepIndex > 0) {
                     Text(
                         text = "‹ Back",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = onCard,
-                        modifier = Modifier
-                            .clickable { onBack() }
-                            .padding(end = Spacing.lg),
+                        modifier = Modifier.clickable { onBack() },
                     )
                 }
+                Spacer(Modifier.weight(1f))
                 Text(
-                    text = if (stepIndex == lastIndex) "Done" else "Next ›",
+                    text = if (stepIndex == lastIndex) "Explore" else "Next ›",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = BrandPrimary,

@@ -150,7 +150,7 @@ fun InviteCodeScreen(
                     .padding(horizontal = dimens.screenPaddingHorizontal),
             ) {
                 Text(
-                    text = "Hi, welcome to RINX!",
+                    text = "Hi, welcome to artRinx!",
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 2,
@@ -158,7 +158,7 @@ fun InviteCodeScreen(
                 )
                 Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
-                    text = "Input your invite code below to get started.",
+                    text = "Input your invite below to sign up",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     overflow = TextOverflow.Ellipsis,
@@ -249,31 +249,33 @@ fun InviteCodeScreen(
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
+
+                // Fixed, comfortable gap below Join Waitlist — the block stays right here under the
+                // buttons (top-aligned content), it does NOT stretch to the bottom of the screen.
+                Spacer(modifier = Modifier.height(Spacing.xxxl))
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "Already have an account?",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    Text(
+                        text = "Continue to login",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier
+                            .clickable(onClick = onNavigateToLogin)
+                            .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.xxxl))
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = dimens.screenPaddingBottom),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "Already have an account?",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(Spacing.xs))
-            Text(
-                text = "Continue to login",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .clickable(onClick = onNavigateToLogin)
-                    .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
-            )
+            Spacer(modifier = Modifier.height(dimens.screenPaddingBottom))
         }
     }
 }

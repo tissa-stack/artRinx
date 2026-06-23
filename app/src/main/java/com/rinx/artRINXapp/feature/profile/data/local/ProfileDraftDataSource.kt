@@ -2,7 +2,6 @@ package com.rinx.artRINXapp.feature.profile.data.local
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -18,7 +17,6 @@ class ProfileDraftDataSource @Inject constructor(
 ) {
     companion object {
         val KEY_STEP = intPreferencesKey("profile_draft_step")
-        val KEY_GROUND_RULES = booleanPreferencesKey("ground_rules_accepted")
         val KEY_TYPE_ID = intPreferencesKey("profile_draft_type_id")
         val KEY_FULL_NAME = stringPreferencesKey("profile_draft_full_name")
         val KEY_USERNAME = stringPreferencesKey("profile_draft_username")
@@ -35,7 +33,6 @@ class ProfileDraftDataSource @Inject constructor(
     suspend fun getDraft(): ProfileDraft = dataStore.data.map { prefs ->
         ProfileDraft(
             step = prefs[KEY_STEP] ?: 0,
-            groundRulesAccepted = prefs[KEY_GROUND_RULES] ?: false,
             profileTypeId = prefs[KEY_TYPE_ID],
             fullName = prefs[KEY_FULL_NAME] ?: "",
             username = prefs[KEY_USERNAME] ?: "",
@@ -55,8 +52,6 @@ class ProfileDraftDataSource @Inject constructor(
     }.first()
 
     suspend fun saveStep(step: Int) = dataStore.edit { it[KEY_STEP] = step }
-
-    suspend fun saveGroundRulesAccepted() = dataStore.edit { it[KEY_GROUND_RULES] = true }
 
     suspend fun saveProfileTypeId(id: Int) = dataStore.edit { it[KEY_TYPE_ID] = id }
 
@@ -84,7 +79,7 @@ class ProfileDraftDataSource @Inject constructor(
 
     suspend fun clearDraft() = dataStore.edit { prefs ->
         listOf(
-            KEY_STEP, KEY_GROUND_RULES, KEY_TYPE_ID, KEY_FULL_NAME, KEY_USERNAME,
+            KEY_STEP, KEY_TYPE_ID, KEY_FULL_NAME, KEY_USERNAME,
             KEY_DISPLAY_NAME, KEY_BIO, KEY_DOB, KEY_COUNTRY, KEY_STATE, KEY_CITY, KEY_MEDIUM_IDS,
             KEY_GOOGLE_PHOTO_URL,
         ).forEach { prefs.remove(it) }
