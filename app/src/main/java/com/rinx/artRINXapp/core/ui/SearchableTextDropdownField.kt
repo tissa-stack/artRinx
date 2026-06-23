@@ -122,7 +122,10 @@ fun SearchableTextDropdownField(
                     )
                     .bringIntoViewRequester(bringIntoViewRequester),
             ) {
-                items(items = options, key = { it }) { option ->
+                // No value key: option strings (e.g. cities) can legitimately repeat (two distinct
+                // cities named "Amaravati"), and keying by the string crashes LazyColumn on the
+                // duplicate. Positional keys are correct here — the list is transient and stateless.
+                items(items = options) { option ->
                     Text(
                         text = option,
                         style = MaterialTheme.typography.bodyMedium,

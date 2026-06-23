@@ -25,11 +25,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,6 +60,7 @@ import com.rinx.artRINXapp.feature.notifications.presentation.messages.component
 import com.rinx.artRINXapp.core.util.shareText
 import com.rinx.artRINXapp.feature.settings.domain.model.Invitee
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteFriendsScreen(
     onBack: () -> Unit,
@@ -131,11 +134,15 @@ fun InviteFriendsScreen(
                 }
             }
 
-            else -> LazyColumn(
+            else -> PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = viewModel::refresh,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            ) {
+              LazyColumn(
                 state = listState,
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .navigationBarsPadding()
                     .padding(horizontal = dimens.screenPaddingHorizontal),
                 contentPadding = PaddingValues(top = Spacing.md, bottom = Spacing.xxl),
@@ -265,6 +272,7 @@ fun InviteFriendsScreen(
                         )
                     }
                 }
+              }
             }
         }
     }

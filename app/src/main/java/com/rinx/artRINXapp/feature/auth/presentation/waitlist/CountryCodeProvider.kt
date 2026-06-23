@@ -25,7 +25,10 @@ class CountryCodeProvider @Inject constructor(
     suspend fun load(): List<CountryCode> {
         cache?.let { return it }
         val result = masterLocationRepository.getCountries()
+        // distinctBy(code): ISO2 is unique by spec, but this list is API-driven — guard the phone
+        // picker's key = { it.code } against a malformed response containing a duplicate code.
         val mapped = (result as? ApiResult.Success)?.data?.mapNotNull { it.toCountryCode() }.orEmpty()
+            .distinctBy { it.code }
         if (mapped.isNotEmpty()) {
             cache = mapped
             return mapped

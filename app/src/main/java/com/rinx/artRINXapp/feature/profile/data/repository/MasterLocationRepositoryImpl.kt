@@ -61,7 +61,9 @@ class MasterLocationRepositoryImpl @Inject constructor(
             q = query?.ifBlank { null },
         )
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.items.orEmpty().mapNotNull { it.name?.trim()?.ifBlank { null } })
+            // distinct(): the catalog can contain repeated city names (e.g. two distinct "Amaravati"),
+            // which would render as identical rows and previously crashed the picker's LazyColumn.
+            ApiResult.Success(response.body()?.data?.items.orEmpty().mapNotNull { it.name?.trim()?.ifBlank { null } }.distinct())
         } else {
             errorFor(response)
         }

@@ -23,6 +23,8 @@ data class InviteFriendsUiState(
     /** Monthly peer-invite cap (e.g. 5). Used with [invitesPerMonth] to show "used/cap". */
     val invitesMonthlyCap: Int? = null,
     val isLoading: Boolean = true,
+    /** Lightweight pull-to-refresh spinner (separate from the first-load [isLoading] state). */
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     /** Infinite-scroll state for the invitee list. */
     val paging: ListPage = ListPage(),
@@ -45,8 +47,10 @@ class InviteFriendsViewModel @Inject constructor(
         load()
     }
 
-    private fun load() {
-        _state.update { it.copy(isLoading = true, error = null) }
+    private fun load(isRefresh: Boolean = false) {
+        _state.update {
+            if (isRefresh) it.copy(isRefreshing = true) else it.copy(isLoading = true, error = null)
+        }
         viewModelScope.launch {
             when (val info = repository.getInviteInfo()) {
                 is ApiResult.Success -> {
@@ -69,16 +73,24 @@ class InviteFriendsViewModel @Inject constructor(
                         it.copy(
                             invitees = invitees,
                             isLoading = false,
+                            isRefreshing = false,
+                            error = null,
                             paging = ListPage(page = 1, hasMore = invitees.size >= SIZE),
                         )
                     }
                 }
+                // On pull-to-refresh keep the existing list (just stop the spinner); only a failed
+                // first load surfaces the full-screen error.
                 is ApiResult.Error -> _state.update {
-                    it.copy(isLoading = false, error = info.toMessage())
+                    if (isRefresh) it.copy(isRefreshing = false)
+                    else it.copy(isLoading = false, error = info.toMessage())
                 }
             }
         }
     }
+
+    /** Pull-to-refresh: re-fetch invite info + the first page of invitees in place. */
+    fun refresh() = load(isRefresh = true)
 
     private fun InvitedUser.toInvitee() = Invitee(
         id = id,

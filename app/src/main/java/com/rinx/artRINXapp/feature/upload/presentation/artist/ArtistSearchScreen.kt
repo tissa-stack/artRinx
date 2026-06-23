@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -156,7 +156,9 @@ fun ArtistSearchScreen(
         // ── Results list ──────────────────────────────────────────────────
         if (results.isNotEmpty()) {
             LazyColumn(modifier = Modifier.weight(1f)) {
-                items(results, key = { it.userId ?: it.handle }) { artist ->
+                // userId is nullable; falling back to handle could collide (two profile-less
+                // artists sharing a handle) and crash. Synthesize a unique key from the index.
+                itemsIndexed(results, key = { index, a -> a.userId?.toString() ?: "artist-$index" }) { _, artist ->
                     ArtistRow(
                         artist  = artist,
                         onClick = {
