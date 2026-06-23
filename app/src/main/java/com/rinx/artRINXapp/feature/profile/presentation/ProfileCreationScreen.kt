@@ -168,8 +168,9 @@ private fun ProfileCreationContent(
         1 -> uiState.fullName.isNotBlank() &&
             uiState.usernameCheckState is UsernameCheckState.Available &&
             uiState.displayName.isNotBlank()
-        2 -> uiState.dob.isNotBlank() && uiState.selectedCountryIso2 != null &&
-            uiState.selectedStateCode != null && uiState.city.isNotBlank()
+        // Country/State/City are optional; only DOB is required. onNextFromPersonalInfo()
+        // surfaces an inline error if a location field was typed but not picked from the catalog.
+        2 -> uiState.dob.isNotBlank()
         3 -> uiState.selectedMediumIds.size == ProfileCreationViewModel.REQUIRED_MEDIUM_COUNT
         4 -> true // informational plan step — always proceedable
         else -> false
@@ -291,6 +292,7 @@ private fun ProfileCreationContent(
                         cityOptions = uiState.cityOptions,
                         countrySelected = uiState.selectedCountryIso2 != null,
                         stateSelected = uiState.selectedStateCode != null,
+                        countryHasNoStates = uiState.selectedCountryHasNoStates,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     3 -> MediumSelectionStep(

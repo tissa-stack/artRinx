@@ -277,7 +277,13 @@ class ProfileRepositoryImpl @Inject constructor(
                 changes.displayName?.let { parts["display_name"] = it.toRequestBody(textPlain) }
                 changes.bio?.let { parts["bio"] = it.toRequestBody(textPlain) }
                 // Date of birth as ISO YYYY-MM-DD; the server derives age and enforces a 13+ minimum.
+                // dob is the one field that must NOT be sent blank (the server rejects an empty date),
+                // so a blank value is omitted; for every other field below an empty string is an
+                // intentional "clear to null" signal and MUST be transmitted (see country/state/city).
                 changes.dob?.let { dob -> dob.ifBlank { null }?.let { parts["dob"] = it.toRequestBody(textPlain) } }
+                // country/state/city/bio: a non-null change is sent verbatim — including "" — so that
+                // clearing a field on Edit Profile actually nulls it server-side. Do NOT guard these
+                // with isNotBlank()/ifBlank(): that would omit the part and the old value would persist.
                 changes.country?.let { parts["country"] = it.toRequestBody(textPlain) }
                 changes.state?.let { parts["state"] = it.toRequestBody(textPlain) }
                 changes.city?.let { parts["city"] = it.toRequestBody(textPlain) }

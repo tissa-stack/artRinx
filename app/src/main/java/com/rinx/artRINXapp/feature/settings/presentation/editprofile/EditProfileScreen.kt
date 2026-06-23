@@ -77,7 +77,7 @@ import com.rinx.artRINXapp.core.theme.ShopLinkGradientEnd
 import com.rinx.artRINXapp.core.theme.ShopLinkGradientStart
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.DobPickerField
-import com.rinx.artRINXapp.core.ui.SearchableDropdownField
+import com.rinx.artRINXapp.core.ui.SearchableTextDropdownField
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
 
@@ -467,26 +467,31 @@ private fun ColumnScope.EditProfileContent(
             )
             Spacer(Modifier.height(Spacing.md))
 
-            SearchableDropdownField(
-                label = "Country",
+            // Country → State → City type-to-search cascade (master catalog APIs). All three stay
+            // visible so prefilled values are always shown; State & City are optional free text.
+            SearchableTextDropdownField(
+                label = "Country (optional)",
                 value = state.country,
                 options = state.countryOptions,
-                onValueChange = viewModel::onCountryChange,
+                onQueryChange = viewModel::onCountryQuery,
+                onOptionSelected = viewModel::onCountrySelected,
             )
             Spacer(Modifier.height(Spacing.md))
-            // State is a dropdown when the chosen country has bundled states; otherwise free text.
-            if (state.stateOptions.isNotEmpty()) {
-                SearchableDropdownField(
-                    label = "State",
-                    value = state.state,
-                    options = state.stateOptions,
-                    onValueChange = viewModel::onStateChange,
-                )
-            } else {
-                LabeledTextField(label = "State", value = state.state, onValueChange = viewModel::onStateChange)
-            }
+            SearchableTextDropdownField(
+                label = "State (optional)",
+                value = state.state,
+                options = state.stateOptions,
+                onQueryChange = viewModel::onStateQuery,
+                onOptionSelected = viewModel::onStateSelected,
+            )
             Spacer(Modifier.height(Spacing.md))
-            LabeledTextField(label = "City", value = state.city, onValueChange = viewModel::onCityChange)
+            SearchableTextDropdownField(
+                label = "City (optional)",
+                value = state.city,
+                options = state.cityOptions,
+                onQueryChange = viewModel::onCityQuery,
+                onOptionSelected = viewModel::onCitySelected,
+            )
 
             Spacer(Modifier.height(Spacing.xxxl))
         }

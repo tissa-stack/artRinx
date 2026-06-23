@@ -91,6 +91,9 @@ data class ProfileCreationUiState(
     val cityOptions: List<String> = emptyList(),
     val selectedCountryIso2: String? = null,
     val selectedStateCode: String? = null,
+    // True once the selected country's master state list comes back empty (the country has no
+    // subdivisions). State & City then become optional free-text fields instead of required picks.
+    val selectedCountryHasNoStates: Boolean = false,
 
     // Step 3 – Mediums
     val mediums: List<Medium> = emptyList(),
@@ -349,7 +352,13 @@ class ProfileCreationViewModel @Inject constructor(
             val statesResult = masterLocationRepository.getStates(country.iso2)
             if (statesResult !is ApiResult.Success) return@launch
             states = statesResult.data
-            _uiState.update { it.copy(selectedCountryIso2 = country.iso2, stateOptions = statesResult.data.map { s -> s.name }) }
+            _uiState.update {
+                it.copy(
+                    selectedCountryIso2 = country.iso2,
+                    stateOptions = statesResult.data.map { s -> s.name },
+                    selectedCountryHasNoStates = statesResult.data.isEmpty(),
+                )
+            }
 
             val state = states.firstOrNull { it.name.equals(savedState.trim(), ignoreCase = true) } ?: return@launch
             val citiesResult = masterLocationRepository.getCities(country.iso2, state.stateCode, null)
@@ -370,6 +379,7 @@ class ProfileCreationViewModel @Inject constructor(
                 country = value,
                 countryError = false,
                 selectedCountryIso2 = null,
+                selectedCountryHasNoStates = false,
                 state = "",
                 stateError = false,
                 stateOptions = emptyList(),
@@ -396,6 +406,7 @@ class ProfileCreationViewModel @Inject constructor(
                 country = country.name,
                 countryError = false,
                 selectedCountryIso2 = country.iso2,
+                selectedCountryHasNoStates = false,
                 state = "",
                 stateError = false,
                 stateOptions = emptyList(),
@@ -413,7 +424,13 @@ class ProfileCreationViewModel @Inject constructor(
             val result = masterLocationRepository.getStates(country.iso2)
             if (result is ApiResult.Success) {
                 states = result.data
-                _uiState.update { it.copy(stateOptions = result.data.map { s -> s.name }) }
+                _uiState.update {
+                    it.copy(
+                        stateOptions = result.data.map { s -> s.name },
+                        // No subdivisions for this country → State/City become optional free text.
+                        selectedCountryHasNoStates = result.data.isEmpty(),
+                    )
+                }
             }
         }
     }
@@ -561,19 +578,20 @@ class ProfileCreationViewModel @Inject constructor(
     fun onNextFromPersonalInfo(): Boolean {
         val state = _uiState.value
         val dobOk = state.dob.isNotBlank()
-        // Country/state must be real picks from the catalog (resolved ids), not just typed text.
-        val countryOk = state.selectedCountryIso2 != null
-        val stateOk = state.selectedStateCode != null
-        val cityOk = state.city.isNotBlank()
+        // Location is optional: a blank field is skipped. If typed, it must resolve to a real
+        // catalog pick (we won't store partial location text). City is a free-text leaf — any
+        // value (or blank) is acceptable.
+        val countryOk = state.country.isBlank() || state.selectedCountryIso2 != null
+        val stateOk = state.state.isBlank() || state.selectedCountryHasNoStates || state.selectedStateCode != null
         _uiState.update {
             it.copy(
                 dobError = !dobOk,
                 countryError = !countryOk,
                 stateError = !stateOk,
-                cityError = !cityOk,
+                cityError = false,
             )
         }
-        if (!dobOk || !countryOk || !stateOk || !cityOk) return false
+        if (!dobOk || !countryOk || !stateOk) return false
         goToStep(3)
         return true
     }

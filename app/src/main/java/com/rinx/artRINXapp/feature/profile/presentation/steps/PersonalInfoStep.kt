@@ -54,6 +54,7 @@ fun PersonalInfoStep(
     cityOptions: List<String>,
     countrySelected: Boolean,
     stateSelected: Boolean,
+    countryHasNoStates: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -99,13 +100,16 @@ fun PersonalInfoStep(
 
         // Country → State → City type-to-search cascade (master catalog APIs). State appears once a
         // country is picked; city once a state is picked (cities need both ids).
+        // Country/State/City are all optional. The pickers are catalog-backed: a blank field is
+        // skipped, but a typed value must resolve to a real pick (errorText guides the user).
         SearchableFieldWithError(
             value = country,
             options = countryOptions,
             onQueryChange = onCountryQuery,
             onOptionSelected = onCountrySelected,
-            label = "Country",
+            label = "Country (optional)",
             hasError = countryError,
+            errorText = "Please select from the list",
         )
         if (countrySelected) {
             Spacer(Modifier.height(Spacing.md))
@@ -114,18 +118,19 @@ fun PersonalInfoStep(
                 options = stateOptions,
                 onQueryChange = onStateQuery,
                 onOptionSelected = onStateSelected,
-                label = "State",
+                label = "State (optional)",
                 hasError = stateError,
+                errorText = "Please select from the list",
             )
         }
-        if (stateSelected) {
+        if (stateSelected || countryHasNoStates) {
             Spacer(Modifier.height(Spacing.md))
             SearchableFieldWithError(
                 value = city,
                 options = cityOptions,
                 onQueryChange = onCityQuery,
                 onOptionSelected = onCitySelected,
-                label = "City",
+                label = "City (optional)",
                 hasError = cityError,
             )
         }
@@ -177,6 +182,7 @@ private fun SearchableFieldWithError(
     onOptionSelected: (String) -> Unit,
     label: String,
     hasError: Boolean,
+    errorText: String = "This field should not be empty",
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         SearchableTextDropdownField(
@@ -189,7 +195,7 @@ private fun SearchableFieldWithError(
         )
         if (hasError) {
             Text(
-                text = "This field should not be empty",
+                text = errorText,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
