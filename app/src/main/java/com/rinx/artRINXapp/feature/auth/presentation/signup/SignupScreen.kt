@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -215,12 +216,12 @@ private fun SignupContent(
                 onCheckedChange = onTermsChange,
                 text = buildAnnotatedString {
                     val linkStyle = SpanStyle(color = BrandPrimary)
-                    append("By continuing, I agree to the Opt-in, ")
-                    appendLegalLink("Terms and Conditions", LegalLinks.TERMS_OF_USE, linkStyle)
-                    append(", ")
-                    appendLegalLink("Privacy Policy", LegalLinks.PRIVACY_POLICY, linkStyle)
-                    append(", and ")
+                    append("I accept the ")
                     appendLegalLink("Community Guidelines", LegalLinks.COMMUNITY_GUIDELINES, linkStyle)
+                    append(", ")
+                    appendLegalLink("Terms and Conditions", LegalLinks.TERMS_OF_USE, linkStyle)
+                    append(" & ")
+                    appendLegalLink("Privacy Policy", LegalLinks.PRIVACY_POLICY, linkStyle)
                     append(".")
                 },
             )
@@ -269,6 +270,29 @@ private fun SignupContent(
                 } else {
                     Text(text = "Continue", style = MaterialTheme.typography.labelLarge)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(Spacing.md))
+
+            // "or" divider before the Google option.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.outline,
+                )
+                Text(
+                    text = "or",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.55f),
+                )
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
 
             Spacer(modifier = Modifier.height(Spacing.md))

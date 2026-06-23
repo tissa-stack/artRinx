@@ -39,8 +39,19 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    // The entry screen opens locked to one contact type (email or phone). Apply it once so a
+    // recomposition can never reset the user's typing back to the initial mode.
+    private var initialModeApplied = false
+
     init {
         loadCountryCodes()
+    }
+
+    /** Lock the entry screen to its destination's contact type (email/phone). Applied once. */
+    fun setInitialContactType(type: ContactType) {
+        if (initialModeApplied) return
+        initialModeApplied = true
+        _uiState.update { it.copy(contactType = type, errorMessage = null) }
     }
 
     /** Populate the phone-code picker from the master catalog (falls back to the bundled list). */
@@ -54,13 +65,6 @@ class LoginViewModel @Inject constructor(
                     ?: state.selectedCountry
                 state.copy(availableCountries = countries, selectedCountry = selected)
             }
-        }
-    }
-
-    fun onContactTypeToggle() {
-        _uiState.update {
-            val next = if (it.contactType == ContactType.EMAIL) ContactType.PHONE else ContactType.EMAIL
-            it.copy(contactType = next, errorMessage = null)
         }
     }
 

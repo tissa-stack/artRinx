@@ -29,6 +29,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.rinx.artRINXapp.feature.auth.presentation.invite.InviteCodeScreen
+import com.rinx.artRINXapp.feature.auth.domain.model.ContactType
+import com.rinx.artRINXapp.feature.auth.presentation.login.LoginOptionsScreen
 import com.rinx.artRINXapp.feature.auth.presentation.login.LoginScreen
 import com.rinx.artRINXapp.feature.auth.presentation.otp.OtpScreen
 import com.rinx.artRINXapp.feature.profile.presentation.ProfileCreationScreen
@@ -195,15 +197,35 @@ fun AppNavGraph(
         }
 
         composable(NavRoutes.LOGIN) {
-            LoginScreen(
-                onBack        = { navController.popBackStack() },
-                onNavigateToOtp = { args -> navController.navigateToOtp(args) },
+            LoginOptionsScreen(
+                onBack              = { navController.popBackStack() },
+                onContinueWithEmail = { navController.navigate(NavRoutes.loginEntry(ContactType.EMAIL.name)) },
+                onContinueWithPhone = { navController.navigate(NavRoutes.loginEntry(ContactType.PHONE.name)) },
                 onNavigateToHome = {
                     navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
                 },
                 onNavigateToProfileCompletion = {
                     navController.navigate(NavRoutes.PROFILE_COMPLETION) { popUpTo(0) { inclusive = true } }
                 },
+            )
+        }
+
+        composable(
+            route     = NavRoutes.LOGIN_ENTRY,
+            arguments = listOf(
+                navArgument("contactType") {
+                    type         = NavType.StringType
+                    defaultValue = ContactType.EMAIL.name
+                },
+            ),
+        ) { backStackEntry ->
+            val contactType = backStackEntry.arguments?.getString("contactType")
+                ?.let { runCatching { ContactType.valueOf(it) }.getOrNull() }
+                ?: ContactType.EMAIL
+            LoginScreen(
+                contactType     = contactType,
+                onBack          = { navController.popBackStack() },
+                onNavigateToOtp = { args -> navController.navigateToOtp(args) },
             )
         }
 

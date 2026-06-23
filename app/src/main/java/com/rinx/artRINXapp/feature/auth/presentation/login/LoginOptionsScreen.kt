@@ -1,13 +1,15 @@
 package com.rinx.artRINXapp.feature.auth.presentation.login
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,12 +22,16 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -38,36 +44,32 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
-import com.rinx.artRINXapp.core.navigation.OtpArgs
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.BrandPrimary
-import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.feature.auth.domain.model.ContactType
-import com.rinx.artRINXapp.feature.auth.presentation.waitlist.components.PhoneNumberField
-import com.rinx.artRINXapp.feature.auth.presentation.waitlist.components.WaitlistTextField
 
 /**
- * The login OTP-request entry screen, locked to a single [contactType] (email or phone) chosen on
- * the preceding [LoginOptionsScreen]. The user enters their email/phone and taps "Send code", which
- * requests a SIGNIN OTP and navigates to the OTP screen. Method selection and Google sign-in live on
- * [LoginOptionsScreen].
+ * Login method chooser shown when the user taps "Continue to login". Offers Continue with Email,
+ * Continue with Google, and a "Signed up with phone?" link. Email/phone navigate to the single-mode
+ * [LoginScreen]; Google sign-in is handled here via [LoginViewModel] and routes to Home (existing
+ * user) or profile completion (new account).
  */
 @Composable
-fun LoginScreen(
-    contactType: ContactType,
+fun LoginOptionsScreen(
     onBack: () -> Unit,
-    onNavigateToOtp: (OtpArgs) -> Unit,
+    onContinueWithEmail: () -> Unit,
+    onContinueWithPhone: () -> Unit,
+    onNavigateToHome: () -> Unit,
+    onNavigateToProfileCompletion: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(Unit) { viewModel.setInitialContactType(contactType) }
+    val context = LocalContext.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -78,33 +80,31 @@ fun LoginScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(uiState.navigateToOtp) {
-        uiState.navigateToOtp?.let { args ->
-            onNavigateToOtp(args)
-            viewModel.onOtpNavigated()
-        }
+    LaunchedEffect(uiState.navigateToHome) {
+        if (uiState.navigateToHome) onNavigateToHome()
+    }
+    LaunchedEffect(uiState.navigateToProfileCompletion) {
+        if (uiState.navigateToProfileCompletion) onNavigateToProfileCompletion()
     }
 
     ArtRinxTheme {
-        LoginContent(
+        LoginOptionsContent(
             uiState = uiState,
             onBack = onBack,
-            onEmailChange = viewModel::onEmailChange,
-            onPhoneChange = viewModel::onPhoneChange,
-            onCountryChange = viewModel::onCountryChange,
-            onContinue = viewModel::onContinue,
+            onContinueWithEmail = onContinueWithEmail,
+            onContinueWithPhone = onContinueWithPhone,
+            onGoogleSignIn = { viewModel.onGoogleSignIn(context) },
         )
     }
 }
 
 @Composable
-private fun LoginContent(
+private fun LoginOptionsContent(
     uiState: LoginUiState,
     onBack: () -> Unit,
-    onEmailChange: (String) -> Unit,
-    onPhoneChange: (String) -> Unit,
-    onCountryChange: (com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode) -> Unit,
-    onContinue: () -> Unit,
+    onContinueWithEmail: () -> Unit,
+    onContinueWithPhone: () -> Unit,
+    onGoogleSignIn: () -> Unit,
 ) {
     val dimens = LocalDimens.current
     val isDark = isSystemInDarkTheme()
@@ -160,34 +160,12 @@ private fun LoginContent(
             )
             Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
-                text = "We missed you! Sign back in to discover art.",
+                text = "We missed you! Pick how you'd like to sign in.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(Spacing.xxxl))
-
-            when (uiState.contactType) {
-                ContactType.EMAIL -> WaitlistTextField(
-                    value = uiState.email,
-                    onValueChange = onEmailChange,
-                    label = "Enter your email",
-                    modifier = Modifier.fillMaxWidth(),
-                    maxChars = 100,
-                    keyboardType = KeyboardType.Email,
-                )
-                ContactType.PHONE -> PhoneNumberField(
-                    rawPhone = uiState.rawPhone,
-                    onPhoneChange = onPhoneChange,
-                    selectedCountry = uiState.selectedCountry,
-                    onCountryChange = onCountryChange,
-                    countries = uiState.availableCountries,
-                    searchable = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.xxl))
 
             AnimatedVisibility(visible = uiState.errorMessage != null) {
                 Column {
@@ -201,37 +179,111 @@ private fun LoginContent(
                 }
             }
 
-            val continueColor by animateColorAsState(
-                targetValue = if (uiState.isContinueEnabled) BrandPrimary else InactiveButton,
-                animationSpec = tween(durationMillis = 200),
-                label = "loginSendCodeColor",
-            )
-
+            // Continue with Email — primary filled action.
             Button(
-                onClick = onContinue,
-                enabled = !uiState.isLoading && !uiState.isGoogleLoading,
+                onClick = onContinueWithEmail,
+                enabled = !uiState.isGoogleLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = continueColor,
-                    disabledContainerColor = InactiveButton,
+                    containerColor = BrandPrimary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = BrandPrimary.copy(alpha = 0.5f),
                     disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = Spacing.xs * 0),
             ) {
-                if (uiState.isLoading) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.MailOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                    Text(text = "Continue with Email", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(Spacing.lg))
+
+            // "or" divider.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.outline,
+                )
+                Text(
+                    text = "or",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(Spacing.lg))
+
+            // Continue with Google.
+            OutlinedButton(
+                onClick = onGoogleSignIn,
+                enabled = !uiState.isGoogleLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(dimens.authButtonHeight),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onBackground,
+                ),
+                border = BorderStroke(
+                    Spacing.xs / 4,
+                    MaterialTheme.colorScheme.outline,
+                ),
+            ) {
+                if (uiState.isGoogleLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(Spacing.xl),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         strokeWidth = Spacing.xs / 2,
                     )
                 } else {
-                    Text(text = "Send code", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_google_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(Spacing.xl),
+                        )
+                        Text(
+                            text = "Continue with Google",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(Spacing.xxxl))
+
+            Text(
+                text = "Signed up with phone?",
+                style = MaterialTheme.typography.labelMedium,
+                color = BrandPrimary,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clickable(enabled = !uiState.isGoogleLoading, onClick = onContinueWithPhone)
+                    .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+            )
 
             Spacer(modifier = Modifier.height(dimens.screenPaddingBottom))
         }

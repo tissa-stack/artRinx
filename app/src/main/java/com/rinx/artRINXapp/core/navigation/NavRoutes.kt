@@ -7,6 +7,7 @@ object NavRoutes {
     const val AUTH = "auth"
     const val WAITLIST = "waitlist"
     const val LOGIN = "login"
+    const val LOGIN_ENTRY = "login_entry?contactType={contactType}"
     const val SIGNUP = "signup?inviteCode={inviteCode}"
     const val OTP = "otp?mode={mode}&contactType={contactType}&contactValue={contactValue}&inviteCode={inviteCode}"
     const val PROFILE_COMPLETION = "profile_completion"
@@ -59,6 +60,9 @@ object NavRoutes {
     const val CURATION_DETAIL = "curation_detail/{curationId}?source={source}"
 
     fun signup(inviteCode: String) = "signup?inviteCode=${Uri.encode(inviteCode)}"
+
+    /** Login entry screen locked to a contact type — "EMAIL" or "PHONE" (ContactType.name). */
+    fun loginEntry(contactType: String) = "login_entry?contactType=$contactType"
 
     fun artDetail(postId: String, source: String = HOME) =
         "art_detail/${Uri.encode(postId)}?source=${Uri.encode(source)}"
