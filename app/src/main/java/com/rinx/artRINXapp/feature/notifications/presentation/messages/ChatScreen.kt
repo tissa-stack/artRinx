@@ -41,6 +41,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
@@ -303,6 +304,8 @@ fun ChatScreen(
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
+                    // Light theme: a clean white menu (no tonal-elevation grey). Dark keeps its surface.
+                    containerColor = if (isDark) MaterialTheme.colorScheme.surface else Color.White,
                 ) {
                     // Always four options (iOS parity). "View profile" is valid even when blocked:
                     // BLOCKED_BY_ME → the "Profile Blocked" panel; BLOCKED_BY_THEM → the
@@ -316,7 +319,8 @@ fun ChatScreen(
                     )
                     DropdownMenuItem(
                         text = { Text("Delete messages") },
-                        leadingIcon = { MenuIcon(R.drawable.ic_delete) },
+                        leadingIcon = { MenuIcon(R.drawable.ic_delete_message, tint = DangerRed) },
+                        colors = MenuDefaults.itemColors(textColor = DangerRed),
                         onClick = { menuExpanded = false; showDeleteConfirm = true },
                     )
                     if (iBlockedThem) {
@@ -408,6 +412,7 @@ fun ChatScreen(
                                          state.gateConfirmed,
                     // "Read" shows only under the most recent sent message, not every read one.
                     isLastSentMessage  = msg.isSent && index == lastSentIndex,
+                    selected           = menuTarget?.id == msg.id,
                     onLongPress        = {
                         // Own and received messages both get a menu; skip deleted/in-flight bubbles.
                         if (!msg.isDeleted && msg.sendStatus == SendStatus.SENT) menuTarget = msg
@@ -581,17 +586,17 @@ fun ChatScreen(
             containerColor   = MaterialTheme.colorScheme.surface,
         ) {
             Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
-                MessageActionRow(R.drawable.ic_copy, "Copy", MaterialTheme.colorScheme.onBackground) {
+                MessageActionRow(R.drawable.ic_copy_message, "Copy", MaterialTheme.colorScheme.onBackground) {
                     copyMessage()
                 }
                 if (canEdit) {
                     // Inline edit: pre-fills the compose field with X / ✓ controls (handout §Edit mode).
-                    MessageActionRow(R.drawable.ic_edit, "Edit", MaterialTheme.colorScheme.onBackground) {
+                    MessageActionRow(R.drawable.ic_edit_message, "Edit", MaterialTheme.colorScheme.onBackground) {
                         viewModel.beginEdit(target); menuTarget = null
                     }
                 }
                 if (target.isSent) {
-                    MessageActionRow(R.drawable.ic_delete, "Delete", DangerRed) {
+                    MessageActionRow(R.drawable.ic_delete_message, "Delete", DangerRed) {
                         deleteTarget = target; menuTarget = null
                     }
                 }
@@ -762,11 +767,14 @@ private fun ChatGateBanner(
 
 /** Leading icon for the chat overflow-menu rows (tinted to the current theme). */
 @Composable
-private fun MenuIcon(@androidx.annotation.DrawableRes res: Int) {
+private fun MenuIcon(
+    @androidx.annotation.DrawableRes res: Int,
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+) {
     Icon(
         painter = painterResource(res),
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurface,
+        tint = tint,
         modifier = Modifier.size(Spacing.xl),
     )
 }
@@ -781,12 +789,13 @@ private fun DayHeader(label: String, textColor: Color) {
     ) {
         Text(
             text  = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = textColor.copy(alpha = 0.6f),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = textColor.copy(alpha = 0.7f),
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         )
     }
 }
@@ -833,13 +842,22 @@ private fun ChatBubble(
     avatarSize: Dp,
     showInviteSent: Boolean,
     isLastSentMessage: Boolean,
+    selected: Boolean,
     onLongPress: () -> Unit,
     onRetry: () -> Unit,
     onOpenArtwork: (Int) -> Unit,
 ) {
+    // Highlight the whole row while it's long-press-selected (the action menu is open for it).
+    val rowHighlight = if (selected) {
+        Modifier
+            .background(BrandPrimary.copy(alpha = 0.12f))
+            .padding(vertical = Spacing.xs)
+    } else {
+        Modifier
+    }
     if (message.isSent) {
         Row(
-            modifier              = Modifier.fillMaxWidth(),
+            modifier              = Modifier.fillMaxWidth().then(rowHighlight),
             horizontalArrangement = Arrangement.End,
         ) {
             Column(horizontalAlignment = Alignment.End) {
@@ -877,7 +895,7 @@ private fun ChatBubble(
         }
     } else {
         Row(
-            modifier          = Modifier.fillMaxWidth(),
+            modifier          = Modifier.fillMaxWidth().then(rowHighlight),
             verticalAlignment = Alignment.Bottom,
         ) {
             RinxAvatar(

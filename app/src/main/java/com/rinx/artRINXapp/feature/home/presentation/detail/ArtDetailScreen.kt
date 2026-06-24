@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -42,6 +45,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -200,71 +204,14 @@ fun ArtDetailScreen(
         },
         contentWindowInsets = WindowInsets(0),
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
-            // Top bar — back + (report | edit/delete) on the screen background, padded below the
-            // status bar so the artwork starts beneath it (never scrolls behind the status bar).
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = Spacing.xs),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_arrow_back),
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                // Hold the action until ownership is known so we never flash Report on our own art.
-                if (uiState.ownershipResolved) {
-                    if (uiState.isOwn) {
-                        // Edit/Delete only when opened from the user's own Profile tab. For own art
-                        // opened from any other flow (feed/search/curation) show no action at all.
-                        if (uiState.isFromProfile) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                                IconButton(
-                                    onClick = {
-                                        viewModel.prepareEdit()
-                                        onEditArt()
-                                    },
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_edit),
-                                        contentDescription = "Edit",
-                                        tint = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                }
-                                IconButton(onClick = { showDeleteDialog = true }) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_delete),
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        IconButton(onClick = { showReportSheet = true }) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_report),
-                                contentDescription = "Report",
-                                tint = MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                    }
-                }
-            }
-
             when {
                 uiState.isLoading -> Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) { CircularProgressIndicator(color = BrandPrimary) }
 
@@ -285,11 +232,11 @@ fun ArtDetailScreen(
                     // Send-message + Shop-Art only make sense on someone else's art — you can't
                     // message or buy from yourself.
                     showContactActions = !uiState.isOwn,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier = Modifier.fillMaxSize(),
                 )
 
                 else -> Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -299,7 +246,60 @@ fun ArtDetailScreen(
                     )
                 }
             }
+
+            // Floating top icons — overlaid so the artwork can scroll up behind the status bar; each
+            // sits on a translucent scrim so it stays legible over both the background and the image.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = Spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ScrimIconButton(R.drawable.ic_arrow_back, "Back", onClick = onBack)
+                Spacer(Modifier.weight(1f))
+                // Hold the action until ownership is known so we never flash Report on our own art.
+                if (uiState.ownershipResolved) {
+                    if (uiState.isOwn) {
+                        // Edit/Delete only when opened from the user's own Profile tab. For own art
+                        // opened from any other flow (feed/search/curation) show no action at all.
+                        if (uiState.isFromProfile) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                                ScrimIconButton(R.drawable.ic_edit, "Edit") {
+                                    viewModel.prepareEdit(); onEditArt()
+                                }
+                                ScrimIconButton(R.drawable.ic_delete, "Delete") {
+                                    showDeleteDialog = true
+                                }
+                            }
+                        }
+                    } else {
+                        ScrimIconButton(R.drawable.ic_report, "Report") { showReportSheet = true }
+                    }
+                }
+            }
         }
+    }
+}
+
+/** Top-bar icon button with a translucent dark scrim + white tint, legible over the artwork. */
+@Composable
+private fun ScrimIconButton(
+    @androidx.annotation.DrawableRes iconRes: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.4f)),
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = contentDescription,
+            tint = Color.White,
+        )
     }
 }
 
@@ -322,6 +322,10 @@ private fun ArtDetailContent(
 ) {
     val d = LocalDimens.current
     val post = uiState.post ?: return
+    // Reserve the status-bar height at the top so the artwork initially sits below the status bar;
+    // as the user scrolls up this gap scrolls away and the image passes behind the status bar
+    // (the floating back/action icons carry their own scrim to stay legible over it).
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     var descExpanded by remember { mutableStateOf(false) }
     // While the hero is pinch-zoomed it must draw ABOVE the content below it (title, meta, "More
     // like this") instead of being clipped by them. The like row is kept above the hero so the
@@ -375,7 +379,10 @@ private fun ArtDetailContent(
         )
     }
 
-    LazyColumn(modifier = modifier) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(top = statusBarTop),
+    ) {
 
         // ── Hero image — shown whole at its natural aspect ratio; pinch / double-tap to zoom in
         //    place (single-finger drag still scrolls the page). No separate zoom button. ──
@@ -389,9 +396,9 @@ private fun ArtDetailContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(heroRatio)
-                    // Lift above the content below only while zoomed, so the scaled image overlays
-                    // them instead of being drawn underneath.
-                    .zIndex(if (heroZoomed) 1f else 0f),
+                    // Zoomed: lift the image above EVERYTHING (title/like/etc.). Unzoomed: drop below
+                    // the title row so the like-button pop animation renders above the picture.
+                    .zIndex(if (heroZoomed) 2f else 0f),
             )
         }
 
@@ -399,8 +406,9 @@ private fun ArtDetailContent(
         item(key = "title") {
             Row(
                 modifier = Modifier
-                    // Keep the like row (and its heart pop) above the hero, even while it's zoomed.
-                    .zIndex(2f)
+                    // Above the hero when unzoomed (so the like pop shows over the picture); the
+                    // zoomed hero (zIndex 2) still lifts above this row.
+                    .zIndex(1f)
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,

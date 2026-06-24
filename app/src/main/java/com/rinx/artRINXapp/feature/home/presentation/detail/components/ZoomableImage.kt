@@ -29,6 +29,8 @@ import coil.compose.AsyncImage
 private const val MIN_SCALE = 1f
 private const val MAX_SCALE = 5f
 private const val DOUBLE_TAP_SCALE = 2.5f
+/** >1 makes the image travel further than the finger, so one swipe covers more of a zoomed image. */
+private const val PAN_SENSITIVITY = 2f
 
 /**
  * An artwork image with pinch-to-zoom + pan and double-tap to zoom/reset.
@@ -100,18 +102,30 @@ fun ZoomableImage(
                 )
             }
             .pointerInput(Unit) {
-                // Only consume when ≥2 pointers are down → single-finger drags still scroll the list.
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     do {
                         val event = awaitPointerEvent()
-                        if (event.changes.count { it.pressed } >= 2) {
-                            val zoom = event.calculateZoom()
-                            val pan = event.calculatePan()
-                            if (zoom != 1f || pan != Offset.Zero) {
-                                scale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
-                                offset = clampOffset(offset + pan, scale)
-                                event.changes.forEach { if (it.positionChanged()) it.consume() }
+                        val pressed = event.changes.count { it.pressed }
+                        when {
+                            // Two fingers → pinch-to-zoom + pan.
+                            pressed >= 2 -> {
+                                val zoom = event.calculateZoom()
+                                val pan = event.calculatePan()
+                                if (zoom != 1f || pan != Offset.Zero) {
+                                    scale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
+                                    offset = clampOffset(offset + pan, scale)
+                                    event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                }
+                            }
+                            // One finger while zoomed → pan the image (consume so the list won't
+                            // scroll). When NOT zoomed we leave it unconsumed so the page scrolls.
+                            pressed == 1 && scale > 1f -> {
+                                val pan = event.calculatePan()
+                                if (pan != Offset.Zero) {
+                                    offset = clampOffset(offset + pan * PAN_SENSITIVITY, scale)
+                                    event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                }
                             }
                         }
                     } while (event.changes.any { it.pressed })

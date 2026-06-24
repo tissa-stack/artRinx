@@ -128,7 +128,7 @@ fun SettingsScreen(
             )
         }
 
-        // ── Scrollable section list ─────────────────────────────────────────────
+        // ── Scrollable section list (logout + version scroll along, not anchored) ─
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -167,47 +167,47 @@ fun SettingsScreen(
             SettingsRow(painter = R.drawable.ic_about_us, label = "About us", onClick = onAboutUs)
             SettingsRow(painter = R.drawable.ic_privacy_policy, label = "Privacy policy", onClick = onPrivacyPolicy)
 
-            Spacer(Modifier.height(Spacing.xxxl))
-        }
+            Spacer(Modifier.height(Spacing.xxl))
 
-        // ── Logout pill + app version ─────────────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = dimens.screenPaddingHorizontal)
-                .padding(top = Spacing.lg, bottom = Spacing.md),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
-        ) {
-            Row(
+            // ── Logout pill + app version (scroll along with the list) ──────────────
+            Column(
                 modifier = Modifier
-                    .border(1.dp, BrandPrimary, RoundedCornerShape(50))
-                    .clickable { showLogoutDialog = true }
-                    .padding(horizontal = Spacing.xxxl, vertical = Spacing.md),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    .fillMaxWidth()
+                    .padding(horizontal = dimens.screenPaddingHorizontal)
+                    .padding(top = Spacing.lg, bottom = Spacing.md)
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
+                Row(
+                    modifier = Modifier
+                        .border(1.dp, BrandPrimary, RoundedCornerShape(50))
+                        .clickable { showLogoutDialog = true }
+                        .padding(horizontal = Spacing.xxxl, vertical = Spacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    Text(
+                        text = "Logout",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandPrimary,
+                    )
+                    Icon(
+                        painter = painterResource(R.drawable.ic_logout),
+                        contentDescription = null,
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(Spacing.lg),
+                    )
+                }
+
+                // App version (handout §9)
                 Text(
-                    text = "Logout",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = BrandPrimary,
-                )
-                Icon(
-                    painter = painterResource(R.drawable.ic_logout),
-                    contentDescription = null,
-                    tint = BrandPrimary,
-                    modifier = Modifier.size(Spacing.lg),
+                    text = "App Version ${state.appVersion}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-
-            // App version (handout §9)
-            Text(
-                text = "App Version ${state.appVersion}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 
