@@ -327,6 +327,9 @@ private fun ArtDetailContent(
     // like this") instead of being clipped by them. The like row is kept above the hero so the
     // heart (and its pop animation) still shows on top of the image.
     var heroZoomed by remember { mutableStateOf(false) }
+    // Reserve with the declared ratio, then snap to the image's TRUE ratio on load so the hero shows
+    // the whole work with no letterbox bars (the declared value can be missing/wrong).
+    var heroRatio by remember(post.id) { mutableStateOf(post.aspectRatio?.takeIf { it > 0f } ?: 1f) }
     var showSendSheet by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
@@ -380,11 +383,12 @@ private fun ArtDetailContent(
             ZoomableImage(
                 model = post.imageUrl,
                 contentDescription = post.title,
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
                 onZoomedChange = { heroZoomed = it },
+                onIntrinsicRatio = { heroRatio = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(post.aspectRatio?.takeIf { it > 0f } ?: 1f)
+                    .aspectRatio(heroRatio)
                     // Lift above the content below only while zoomed, so the scaled image overlays
                     // them instead of being drawn underneath.
                     .zIndex(if (heroZoomed) 1f else 0f),

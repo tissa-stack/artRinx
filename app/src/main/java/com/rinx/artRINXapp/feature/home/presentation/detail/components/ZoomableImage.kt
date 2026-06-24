@@ -47,6 +47,9 @@ fun ZoomableImage(
      *  pass a transparent/black color for a full-screen lightbox. */
     backgroundColor: Color = Color.Unspecified,
     onZoomedChange: (Boolean) -> Unit = {},
+    /** Fired once the image decodes, with its true width/height ratio — lets the caller size the
+     *  box to the real aspect ratio (so the whole work shows with no letterbox bars). */
+    onIntrinsicRatio: (Float) -> Unit = {},
 ) {
     val bg = if (backgroundColor == Color.Unspecified) MaterialTheme.colorScheme.surfaceVariant else backgroundColor
     var scale by remember { mutableFloatStateOf(1f) }
@@ -69,6 +72,11 @@ fun ZoomableImage(
         model = model,
         contentDescription = contentDescription,
         contentScale = contentScale,
+        onSuccess = { state ->
+            val w = state.result.drawable.intrinsicWidth
+            val h = state.result.drawable.intrinsicHeight
+            if (w > 0 && h > 0) onIntrinsicRatio(w.toFloat() / h)
+        },
         modifier = modifier
             .fillMaxSize()
             .background(bg)
