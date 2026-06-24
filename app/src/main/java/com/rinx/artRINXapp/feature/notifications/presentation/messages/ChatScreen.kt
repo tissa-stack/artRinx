@@ -60,13 +60,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
@@ -74,6 +77,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.ChatBubbleReceived
 import com.rinx.artRINXapp.core.theme.ChatBubbleReceivedText
 import com.rinx.artRINXapp.core.theme.ChatBubbleSentText
+import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -121,7 +125,10 @@ fun ChatScreen(
                          else MaterialTheme.colorScheme.onSurfaceVariant
     val iconColor      = if (isDark) Color.White else MaterialTheme.colorScheme.onBackground
 
+    val clipboard = LocalClipboardManager.current
     var menuTarget by remember { mutableStateOf<ChatMessage?>(null) }
+    // Per-message delete confirmation (distinct from the whole-chat `showDeleteConfirm` below).
+    var deleteTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
     // ── Side options menu (anchored dropdown, hosted here — no separate screen) ──
     val menuState by menuViewModel.state.collectAsState()
@@ -380,15 +387,11 @@ fun ChatScreen(
                 }
             }
             itemsIndexed(state.messages, key = { _, m -> m.id }) { index, msg ->
-                Text(
-                    text      = msg.timestamp,
-                    style     = MaterialTheme.typography.labelSmall,
-                    color     = textColor.copy(alpha = 0.5f),
-                    textAlign = TextAlign.Center,
-                    modifier  = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = Spacing.sm),
-                )
+                // Centered day header, shown once when the calendar day changes (messages ascend by time).
+                val prev = state.messages.getOrNull(index - 1)
+                val showHeader = prev == null ||
+                    ChatDateTime.dayKey(prev.createdAtEpochMs) != ChatDateTime.dayKey(msg.createdAtEpochMs)
+                if (showHeader) DayHeader(ChatDateTime.dayHeader(msg.createdAtEpochMs), textColor)
                 ChatBubble(
                     message            = msg,
                     partnerAvatarUrl   = state.partnerAvatarUrl,
@@ -403,8 +406,11 @@ fun ChatScreen(
                     showInviteSent     = msg.isSent && index == lastSentIndex &&
                                          state.gate == ChatGate.INVITE_SENT_WAITING &&
                                          state.gateConfirmed,
+                    // "Read" shows only under the most recent sent message, not every read one.
+                    isLastSentMessage  = msg.isSent && index == lastSentIndex,
                     onLongPress        = {
-                        if (msg.isSent && !msg.isDeleted && msg.sendStatus == SendStatus.SENT) menuTarget = msg
+                        // Own and received messages both get a menu; skip deleted/in-flight bubbles.
+                        if (!msg.isDeleted && msg.sendStatus == SendStatus.SENT) menuTarget = msg
                     },
                     onRetry            = { if (msg.sendStatus == SendStatus.FAILED) viewModel.retryMessage(msg) },
                     onOpenArtwork      = onOpenArtwork,
@@ -556,23 +562,54 @@ fun ChatScreen(
         )
     }
 
-    // ── Long-press menu (own messages) ──────────────────────────────────────────
+    // ── Long-press message menu ─────────────────────────────────────────────────
+    // Own message → Copy / Edit (within the 15-min window) / Delete. Received → Copy only.
     menuTarget?.let { target ->
-        val canEdit = System.currentTimeMillis() - target.createdAtEpochMs in 0 until EDIT_WINDOW_MS
+        val canEdit = target.isSent &&
+            System.currentTimeMillis() - target.createdAtEpochMs in 0 until EDIT_WINDOW_MS
+        fun copyMessage() {
+            val text = target.content.ifBlank { target.artworkTitle.orEmpty() }
+            if (text.isNotBlank()) {
+                clipboard.setText(AnnotatedString(text))
+                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+            }
+            menuTarget = null
+        }
         ModalBottomSheet(
             onDismissRequest = { menuTarget = null },
             sheetState       = rememberModalBottomSheetState(),
             containerColor   = MaterialTheme.colorScheme.surface,
         ) {
             Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
+                MessageActionRow(R.drawable.ic_copy, "Copy", MaterialTheme.colorScheme.onBackground) {
+                    copyMessage()
+                }
                 if (canEdit) {
                     // Inline edit: pre-fills the compose field with X / ✓ controls (handout §Edit mode).
-                    MenuRow("Edit message") { viewModel.beginEdit(target); menuTarget = null }
+                    MessageActionRow(R.drawable.ic_edit, "Edit", MaterialTheme.colorScheme.onBackground) {
+                        viewModel.beginEdit(target); menuTarget = null
+                    }
                 }
-                MenuRow("Delete message") { viewModel.onDeleteMessage(target); menuTarget = null }
+                if (target.isSent) {
+                    MessageActionRow(R.drawable.ic_delete, "Delete", DangerRed) {
+                        deleteTarget = target; menuTarget = null
+                    }
+                }
                 Spacer(Modifier.height(Spacing.md))
             }
         }
+    }
+
+    // Per-message delete confirmation (own messages only; server soft-delete).
+    deleteTarget?.let { target ->
+        ConfirmDialog(
+            title        = "Delete message?",
+            message      = "This message will be deleted for everyone and can't be recovered.",
+            confirmLabel = "Delete",
+            destructive  = true,
+            onConfirm    = { viewModel.onDeleteMessage(target); deleteTarget = null },
+            onDismiss    = { deleteTarget = null },
+        )
     }
 }
 
@@ -734,17 +771,49 @@ private fun MenuIcon(@androidx.annotation.DrawableRes res: Int) {
     )
 }
 
+/** Centered day separator ("Today" / "Jun 22") grouping the messages below it. */
 @Composable
-private fun MenuRow(label: String, onClick: () -> Unit) {
-    Text(
-        text     = label,
-        style    = MaterialTheme.typography.bodyMedium,
-        color    = MaterialTheme.colorScheme.onBackground,
+private fun DayHeader(label: String, textColor: Color) {
+    if (label.isBlank()) return
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor.copy(alpha = 0.6f),
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        )
+    }
+}
+
+/** Icon + label row for the long-press message menu. [tint] colors both icon and label. */
+@Composable
+private fun MessageActionRow(iconRes: Int, label: String, tint: Color, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
-    )
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter            = painterResource(iconRes),
+            contentDescription = null,
+            tint               = tint,
+            modifier           = Modifier.size(Spacing.xl),
+        )
+        Spacer(Modifier.width(Spacing.lg))
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = tint,
+        )
+    }
 }
 
 // ── Chat bubble ───────────────────────────────────────────────────────────────
@@ -763,6 +832,7 @@ private fun ChatBubble(
     maxWidth: Dp,
     avatarSize: Dp,
     showInviteSent: Boolean,
+    isLastSentMessage: Boolean,
     onLongPress: () -> Unit,
     onRetry: () -> Unit,
     onOpenArtwork: (Int) -> Unit,
@@ -801,7 +871,7 @@ private fun ChatBubble(
                     message.sendStatus == SendStatus.SENDING -> StatusLabel("Sending…", statusColor)
                     message.sendStatus == SendStatus.FAILED  -> StatusLabel("Failed — tap to retry", BrandPrimary)
                     showInviteSent                           -> StatusLabel("Invite sent!", statusColor)
-                    message.isRead                           -> StatusLabel("Read", statusColor)
+                    isLastSentMessage && message.isRead      -> StatusLabel("Read", statusColor)
                 }
             }
         }
@@ -828,6 +898,7 @@ private fun ChatBubble(
                             bottomStart = 0.dp,
                         ))
                         .background(bubbleReceived)
+                        .combinedClickable(onClick = {}, onLongClick = onLongPress)
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 ) {
                     BubbleContent(message, receivedTextColor, onOpenArtwork)
@@ -908,12 +979,34 @@ private fun BubbleContent(
             }
         }
 
-        if (message.isEdited && !message.isDeleted) {
-            Text(
-                "edited",
-                style = MaterialTheme.typography.labelSmall,
-                color = contentColor.copy(alpha = 0.55f),
-            )
+        // Short time at the bottom-right inside the bubble (with an "edited" prefix when applicable).
+        val time = remember(message.createdAtEpochMs) { ChatDateTime.shortTime(message.createdAtEpochMs) }
+        if (time.isNotEmpty() || (message.isEdited && !message.isDeleted)) {
+            Spacer(Modifier.height(Spacing.xs))
+            Row(
+                modifier = Modifier.align(Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (message.isEdited && !message.isDeleted) {
+                    Text(
+                        "edited",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp,
+                        lineHeight = 11.sp,
+                        color = contentColor.copy(alpha = 0.55f),
+                    )
+                    if (time.isNotEmpty()) Spacer(Modifier.width(Spacing.xs))
+                }
+                if (time.isNotEmpty()) {
+                    Text(
+                        time,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp,
+                        lineHeight = 11.sp,
+                        color = contentColor.copy(alpha = 0.6f),
+                    )
+                }
+            }
         }
     }
 }
