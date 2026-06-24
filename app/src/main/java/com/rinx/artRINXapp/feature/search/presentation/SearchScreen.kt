@@ -188,7 +188,7 @@ private fun SearchIdleContent(
         uiState.trendingTags.isEmpty() ->
             SearchMessageView(
                 title = "Nothing to show yet",
-                subtitle = "Search for art, artists, and curations.",
+                subtitle = "Search for art, artists, and collections.",
                 modifier = Modifier.fillMaxSize(),
             )
 

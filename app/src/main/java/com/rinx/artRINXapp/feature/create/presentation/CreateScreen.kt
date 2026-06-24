@@ -209,7 +209,7 @@ fun CreateScreen(
                     iconRes  = R.drawable.ic_create_curation,
                     iconColor = NewCollectionColor,
                     title    = "New Collection",
-                    subtitle = "Curate pieces",
+                    subtitle = "Collect pieces",
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     onClick  = { onNavigateToNewCuration() },
                 )
@@ -239,22 +239,27 @@ fun CreateScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Box(
-                    modifier         = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .border(1.dp, BrandPrimary, RoundedCornerShape(50))
-                        .clickable {
-                            Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
-                        }
-                        .padding(horizontal = Spacing.md, vertical = Spacing.xs),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text       = "Upgrade",
-                        style      = MaterialTheme.typography.labelMedium,
-                        color      = BrandPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                // Upgrade (Artist Free → Artist Pro) only applies to artist users — Collector /
+                // Art Curious (and web-billed Gallery) don't get an in-app upgrade CTA.
+                val isArtist = state.quota?.role?.contains("artist", ignoreCase = true) == true
+                if (isArtist) {
+                    Box(
+                        modifier         = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .border(1.dp, BrandPrimary, RoundedCornerShape(50))
+                            .clickable {
+                                Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
+                            }
+                            .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text       = "Upgrade",
+                            style      = MaterialTheme.typography.labelMedium,
+                            color      = BrandPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
 

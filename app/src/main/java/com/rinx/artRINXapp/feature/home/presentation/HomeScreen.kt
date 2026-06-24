@@ -511,7 +511,7 @@ private fun HomeTabPage(
                         EmptyView(
                             icon = Icons.Outlined.Palette,
                             title = "Nothing here yet",
-                            subtitle = "Curated art is on its way.",
+                            subtitle = "Collected art is on its way.",
                         )
                     }
                 } else {
@@ -616,15 +616,15 @@ private fun HomeTabPage(
 
                     // ── Popular Curations ──────────────────────────────────────
                     item(key = "curations-header") {
-                        SectionHeader(title = "Popular Curations")
+                        SectionHeader(title = "Popular Collections")
                     }
                     item(key = "curations-content") {
                         when {
                             uiState.isLoading -> CollectionShimmer()
                             uiState.popularCurations.isEmpty() -> EmptyView(
                                 icon = Icons.Outlined.Collections,
-                                title = "No curations yet",
-                                subtitle = "Follow curators to see their collections.",
+                                title = "No collections yet",
+                                subtitle = "Follow collectors to see their collections.",
                             )
                             else -> LazyRow(
                                 contentPadding = PaddingValues(

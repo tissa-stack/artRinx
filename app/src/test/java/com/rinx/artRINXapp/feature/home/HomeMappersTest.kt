@@ -169,7 +169,7 @@ class HomeMappersTest {
     @Test
     fun `toCurationItem leaves styles and description blank when not provided`() = with(repo) {
         val c = CurationDto(id = 12).toCurationItem()
-        assertEquals("Curator", c.curatorName) // friendly default kept
+        assertEquals("Collector", c.curatorName) // friendly default kept
         assertEquals("", c.styles) // no fabricated "Painting" — UI hides the Styles section
         assertEquals("", c.description) // no fabricated placeholder sentence
         assertTrue(c.artworkUrls.isEmpty())

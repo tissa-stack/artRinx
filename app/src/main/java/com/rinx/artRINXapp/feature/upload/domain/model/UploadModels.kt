@@ -5,6 +5,11 @@ import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Immutable
 import com.rinx.artRINXapp.R
 
+// ── Constants ───────────────────────────────────────────────────────────────────
+
+/** Max number of tags allowed on an artwork. */
+const val MAX_ARTWORK_TAGS = 10
+
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum class PrivacyOption { PUBLIC, PRIVATE }
@@ -70,6 +75,8 @@ data class ArtFormState(
     /** Optional artwork dimensions (raw input, in cm). Never required; blank = not sent. */
     val sizeHeightCm: String = "",
     val sizeWidthCm: String = "",
+    /** Unit the dimensions are entered in ("cm" or "in"); uploaded as-is via size_unit. */
+    val sizeUnit: String = "cm",
     val privacy: PrivacyOption = PrivacyOption.PUBLIC,
     val showMediumPicker: Boolean = false,
     val showPrivacyPicker: Boolean = false,

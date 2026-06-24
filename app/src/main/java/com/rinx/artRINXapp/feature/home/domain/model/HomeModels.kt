@@ -35,7 +35,7 @@ data class CurationItem(
     val id: String,
     val title: String,
     val curatorHandle: String,
-    val curatorName: String = "Curator",
+    val curatorName: String = "Collector",
     val curatorAvatarUrl: String? = null,
     val artworkUrls: List<String>,
     /** Artwork ids index-aligned with [artworkUrls] (for tapping a card → that art's detail). */

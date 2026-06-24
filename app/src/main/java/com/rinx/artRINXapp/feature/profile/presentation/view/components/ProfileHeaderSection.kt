@@ -207,7 +207,7 @@ fun ProfileHeaderSection(
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 ProfileStatColumn(value = profile.artCount, label = "Art")
-                ProfileStatColumn(value = profile.curationCount, label = "Curations")
+                ProfileStatColumn(value = profile.curationCount, label = "Collections")
                 ProfileStatColumn(value = profile.followerCount, label = "Followers", onClick = onFollowersClick)
                 ProfileStatColumn(value = profile.followingCount, label = "Following", onClick = onFollowingClick)
             }

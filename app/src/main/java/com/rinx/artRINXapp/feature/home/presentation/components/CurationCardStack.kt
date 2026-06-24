@@ -164,7 +164,7 @@ fun CurationCardStack(
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_delete),
-                                contentDescription = "Remove from curation",
+                                contentDescription = "Remove from collection",
                                 tint = DangerRed,
                                 modifier = Modifier.size(Spacing.lg),
                             )

@@ -139,7 +139,7 @@ fun AddToCurationSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Add to curation",
+                    text = "Add to collection",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -176,7 +176,7 @@ fun AddToCurationSheet(
                 )
                 Spacer(Modifier.width(Spacing.sm))
                 Text(
-                    text = "Create Curation",
+                    text = "Create Collection",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -216,7 +216,7 @@ fun AddToCurationSheet(
                         Box {
                             if (query.isEmpty()) {
                                 Text(
-                                    text = "Search curations",
+                                    text = "Search collections",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -251,7 +251,7 @@ fun AddToCurationSheet(
                     }
 
                     state.curations.isEmpty() -> Text(
-                        text = "You have no curations yet. Create one to get started.",
+                        text = "You have no collections yet. Create one to get started.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -260,7 +260,7 @@ fun AddToCurationSheet(
                     )
 
                     filtered.isEmpty() -> Text(
-                        text = "No curations match \"$query\".",
+                        text = "No collections match \"$query\".",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -307,7 +307,7 @@ fun AddToCurationSheet(
         AlertDialog(
             onDismissRequest = { pendingTarget = null },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Add to curation") },
+            title = { Text("Add to collection") },
             text = { Text("Add this to \"${target.title}\"?") },
             confirmButton = {
                 TextButton(onClick = {

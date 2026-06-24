@@ -248,7 +248,7 @@ class HomeViewModel @Inject constructor(
                 // Per product: a public curation surfaces in "Popular Curations" only on the next
                 // feed refresh — we don't optimistically prepend. Just clear the row on success.
                 if (forHome is CurationProgress.Success) {
-                    _uiState.update { it.copy(curationProgress = null, toastMessage = "Your curation is now live.") }
+                    _uiState.update { it.copy(curationProgress = null, toastMessage = "Your collection is now live.") }
                     curationManager.dismiss()
                 }
             }

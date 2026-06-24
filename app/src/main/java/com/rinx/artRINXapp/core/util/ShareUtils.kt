@@ -52,7 +52,7 @@ fun Context.shareCuration(
     description: String? = null,
 ) {
     val text = buildString {
-        append(title.ifBlank { "Check out this curation on RINX" })
+        append(title.ifBlank { "Check out this collection on RINX" })
         if (!curatorName.isNullOrBlank()) append(" by $curatorName")
         if (!description.isNullOrBlank()) append("\n\n").also { append(description) }
     }

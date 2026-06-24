@@ -10,6 +10,7 @@ import com.rinx.artRINXapp.feature.search.domain.model.UserSearchItem
 import com.rinx.artRINXapp.feature.upload.domain.EditTargetStore
 import com.rinx.artRINXapp.feature.upload.domain.UploadManager
 import com.rinx.artRINXapp.feature.upload.domain.model.ArtFormState
+import com.rinx.artRINXapp.feature.upload.domain.model.MAX_ARTWORK_TAGS
 import com.rinx.artRINXapp.feature.upload.domain.model.ArtistResult
 import com.rinx.artRINXapp.feature.upload.domain.model.CreationStatus
 import com.rinx.artRINXapp.feature.upload.domain.model.MediumOption
@@ -203,10 +204,13 @@ class NewArtViewModel @Inject constructor(
         it.copy(sizeHeightCm = h.filter { c -> c.isDigit() || c == '.' }.take(8))
     }
 
-    /** Optional width (cm); digits + a single decimal point only. Never required. */
+    /** Optional width; digits + a single decimal point only. Never required. */
     fun onSizeWidthChange(w: String) = _state.update {
         it.copy(sizeWidthCm = w.filter { c -> c.isDigit() || c == '.' }.take(8))
     }
+
+    /** Switch the dimension unit ("cm" or "in"); the entered values are uploaded in this unit. */
+    fun onSizeUnitChange(unit: String) = _state.update { it.copy(sizeUnit = unit) }
 
     // ── Artist ────────────────────────────────────────────────────────────────
 
@@ -278,20 +282,23 @@ class NewArtViewModel @Inject constructor(
 
     fun onAddTag() {
         val tag = _state.value.currentTagInput.trim().lowercase()
-        if (tag.isNotEmpty() && tag !in _state.value.tags) {
+        // Add only a new, non-duplicate tag while under the cap; otherwise leave the input as-is so
+        // the (disabled) Add button reflects why it can't be added. Clear the input on a real add.
+        if (canAddTag(tag, _state.value.tags)) {
             _state.update { it.copy(tags = it.tags + tag, currentTagInput = "", isTagsError = false) }
-        } else {
-            _state.update { it.copy(currentTagInput = "") }
         }
     }
 
-    /** Add a suggested (trending) tag from the suggestions row. */
+    /** Add a suggested (trending) tag from the suggestions row (respects the same cap + dedup). */
     fun onSuggestedTagTap(tag: String) {
         val normalized = tag.trim().lowercase()
-        if (normalized.isNotEmpty() && normalized !in _state.value.tags) {
+        if (canAddTag(normalized, _state.value.tags)) {
             _state.update { it.copy(tags = it.tags + normalized, isTagsError = false) }
         }
     }
+
+    private fun canAddTag(tag: String, tags: List<String>): Boolean =
+        tag.isNotEmpty() && tag !in tags && tags.size < MAX_ARTWORK_TAGS
 
     fun onRemoveTag(tag: String) = _state.update { it.copy(tags = it.tags - tag) }
 
@@ -417,10 +424,11 @@ class NewArtViewModel @Inject constructor(
     private fun priceFor(s: ArtFormState): Double? =
         if (s.shopLink.isNotBlank()) s.price.toDoubleOrNull() else null
 
-    /** Optional dimensions: (height, width, unit). Unit is "cm" iff either dimension is provided. */
+    /** Optional dimensions: (height, width, unit). Unit is the selected unit (cm/in) iff either
+     *  dimension is provided, uploaded as-is (so inches go up as "in"). */
     private fun dimensionsFor(s: ArtFormState): Triple<Double?, Double?, String?> {
         val h = s.sizeHeightCm.toDoubleOrNull()
         val w = s.sizeWidthCm.toDoubleOrNull()
-        return Triple(h, w, if (h != null || w != null) "cm" else null)
+        return Triple(h, w, if (h != null || w != null) s.sizeUnit else null)
     }
 }

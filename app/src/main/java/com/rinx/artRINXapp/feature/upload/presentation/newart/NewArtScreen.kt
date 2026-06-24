@@ -68,6 +68,7 @@ import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.upload.domain.model.MAX_ARTWORK_TAGS
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
 import com.rinx.artRINXapp.feature.upload.domain.model.ShopLinkVisibility
 import com.rinx.artRINXapp.feature.upload.presentation.components.CreationStatusOverlay
@@ -292,13 +293,15 @@ fun NewArtScreen(
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Dimensions (optional physical size, in cm)
+                // Dimensions (optional physical size; unit cm or in)
                 item(key = "size") {
                     DimensionsRow(
                         height = state.sizeHeightCm,
                         width = state.sizeWidthCm,
+                        unit = state.sizeUnit,
                         onHeightChange = viewModel::onSizeHeightChange,
                         onWidthChange = viewModel::onSizeWidthChange,
+                        onUnitChange = viewModel::onSizeUnitChange,
                     )
                     Spacer(Modifier.height(Spacing.md))
                 }
@@ -588,6 +591,17 @@ private fun TagsEditor(
             .padding(horizontal = Spacing.md, vertical = Spacing.lg),
     ) {
         Column(Modifier.fillMaxWidth()) {
+            // Tag count, above the field. Caps at MAX_ARTWORK_TAGS.
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "${tags.size}/$MAX_ARTWORK_TAGS",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(Spacing.xs))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicTextField(
                     value = input,
@@ -608,12 +622,16 @@ private fun TagsEditor(
                     },
                 )
                 if (input.isNotBlank()) {
+                    // Enabled only for a NEW tag under the cap; disabled (greyed) for a duplicate or
+                    // once 10 tags are reached.
+                    val normalized = input.trim().lowercase()
+                    val canAdd = normalized.isNotEmpty() && normalized !in tags && tags.size < MAX_ARTWORK_TAGS
                     Spacer(Modifier.width(Spacing.sm))
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(BrandPrimary)
-                            .clickable { onAdd() }
+                            .background(if (canAdd) BrandPrimary else InactiveButton)
+                            .then(if (canAdd) Modifier.clickable { onAdd() } else Modifier)
                             .padding(horizontal = Spacing.md, vertical = Spacing.xs),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -621,7 +639,7 @@ private fun TagsEditor(
                             "Add",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = Color.White.copy(alpha = if (canAdd) 1f else 0.6f),
                         )
                     }
                 }
@@ -796,32 +814,64 @@ private fun PriceField(value: String, isError: Boolean, onChange: (String) -> Un
     }
 }
 
-/** Optional artwork dimensions — two side-by-side numeric fields (Height × Width), in cm. */
+/** Optional artwork dimensions — a cm/in unit selector plus two side-by-side numeric fields. */
 @Composable
 private fun DimensionsRow(
     height: String,
     width: String,
+    unit: String,
     onHeightChange: (String) -> Unit,
     onWidthChange: (String) -> Unit,
+    onUnitChange: (String) -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .padding(horizontal = Spacing.md)
             .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        DimensionField(
-            label = "Height (cm)",
-            value = height,
-            onChange = onHeightChange,
-            modifier = Modifier.weight(1f),
-        )
-        DimensionField(
-            label = "Width (cm)",
-            value = width,
-            onChange = onWidthChange,
-            modifier = Modifier.weight(1f),
+        // Unit selector (cm / in) — the entered values are uploaded in the selected unit.
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            UnitPill(label = "cm", selected = unit == "cm") { onUnitChange("cm") }
+            UnitPill(label = "in", selected = unit == "in") { onUnitChange("in") }
+        }
+        Spacer(Modifier.height(Spacing.sm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DimensionField(
+                label = "Height ($unit)",
+                value = height,
+                onChange = onHeightChange,
+                modifier = Modifier.weight(1f),
+            )
+            DimensionField(
+                label = "Width ($unit)",
+                value = width,
+                onChange = onWidthChange,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/** Small toggle pill for the dimension unit (cm / in). */
+@Composable
+private fun UnitPill(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

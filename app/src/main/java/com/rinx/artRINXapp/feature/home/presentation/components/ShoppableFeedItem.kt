@@ -139,7 +139,7 @@ fun ShoppableFeedItem(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_add_to),
-                    contentDescription = "Add to curation",
+                    contentDescription = "Add to collection",
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .size(Spacing.xxl)

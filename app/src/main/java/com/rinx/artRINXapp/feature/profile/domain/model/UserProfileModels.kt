@@ -7,7 +7,7 @@ import com.rinx.artRINXapp.feature.search.domain.model.CardHeight
 
 enum class ProfileTab(val displayName: String) {
     ART("Art"),
-    CURATIONS("Curations"),
+    CURATIONS("Collections"),
     LIKED("Liked"),
 }
 

@@ -17,9 +17,9 @@ fun CurationProgressRow(
     modifier: Modifier = Modifier,
 ) {
     val label = when (progress) {
-        is CurationProgress.Creating -> "Creating curation…"
-        is CurationProgress.Success -> "Curation created"
-        is CurationProgress.Failed -> "Couldn't create curation"
+        is CurationProgress.Creating -> "Creating collection…"
+        is CurationProgress.Success -> "Collection created"
+        is CurationProgress.Failed -> "Couldn't create collection"
     }
     val failed = progress as? CurationProgress.Failed
     ProgressRowContent(

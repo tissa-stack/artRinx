@@ -205,13 +205,13 @@ object MockNotificationData {
         ),
         NotificationItem(
             id = "n3",
-            message = "\"Curation title\" got 50 likes",
+            message = "\"Collection title\" got 50 likes",
             timeAgo = "2h ago", isRead = true,
             thumbnailRes = R.drawable.art_sample_fluid_purple, avatarRes = null,
         ),
         NotificationItem(
             id = "n4",
-            message = "Catherine D shared \"Coral leaf\" as their curation with public",
+            message = "Catherine D shared \"Coral leaf\" as their collection with public",
             timeAgo = "2h ago", isRead = true,
             thumbnailRes = null, avatarRes = R.drawable.art_sample_artist_outdoors,
         ),

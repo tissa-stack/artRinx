@@ -83,5 +83,5 @@ private val ResultTab.label: String
     get() = when (this) {
         ResultTab.ART       -> "Art"
         ResultTab.USERS     -> "Users"
-        ResultTab.CURATIONS -> "Curations"
+        ResultTab.CURATIONS -> "Collections"
     }

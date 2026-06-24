@@ -330,7 +330,7 @@ class HomeRepositoryImpl @Inject constructor(
             id = id?.toString() ?: "",
             title = title.orEmpty(),
             curatorHandle = author?.username?.let { "@$it" } ?: "",
-            curatorName = author?.displayName ?: author?.username ?: "Curator",
+            curatorName = author?.displayName ?: author?.username ?: "Collector",
             curatorAvatarUrl = author?.profilePicture,
             artworkUrls = withImages.map { (it.imageUrl ?: it.thumbnailUrl)!! },
             artworkIds = withImages.map { it.id?.toString() ?: "" },

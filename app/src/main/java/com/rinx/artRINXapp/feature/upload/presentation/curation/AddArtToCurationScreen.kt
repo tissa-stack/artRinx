@@ -74,7 +74,7 @@ fun AddArtToCurationScreen(
                 )
             }
             Text(
-                text       = "Add to curation",
+                text       = "Add to collection",
                 style      = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color      = MaterialTheme.colorScheme.onBackground,

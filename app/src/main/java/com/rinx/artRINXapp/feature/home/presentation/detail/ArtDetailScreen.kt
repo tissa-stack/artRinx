@@ -431,7 +431,7 @@ private fun ArtDetailContent(
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_add_to),
-                            contentDescription = "Add to curation",
+                            contentDescription = "Add to collection",
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier
                                 .size(Spacing.xxl)
@@ -496,7 +496,8 @@ private fun ArtDetailContent(
                 ) {
                     Text(
                         text = "Artist",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
@@ -512,8 +513,9 @@ private fun ArtDetailContent(
                 if (post.medium.isNotBlank()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Style",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = "Medium",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
@@ -546,8 +548,8 @@ private fun ArtDetailContent(
                 ) {
                     Text(
                         text = "Description",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
@@ -561,7 +563,7 @@ private fun ArtDetailContent(
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
                     text = post.description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = if (descExpanded) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis,
@@ -580,8 +582,8 @@ private fun ArtDetailContent(
                 ) {
                     Text(
                         text = "Dimensions",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(Spacing.xs))
@@ -635,7 +637,7 @@ private fun ArtDetailContent(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(Spacing.sm))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .background(BrandPrimary)
                             .clickable { showSendSheet = true }
                             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                         contentAlignment = Alignment.Center,
@@ -643,7 +645,7 @@ private fun ArtDetailContent(
                         Text(
                             text = "Send message",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                         )
                     }
                 }

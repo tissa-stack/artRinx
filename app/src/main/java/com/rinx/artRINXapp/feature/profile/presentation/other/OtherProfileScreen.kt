@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.profile.presentation.other
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,16 +30,16 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,10 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,7 +102,6 @@ fun OtherProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    var showActions by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<ConfirmKind?>(null) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
@@ -251,10 +251,11 @@ fun OtherProfileScreen(
                                     )
                                 }
                             },
-                            onPillClick = {
-                                if (profile.iBlocked) confirm = ConfirmKind.UNBLOCK
-                                else showActions = true
-                            },
+                            onFollow = viewModel::follow,
+                            onUnfollow = { confirm = ConfirmKind.UNFOLLOW },
+                            onBlock = { confirm = ConfirmKind.BLOCK },
+                            onReport = { showReport = true },
+                            onUnblock = { confirm = ConfirmKind.UNBLOCK },
                         )
                     },
                     tabBar = {
@@ -285,8 +286,8 @@ fun OtherProfileScreen(
                                 uiState.isRefreshing -> ContentLoading()
                                 else -> EmptyView(
                                     icon = Icons.Outlined.Collections,
-                                    title = "No curations yet",
-                                    subtitle = "This artist hasn't created any curations.",
+                                    title = "No collections yet",
+                                    subtitle = "This artist hasn't created any collections.",
                                     modifier = Modifier.padding(top = Spacing.md),
                                 )
                             }
@@ -312,21 +313,7 @@ fun OtherProfileScreen(
         }
     }
 
-    // ── Actions sheet (Following ▾) ──────────────────────────────────────────
     val profile = uiState.profile
-    if (showActions && profile != null) {
-        ProfileActionsSheet(
-            displayName = profile.displayName,
-            isFollowing = profile.isFollowing,
-            iBlocked = profile.iBlocked,
-            onFollow = { showActions = false; viewModel.follow() },
-            onUnfollow = { showActions = false; confirm = ConfirmKind.UNFOLLOW },
-            onBlock = { showActions = false; confirm = ConfirmKind.BLOCK },
-            onUnblock = { showActions = false; confirm = ConfirmKind.UNBLOCK },
-            onReport = { showActions = false; showReport = true },
-            onDismiss = { showActions = false },
-        )
-    }
 
     shareTarget?.let { target ->
         ShareSheet(target = target, onDismiss = { shareTarget = null })
@@ -392,7 +379,11 @@ private fun OtherProfileHeader(
     onBack: () -> Unit,
     onMessage: () -> Unit,
     onShare: () -> Unit,
-    onPillClick: () -> Unit,
+    onFollow: () -> Unit,
+    onUnfollow: () -> Unit,
+    onBlock: () -> Unit,
+    onReport: () -> Unit,
+    onUnblock: () -> Unit,
 ) {
     val d = LocalDimens.current
     var showPortfolio by remember { mutableStateOf(false) }
@@ -441,15 +432,13 @@ private fun OtherProfileHeader(
                 )
             }
             Spacer(Modifier.width(Spacing.sm))
-            FollowPill(
-                label = when {
-                    profile.iBlocked -> "Blocked"
-                    profile.isFollowing -> "Following"
-                    else -> "Follow"
-                },
-                showChevron = !profile.iBlocked,
-                filled = profile.iBlocked,
-                onClick = onPillClick,
+            FollowControl(
+                profile = profile,
+                onFollow = onFollow,
+                onUnfollow = onUnfollow,
+                onBlock = onBlock,
+                onReport = onReport,
+                onUnblock = onUnblock,
             )
         }
 
@@ -515,7 +504,7 @@ private fun OtherProfileHeader(
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 StatColumn(profile.artCount, "Art")
-                StatColumn(profile.curationCount, "Curations")
+                StatColumn(profile.curationCount, "Collections")
                 StatColumn(profile.followerCount, "Followers")
                 StatColumn(profile.followingCount, "Following")
             }
@@ -544,7 +533,6 @@ private fun OtherProfileHeader(
                     Text(
                         text = profile.role,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -555,14 +543,14 @@ private fun OtherProfileHeader(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(Spacing.sm))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(BrandPrimary)
                         .clickable(onClick = onMessage)
                         .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
                 ) {
                     Text(
                         text = "Message",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        color = androidx.compose.ui.graphics.Color.White,
                     )
                 }
             }
@@ -612,33 +600,110 @@ private fun OtherProfileHeader(
     }
 }
 
+/**
+ * Follow control (iOS parity):
+ *  - Not following → solid blue "Follow"; tapping follows directly (no menu).
+ *  - Following → outlined "Following ▾"; tapping opens a dropdown anchored to the button with
+ *    Unfollow (red) / Report / Block.
+ *  - Blocked → solid red "Blocked"; tapping starts the unblock confirmation.
+ */
 @Composable
-private fun FollowPill(label: String, showChevron: Boolean, onClick: () -> Unit, filled: Boolean = false) {
-    // Filled = the red "Blocked" state (iOS parity); outlined = Follow / Following.
-    val contentColor = if (filled) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onBackground
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .then(
-                if (filled) Modifier.background(DangerRed)
-                else Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
+private fun FollowControl(
+    profile: PublicProfile,
+    onFollow: () -> Unit,
+    onUnfollow: () -> Unit,
+    onBlock: () -> Unit,
+    onReport: () -> Unit,
+    onUnblock: () -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    val following = profile.isFollowing && !profile.iBlocked
+    val label = when {
+        profile.iBlocked -> "Blocked"
+        profile.isFollowing -> "Following"
+        else -> "Follow"
+    }
+    val contentColor = if (following) MaterialTheme.colorScheme.onBackground else Color.White
+
+    Box {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .then(
+                    when {
+                        profile.iBlocked -> Modifier.background(DangerRed)
+                        following -> Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
+                        else -> Modifier.background(BrandPrimary) // "Follow" → solid blue
+                    },
+                )
+                .clickable {
+                    when {
+                        profile.iBlocked -> onUnblock()
+                        following -> menuExpanded = true
+                        else -> onFollow()
+                    }
+                }
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor,
             )
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = contentColor,
-        )
-        if (showChevron) {
-            Icon(
-                Icons.Filled.KeyboardArrowDown,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(Spacing.lg),
+            // Chevron only on the "Following" state (it opens the dropdown).
+            if (following) {
+                Icon(
+                    Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(Spacing.lg),
+                )
+            }
+        }
+
+        // Dropdown anchored to the button (replaces the old bottom sheet). Light theme = white.
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+            containerColor = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surface else Color.White,
+        ) {
+            DropdownMenuItem(
+                text = { Text("Unfollow", color = DangerRed) },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_navigation_profile),
+                        contentDescription = null,
+                        tint = DangerRed,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                },
+                onClick = { menuExpanded = false; onUnfollow() },
+            )
+            DropdownMenuItem(
+                text = { Text("Report", color = MaterialTheme.colorScheme.onBackground) },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_report),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                },
+                onClick = { menuExpanded = false; onReport() },
+            )
+            DropdownMenuItem(
+                text = { Text("Block", color = MaterialTheme.colorScheme.onBackground) },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_block),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                },
+                onClick = { menuExpanded = false; onBlock() },
             )
         }
     }
@@ -703,65 +768,3 @@ private fun StatColumn(value: Int, label: String) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileActionsSheet(
-    displayName: String,
-    isFollowing: Boolean,
-    iBlocked: Boolean,
-    onFollow: () -> Unit,
-    onUnfollow: () -> Unit,
-    onBlock: () -> Unit,
-    onUnblock: () -> Unit,
-    onReport: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Spacing.lg)
-                .padding(bottom = Spacing.xxl),
-        ) {
-            Text(
-                text = (if (isFollowing) "Following " else "") + displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.md),
-            )
-            when {
-                iBlocked -> ActionRow(R.drawable.ic_block, "Unblock profile", onUnblock)
-                isFollowing -> ActionRow(R.drawable.ic_navigation_profile, "Unfollow profile", onUnfollow)
-                else -> ActionRow(R.drawable.ic_navigation_profile, "Follow profile", onFollow)
-            }
-            if (!iBlocked) ActionRow(R.drawable.ic_block, "Block profile", onBlock)
-            ActionRow(R.drawable.ic_report, "Report profile", onReport)
-        }
-    }
-}
-
-@Composable
-private fun ActionRow(iconRes: Int, label: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = Spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.size(Spacing.xl),
-        )
-        Spacer(Modifier.width(Spacing.lg))
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
-    }
-}

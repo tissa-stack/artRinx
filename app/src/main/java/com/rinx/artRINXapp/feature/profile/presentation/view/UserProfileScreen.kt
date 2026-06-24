@@ -290,8 +290,8 @@ private fun UserProfileContent(
                             if (uiState.curations.isEmpty() && uiState.curationProgress == null) {
                                 EmptyView(
                                     icon = Icons.Outlined.Collections,
-                                    title = "No curations yet",
-                                    subtitle = "Curations you create will appear here.",
+                                    title = "No collections yet",
+                                    subtitle = "Collections you create will appear here.",
                                     modifier = Modifier.padding(top = Spacing.md),
                                 )
                             } else {

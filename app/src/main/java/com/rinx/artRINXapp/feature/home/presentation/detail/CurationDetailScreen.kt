@@ -101,7 +101,7 @@ fun CurationDetailScreen(
     // Curation no longer exists server-side (404) → toast + pop instead of showing stale cached detail.
     LaunchedEffect(Unit) {
         viewModel.gone.collect {
-            Toast.makeText(context, "This curation is no longer available.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "This collection is no longer available.", Toast.LENGTH_SHORT).show()
             onBack()
         }
     }
@@ -126,7 +126,7 @@ fun CurationDetailScreen(
         ReportBottomSheet(
             artTitle = uiState.curation?.title ?: "",
             profileName = uiState.curation?.curatorName ?: "",
-            subjectLabel = "curation",
+            subjectLabel = "collection",
             isReporting = uiState.isReporting,
             reportSent = uiState.reportSent,
             isBlocking = uiState.isBlocking,
@@ -155,7 +155,7 @@ fun CurationDetailScreen(
 
     if (showDeleteDialog) {
         DeleteConfirmDialog(
-            itemLabel = "curation",
+            itemLabel = "collection",
             isDeleting = uiState.isDeleting,
             onConfirm = { viewModel.deleteCuration() },
             onDismiss = { showDeleteDialog = false },
@@ -263,7 +263,7 @@ fun CurationDetailScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Couldn't load this curation.",
+                        text = "Couldn't load this collection.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -305,7 +305,7 @@ private fun CurationDetailContent(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text  = "No artworks in this curation yet.",
+                        text  = "No artworks in this collection yet.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -331,15 +331,26 @@ private fun CurationDetailContent(
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 verticalAlignment  = Alignment.CenterVertically,
             ) {
-                Text(
-                    text     = curation.title,
-                    style    = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color    = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text     = curation.title,
+                        style    = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color    = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    // Collection owner's name, just below the title.
+                    if (curation.curatorName.isNotBlank()) {
+                        Text(
+                            text     = curation.curatorName,
+                            style    = MaterialTheme.typography.bodyMedium,
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
                 Spacer(Modifier.width(Spacing.sm))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -347,7 +358,7 @@ private fun CurationDetailContent(
                 ) {
                     Icon(
                         painter            = painterResource(R.drawable.ic_add_to),
-                        contentDescription = "Add to curation",
+                        contentDescription = "Add to collection",
                         tint               = MaterialTheme.colorScheme.onSurface,
                         modifier           = Modifier
                             .size(Spacing.xxl)
@@ -399,8 +410,9 @@ private fun CurationDetailContent(
                         .padding(horizontal = Spacing.md, vertical = Spacing.xs),
                 ) {
                     Text(
-                        text  = "Styles",
-                        style = MaterialTheme.typography.labelSmall,
+                        text  = "Mediums",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
@@ -428,8 +440,8 @@ private fun CurationDetailContent(
                 ) {
                     Text(
                         text       = "Description",
-                        style      = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style      = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
                         color      = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier   = Modifier.weight(1f),
                     )
@@ -443,7 +455,7 @@ private fun CurationDetailContent(
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
                     text     = curation.description,
-                    style    = MaterialTheme.typography.bodySmall,
+                    style    = MaterialTheme.typography.bodyMedium,
                     color    = MaterialTheme.colorScheme.onBackground,
                     maxLines = if (descExpanded) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis,

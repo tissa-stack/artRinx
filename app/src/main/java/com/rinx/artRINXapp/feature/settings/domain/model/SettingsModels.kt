@@ -96,7 +96,7 @@ object MockSettingsData {
         features = listOf(
             "Upload 10 artworks",
             "Send messages (5 invites/ month)",
-            "Browse and like art and curations",
+            "Browse and like art and collections",
             "Follow and share profiles",
         ),
     )
@@ -106,7 +106,7 @@ object MockSettingsData {
         features = listOf(
             "Upload unlimited artworks",
             "Send messages (25 invites/ month)",
-            "Browse and like art & curations",
+            "Browse and like art & collections",
             "Follow and share profiles",
             "Add links to profile and art",
         ),

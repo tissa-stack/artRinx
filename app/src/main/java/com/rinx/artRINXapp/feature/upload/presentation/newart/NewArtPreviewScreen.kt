@@ -50,6 +50,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.home.presentation.components.FullWidthArtImage
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
 import com.rinx.artRINXapp.feature.upload.presentation.components.CreationStatusOverlay
@@ -119,16 +120,13 @@ fun NewArtPreviewScreen(
             modifier       = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = Spacing.xxl),
         ) {
-            // Hero photo
+            // Hero photo — full width at the image's true aspect ratio, exactly how the detail
+            // screen renders it (no fixed-height crop).
             item(key = "photo") {
-                AsyncImage(
-                    model              = state.imageUri,
+                FullWidthArtImage(
+                    model = state.imageUri,
                     contentDescription = "Art preview",
-                    contentScale       = ContentScale.Crop,
-                    modifier           = Modifier
-                        .fillMaxWidth()
-                        .height(d.artDetailImageHeight)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    declaredRatio = null,
                 )
             }
 

@@ -210,7 +210,7 @@ class SearchRepositoryImpl @Inject constructor(
             id = id?.toString().orEmpty(),
             title = title ?: "Untitled",
             curatorHandle = author?.username?.let { "@$it" } ?: "",
-            curatorName = author?.displayName ?: author?.username ?: "Curator",
+            curatorName = author?.displayName ?: author?.username ?: "Collector",
             curatorAvatarUrl = author?.profilePicture,
             artworkUrls = ordered.mapNotNull { it.imageUrl ?: it.thumbnailUrl },
             styles = ordered.mapNotNull { it.medium?.title }.distinct().joinToString(", "),

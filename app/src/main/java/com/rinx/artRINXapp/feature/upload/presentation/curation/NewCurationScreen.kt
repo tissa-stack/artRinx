@@ -90,7 +90,7 @@ fun NewCurationScreen(
     var pendingDeleteIndex by remember { mutableStateOf<Int?>(null) }
     pendingDeleteIndex?.let { idx ->
         ConfirmActionDialog(
-            title = "Remove from curation?",
+            title = "Remove from collection?",
             confirmLabel = "Remove",
             confirmColor = DangerRed,
             iconRes = R.drawable.ic_delete,
@@ -102,7 +102,7 @@ fun NewCurationScreen(
     // Edit prefill failed (e.g. the curation was deleted) → don't leave the user on a blank form.
     LaunchedEffect(state.editLoadFailed) {
         if (state.editLoadFailed) {
-            Toast.makeText(context, "This curation is no longer available.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "This collection is no longer available.", Toast.LENGTH_SHORT).show()
             onBack()
         }
     }
@@ -141,7 +141,7 @@ fun NewCurationScreen(
                         tint = MaterialTheme.colorScheme.onBackground)
                 }
                 Text(
-                    text       = if (state.isEditing) "Edit Curation" else "New Curation",
+                    text       = if (state.isEditing) "Edit Collection" else "New Collection",
                     style      = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color      = MaterialTheme.colorScheme.onBackground,
@@ -183,7 +183,7 @@ fun NewCurationScreen(
                                 onDeleteArt = if (state.isEditing) {
                                     { index ->
                                         if (state.selectedArts.size <= 1) {
-                                            Toast.makeText(context, "A curation needs at least one artwork.", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "A collection needs at least one artwork.", Toast.LENGTH_SHORT).show()
                                         } else {
                                             pendingDeleteIndex = index
                                         }
@@ -269,10 +269,10 @@ fun NewCurationScreen(
         state.creationStatus?.let { status ->
             CreationStatusOverlay(
                 status = status,
-                label = "Curation",
+                label = "Collection",
                 error = state.creationError,
                 createdTitle = if (state.isEditing) "Changes saved" else null,
-                createdSubtitle = if (state.isEditing) "Your curation has been updated." else null,
+                createdSubtitle = if (state.isEditing) "Your collection has been updated." else null,
                 onDone = {
                     viewModel.onCreationDone()
                     if (state.isEditing) onEditDone() else onCreateStarted(false)
