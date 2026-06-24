@@ -17,7 +17,15 @@ import javax.inject.Singleton
  * defer follow-up prompts (e.g. notification permission) until AFTER the tour — without the
  * first-frame race where `!active` is briefly true before the tour starts.
  */
-data class TourState(val active: Boolean = false, val step: Int = 0, val completed: Boolean = false)
+data class TourState(
+    val active: Boolean = false,
+    val step: Int = 0,
+    val completed: Boolean = false,
+    /** True from when the first-launch tour finishes until the post-tour Plans screen is dismissed.
+     *  Drives the one-time "Plans → notification permission" finale; never set for returning users
+     *  or a Settings-triggered re-run. */
+    val plansPending: Boolean = false,
+)
 
 /**
  * App-scoped state for the first-launch tour. Single source of truth so the tour survives the
@@ -37,6 +45,10 @@ class TourManager @Inject constructor(
 
     @Volatile private var started = false
 
+    /** True only while the genuine first-launch tour is running, so the post-tour Plans finale fires
+     *  for new users but NOT after a Settings-triggered [restart]. */
+    @Volatile private var firstLaunchRun = false
+
     /**
      * Re-arms the first-launch tour for a freshly-created account. The completed flag is
      * device-global (not per-user), so without this a second account created on the same device
@@ -47,6 +59,7 @@ class TourManager @Inject constructor(
      */
     suspend fun prepareForNewUser() {
         started = false
+        firstLaunchRun = false
         _state.value = TourState()
         prefs.reset()
     }
@@ -59,6 +72,7 @@ class TourManager @Inject constructor(
             if (prefs.isCompleted()) {
                 _state.value = TourState(active = false, completed = true)
             } else {
+                firstLaunchRun = true
                 _state.value = TourState(active = true, step = 0)
             }
         }
@@ -78,12 +92,21 @@ class TourManager @Inject constructor(
     }
 
     private fun finish() {
-        _state.value = _state.value.copy(active = false, completed = true)
+        // Show the post-tour Plans finale only after a genuine first-launch tour (not a Settings re-run).
+        val showPlans = firstLaunchRun
+        firstLaunchRun = false
+        _state.value = _state.value.copy(active = false, completed = true, plansPending = showPlans)
         scope.launch { prefs.markCompleted() }
+    }
+
+    /** Dismiss the post-tour Plans finale (after the user taps "Continue"). */
+    fun markPlansShown() {
+        _state.value = _state.value.copy(plansPending = false)
     }
 
     /** Manually (re)start the tour on demand — e.g. Settings → "App tutorial". */
     fun restart() {
+        firstLaunchRun = false
         _state.value = TourState(active = true, step = 0)
     }
 }

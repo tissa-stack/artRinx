@@ -11,6 +11,8 @@ object NavRoutes {
     const val SIGNUP = "signup?inviteCode={inviteCode}"
     const val OTP = "otp?mode={mode}&contactType={contactType}&contactValue={contactValue}&inviteCode={inviteCode}"
     const val PROFILE_COMPLETION = "profile_completion"
+    /** Informational plans screen shown once, right after the first-launch app tutorial. */
+    const val POST_TUTORIAL_PLANS = "post_tutorial_plans"
     const val HOME          = "home"
     const val SEARCH        = "search"
     const val CREATE        = "create"

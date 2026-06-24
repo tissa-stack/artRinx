@@ -582,8 +582,8 @@ class ProfileCreationViewModel @Inject constructor(
 
     fun onBack() {
         val current = _uiState.value.currentStep
-        // Don't allow stepping back into the wizard from the post-submit plan step.
-        if (current in 1 until PLAN_STEP) goToStep(current - 1)
+        // Steps 1..3 can step back (0 is the first step; mediums/3 is the last).
+        if (current in 1..LAST_STEP) goToStep(current - 1)
     }
 
     private fun goToStep(step: Int) {
@@ -620,9 +620,9 @@ class ProfileCreationViewModel @Inject constructor(
                     draftDataSource.clearDraft()
                     // Drop the downloaded Google avatar (if any) now that the profile is created.
                     runCatching { File(appContext.cacheDir, GooglePrefillHolder.AVATAR_CACHE_FILENAME).delete() }
-                    // POST fires at the mediums step; advance to the informational plan step (step 5).
-                    _uiState.update { it.copy(isSubmitting = false, currentStep = PLAN_STEP) }
-                    draftDataSource.saveStep(PLAN_STEP)
+                    // Mediums is the final wizard step — route straight into the app so the
+                    // first-launch tutorial runs. The Plans screen now appears AFTER the tutorial.
+                    _uiState.update { it.copy(isSubmitting = false, navigateToHome = true) }
                 }
                 is ApiResult.Error.Validation -> _uiState.update {
                     it.copy(isSubmitting = false, submissionError = result.message)
@@ -637,11 +637,6 @@ class ProfileCreationViewModel @Inject constructor(
         }
     }
 
-    /** Step 5 "Explore artRinx" exit. Profile is already created + marked complete; just route Home. */
-    fun onExploreRinx() {
-        _uiState.update { it.copy(navigateToHome = true) }
-    }
-
     fun onNavigatedToHome() {
         _uiState.update { it.copy(navigateToHome = false) }
     }
@@ -653,8 +648,8 @@ class ProfileCreationViewModel @Inject constructor(
     companion object {
         /** Spec: the mediums step requires the user to pick exactly this many. */
         const val REQUIRED_MEDIUM_COUNT = 3
-        /** Index of the informational plan step (step 5), shown after the profile POST succeeds. */
-        const val PLAN_STEP = 4
+        /** Index of the last wizard step (mediums). Submitting here routes straight to Home. */
+        const val LAST_STEP = 3
         /** Debounce for the city prefix-search query. */
         const val CITY_DEBOUNCE_MS = 350L
         /** Requested square size (px) for the downloaded Google avatar. */

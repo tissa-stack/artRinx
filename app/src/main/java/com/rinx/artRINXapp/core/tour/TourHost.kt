@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import com.rinx.artRINXapp.core.navigation.NavRoutes
 
 /**
  * Global tour host: rendered above the NavHost so the coaching overlay persists across the
@@ -19,6 +20,15 @@ fun TourHost(
     viewModel: TourViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+
+    // When the first-launch tour finishes, show the post-tour Plans finale — regardless of which tab
+    // the tour ended on. Fires once; the Plans screen clears `plansPending` via markPlansShown().
+    LaunchedEffect(state.plansPending) {
+        if (state.plansPending) {
+            navController.navigate(NavRoutes.POST_TUTORIAL_PLANS) { launchSingleTop = true }
+        }
+    }
+
     if (!state.active) return
 
     val route = TourStep.ordered[state.step].route

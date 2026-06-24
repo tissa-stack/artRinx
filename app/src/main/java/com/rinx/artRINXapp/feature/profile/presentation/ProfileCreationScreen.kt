@@ -20,10 +20,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,8 +48,6 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
-import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.PlanCard
 import com.rinx.artRINXapp.feature.profile.presentation.steps.MediumSelectionStep
 import com.rinx.artRINXapp.feature.profile.presentation.steps.PersonalInfoStep
 import com.rinx.artRINXapp.feature.profile.presentation.steps.ProfileInfoStep
@@ -101,7 +97,6 @@ fun ProfileCreationScreen(
             onNextFromProfileInfo = viewModel::onNextFromProfileInfo,
             onNextFromPersonalInfo = viewModel::onNextFromPersonalInfo,
             onSubmit = viewModel::onSubmit,
-            onExploreRinx = viewModel::onExploreRinx,
             onBack = viewModel::onBack,
             onDismissError = viewModel::onDismissError,
         )
@@ -137,17 +132,16 @@ private fun ProfileCreationContent(
     onNextFromProfileInfo: () -> Boolean,
     onNextFromPersonalInfo: () -> Boolean,
     onSubmit: (Uri?) -> Unit,
-    onExploreRinx: () -> Unit,
     onBack: () -> Unit,
     onDismissError: () -> Unit,
 ) {
     val dimens = LocalDimens.current
     val snackbarHostState = remember { SnackbarHostState() }
     val currentStep = uiState.currentStep
-    val totalSteps = 5
+    val totalSteps = 4
     val isDark = isSystemInDarkTheme()
-    // Back is only meaningful within the data-entry steps (not the post-submit plan step).
-    val canGoBack = currentStep in 1 until ProfileCreationViewModel.PLAN_STEP
+    // Back is meaningful within the data-entry steps (0 is first, mediums is last).
+    val canGoBack = currentStep in 1..ProfileCreationViewModel.LAST_STEP
 
     BackHandler(enabled = canGoBack) { onBack() }
 
@@ -167,7 +161,6 @@ private fun ProfileCreationContent(
         // surfaces an inline error if a location field was typed but not picked from the catalog.
         2 -> uiState.dob.isNotBlank()
         3 -> uiState.selectedMediumIds.size == ProfileCreationViewModel.REQUIRED_MEDIUM_COUNT
-        4 -> true // informational plan step — always proceedable
         else -> false
     }
 
@@ -298,11 +291,6 @@ private fun ProfileCreationContent(
                         onRetry = onRetryMediums,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    4 -> PlanInfoStep(
-                        roleName = uiState.profileTypes
-                            .firstOrNull { it.id == uiState.selectedProfileTypeId }?.name.orEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
             }
 
@@ -325,7 +313,6 @@ private fun ProfileCreationContent(
                             1 -> onNextFromProfileInfo()
                             2 -> onNextFromPersonalInfo()
                             3 -> onSubmit(uiState.profilePictureUri)
-                            4 -> onExploreRinx()
                         }
                     },
                     enabled = !uiState.isSubmitting,
@@ -347,7 +334,8 @@ private fun ProfileCreationContent(
                             strokeWidth = Spacing.xs / 2,
                         )
                     } else {
-                        val label = if (currentStep == ProfileCreationViewModel.PLAN_STEP) "Explore artRinx >" else "Continue"
+                        // Mediums is the last step → its CTA enters the app (and the tutorial).
+                        val label = if (currentStep == ProfileCreationViewModel.LAST_STEP) "Get Started" else "Continue"
                         Text(text = label, style = MaterialTheme.typography.labelLarge)
                     }
                 }
@@ -392,34 +380,3 @@ private fun ProfileCreationContent(
     }
 }
 
-/**
- * Step 5 (informational only — no API). Confirms the profile is set up and shows the plans available
- * for the picked role. Exit via the "Explore artRinx" button (handout §Profile Setup Wizard, step 5).
- */
-@Composable
-private fun PlanInfoStep(
-    roleName: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-    ) {
-        Spacer(Modifier.height(Spacing.sm))
-        Text(
-            text = "You're all set!",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text = "Here are the plans available for your ${roleName.ifBlank { "profile" }}. " +
-                "You can change your plan anytime from Settings.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        PlanCatalog.availablePlans(roleName).forEach { plan ->
-            PlanCard(plan = plan, selected = false)
-        }
-        Spacer(Modifier.height(Spacing.lg))
-    }
-}

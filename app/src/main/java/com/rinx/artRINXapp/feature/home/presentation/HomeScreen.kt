@@ -118,13 +118,13 @@ fun HomeScreen(
     val tourState by tour.state.collectAsState()
     LaunchedEffect(Unit) { tour.startIfFirstTime() }
 
-    // Ask for notification permission only AFTER the first-launch tour has resolved/finished —
-    // `completed` stays false until the tour is done, so the OS dialog never appears before or
-    // during the coach-marks (and reliably appears once, post-tour, for first-time users). The
-    // effect is composed unconditionally so its launcher registers up-front; only the request is
-    // gated on `completed` (avoids dropping the prompt on devices where late launcher registration
-    // races the frame the effect first appears).
-    NotificationPermissionEffect(enabled = tourState.completed)
+    // Ask for notification permission only AFTER the first-launch tour AND the post-tour Plans
+    // screen have resolved — `completed` stays false until the tour is done, and `plansPending`
+    // stays true from tour-finish until the user taps "Continue" on the Plans screen. So for a new
+    // user the dialog fires right after Continue (when they land back on Home); for returning users
+    // `plansPending` is never set, so it behaves as before. The effect is composed unconditionally
+    // so its launcher registers up-front; only the request is gated.
+    NotificationPermissionEffect(enabled = tourState.completed && !tourState.plansPending)
 
     val tourActive = tourState.active
     HomeScreenContent(

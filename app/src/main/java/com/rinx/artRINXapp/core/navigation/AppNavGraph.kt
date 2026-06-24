@@ -34,6 +34,7 @@ import com.rinx.artRINXapp.feature.auth.presentation.login.LoginOptionsScreen
 import com.rinx.artRINXapp.feature.auth.presentation.login.LoginScreen
 import com.rinx.artRINXapp.feature.auth.presentation.otp.OtpScreen
 import com.rinx.artRINXapp.feature.profile.presentation.ProfileCreationScreen
+import com.rinx.artRINXapp.feature.profile.presentation.posttutorial.PostTutorialPlansScreen
 import com.rinx.artRINXapp.feature.auth.presentation.signup.SignupScreen
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.WaitlistScreen
 import com.rinx.artRINXapp.feature.home.presentation.HomeScreen
@@ -279,6 +280,15 @@ fun AppNavGraph(
         composable(NavRoutes.PROFILE_COMPLETION) {
             ProfileCreationScreen(
                 onNavigateToHome = {
+                    navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
+                },
+            )
+        }
+
+        // Plans finale shown once, right after the first-launch tutorial.
+        composable(NavRoutes.POST_TUTORIAL_PLANS) {
+            PostTutorialPlansScreen(
+                onContinue = {
                     navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
                 },
             )
