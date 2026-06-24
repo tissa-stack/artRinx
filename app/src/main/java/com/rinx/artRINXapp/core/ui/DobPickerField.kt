@@ -34,8 +34,8 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-/** Minimum age the backend accepts for a date of birth. */
-private const val MIN_AGE_YEARS = 13
+/** Minimum age required to use artRinx (must be at least 18). */
+private const val MIN_AGE_YEARS = 18
 
 /**
  * A read-only, themed field that opens a Material3 date picker for choosing a date of birth.

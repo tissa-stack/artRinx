@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.settings.presentation.editprofile
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 
@@ -35,6 +37,7 @@ fun LabeledTextField(
     modifier: Modifier = Modifier,
     maxChars: Int = Int.MAX_VALUE,
     enabled: Boolean = true,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     val dimens = LocalDimens.current
@@ -49,6 +52,7 @@ fun LabeledTextField(
             Text(text = label, style = MaterialTheme.typography.labelMedium)
         },
         trailingIcon = trailingIcon,
+        keyboardOptions = KeyboardOptions(capitalization = capitalization),
         singleLine = true,
         shape = RoundedCornerShape(dimens.authButtonHeight / 4),
         textStyle = MaterialTheme.typography.bodyMedium,

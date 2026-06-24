@@ -2,14 +2,13 @@ package com.rinx.artRINXapp.feature.auth.presentation.otp
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,14 +18,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -41,15 +36,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.BrandPrimary
-import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.auth.domain.model.ContactType
 import com.rinx.artRINXapp.feature.auth.presentation.otp.components.OtpBoxRow
 
 @Composable
@@ -88,10 +82,10 @@ fun OtpScreen(
     ArtRinxTheme {
         OtpContent(
             uiState = uiState,
+            contactType = viewModel.contactType,
             contactValue = viewModel.contactValue,
             onBack = onBack,
             onOtpChange = viewModel::onOtpChange,
-            onVerify = viewModel::onVerify,
             onResend = viewModel::onResend,
         )
     }
@@ -100,14 +94,15 @@ fun OtpScreen(
 @Composable
 private fun OtpContent(
     uiState: OtpUiState,
+    contactType: String,
     contactValue: String,
     onBack: () -> Unit,
     onOtpChange: (String) -> Unit,
-    onVerify: () -> Unit,
     onResend: () -> Unit,
 ) {
     val dimens = LocalDimens.current
     val isDark = isSystemInDarkTheme()
+    val isEmail = contactType == ContactType.EMAIL.name
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -157,6 +152,23 @@ private fun OtpContent(
                 Spacer(modifier = Modifier.height(Spacing.xxl))
 
                 Text(
+                    text = "Enter code",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                Text(
+                    text = if (isEmail) "Please enter the 6-digit code sent to your email"
+                    else "Please enter the 6-digit code sent to your phone",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Spacer(modifier = Modifier.height(Spacing.xxl))
+
+                Text(
                     text = "Enter Code sent to $contactValue",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -174,22 +186,44 @@ private fun OtpContent(
 
                 Spacer(modifier = Modifier.height(Spacing.lg))
 
-                // ── Resend countdown (this timer gates Resend, not code expiry) ──
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Resend in: ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // ── Resend: a countdown that becomes a tappable "Resend Code" once the timer
+                //    ends; tapping it requests a new code and restarts the timer. Verification
+                //    auto-fires when all 6 digits are entered, so there is no Verify button. ──
+                when {
+                    uiState.isLoading || uiState.isResending -> CircularProgressIndicator(
+                        modifier = Modifier.size(Spacing.lg),
+                        color = BrandPrimary,
+                        strokeWidth = Spacing.xs / 2,
                     )
-                    Text(
-                        text = formatCountdown(uiState.resendCooldownSeconds),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
+                    uiState.canResend -> Text(
+                        text = "Resend Code",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BrandPrimary,
+                        modifier = Modifier
+                            .clickable(onClick = onResend)
+                            .padding(Spacing.sm),
+                    )
+                    else -> Text(
+                        text = "Resend Code in ${formatCountdown(uiState.resendCooldownSeconds)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(Spacing.lg))
+                Spacer(modifier = Modifier.height(Spacing.sm))
+
+                // ── Change email / phone: pop back to the entry screen to re-enter a new
+                //    contact and request a fresh OTP (not an add/change-contact API call). ──
+                Text(
+                    text = if (isEmail) "Change email?" else "Change phone number?",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = BrandPrimary,
+                    modifier = Modifier
+                        .clickable(onClick = onBack)
+                        .padding(Spacing.sm),
+                )
+
+                Spacer(modifier = Modifier.height(Spacing.md))
 
                 AnimatedVisibility(visible = uiState.errorMessage != null) {
                     Column {
@@ -201,67 +235,6 @@ private fun OtpContent(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.md))
-
-                // ── Resend Code | Verify ───────────────────────────────────
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    OutlinedButton(
-                        onClick = onResend,
-                        enabled = uiState.canResend,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(dimens.authButtonHeight),
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = BrandPrimary,
-                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        ),
-                        border = BorderStroke(
-                            Spacing.xs / 4,
-                            if (uiState.canResend) BrandPrimary else MaterialTheme.colorScheme.outline,
-                        ),
-                    ) {
-                        if (uiState.isResending) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(Spacing.lg),
-                                color = BrandPrimary,
-                                strokeWidth = Spacing.xs / 2,
-                            )
-                        } else {
-                            Text(text = "Resend Code", style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
-
-                    Button(
-                        onClick = onVerify,
-                        enabled = uiState.isContinueEnabled,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(dimens.authButtonHeight),
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BrandPrimary,
-                            disabledContainerColor = InactiveButton,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = Spacing.xs * 0),
-                    ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(Spacing.xl),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = Spacing.xs / 2,
-                            )
-                        } else {
-                            Text(text = "Verify", style = MaterialTheme.typography.labelLarge)
-                        }
                     }
                 }
 

@@ -285,9 +285,6 @@ private fun ProfileCreationContent(
                         countryOptions = uiState.countryOptions,
                         stateOptions = uiState.stateOptions,
                         cityOptions = uiState.cityOptions,
-                        countrySelected = uiState.selectedCountryIso2 != null,
-                        stateSelected = uiState.selectedStateCode != null,
-                        countryHasNoStates = uiState.selectedCountryHasNoStates,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     3 -> MediumSelectionStep(

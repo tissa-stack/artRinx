@@ -65,6 +65,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -354,19 +355,19 @@ private fun ColumnScope.EditProfileContent(
                             },
                             error = {
                                 Icon(
-                                    painter = painterResource(R.drawable.ic_edit_photo),
+                                    painter = painterResource(R.drawable.ic_navigation_profile),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(avatarSize * 0.38f),
+                                    modifier = Modifier.size(avatarSize * 0.5f),
                                 )
                             },
                         )
                     } else {
                         Icon(
-                            painter = painterResource(R.drawable.ic_edit_photo),
+                            painter = painterResource(R.drawable.ic_navigation_profile),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(avatarSize * 0.38f),
+                            modifier = Modifier.size(avatarSize * 0.5f),
                         )
                     }
                 }
@@ -419,6 +420,7 @@ private fun ColumnScope.EditProfileContent(
                 value = state.fullName,
                 onValueChange = viewModel::onFullNameChange,
                 enabled = state.canEditFullName,
+                capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showFullNameTooltip, viewModel::onFullNameTooltipToggle) },
             )
             Tooltip(
@@ -450,6 +452,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Display name",
                 value = state.displayName,
                 onValueChange = viewModel::onDisplayNameChange,
+                capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showDisplayNameTooltip, viewModel::onDisplayNameTooltipToggle) },
             )
             Tooltip(
@@ -464,6 +467,14 @@ private fun ColumnScope.EditProfileContent(
                 label = "Date of birth",
                 value = state.dob,
                 onDobSelected = viewModel::onDobChange,
+            )
+            Text(
+                text = "You must be at least 18 to use artRinx.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = Spacing.md, top = Spacing.xs),
             )
             Spacer(Modifier.height(Spacing.md))
 
@@ -566,12 +577,15 @@ private fun ImageSourceOption(label: String, iconRes: Int, onClick: () -> Unit) 
 
 @Composable
 private fun HelpIcon(active: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(Spacing.xxxl),
+    ) {
         Icon(
             painter = painterResource(R.drawable.ic_help),
             contentDescription = "Info",
             tint = if (active) BrandPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Spacing.xl),
+            modifier = Modifier.size(Spacing.lg),
         )
     }
 }

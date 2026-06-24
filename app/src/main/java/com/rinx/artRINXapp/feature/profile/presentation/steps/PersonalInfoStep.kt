@@ -52,9 +52,6 @@ fun PersonalInfoStep(
     countryOptions: List<String>,
     stateOptions: List<String>,
     cityOptions: List<String>,
-    countrySelected: Boolean,
-    stateSelected: Boolean,
-    countryHasNoStates: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -94,12 +91,19 @@ fun PersonalInfoStep(
                     modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
                 )
             }
+            Text(
+                text = "You must be at least 18 to use artRinx.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
+            )
         }
 
         Spacer(Modifier.height(Spacing.md))
 
-        // Country → State → City type-to-search cascade (master catalog APIs). State appears once a
-        // country is picked; city once a state is picked (cities need both ids).
+        // Country → State → City type-to-search cascade (master catalog APIs). All three stay
+        // visible at all times so any prefilled values are always shown; the State/City option
+        // lists populate once a country/state is picked (cities need both ids).
         // Country/State/City are all optional. The pickers are catalog-backed: a blank field is
         // skipped, but a typed value must resolve to a real pick (errorText guides the user).
         SearchableFieldWithError(
@@ -111,29 +115,25 @@ fun PersonalInfoStep(
             hasError = countryError,
             errorText = "Please select from the list",
         )
-        if (countrySelected) {
-            Spacer(Modifier.height(Spacing.md))
-            SearchableFieldWithError(
-                value = state,
-                options = stateOptions,
-                onQueryChange = onStateQuery,
-                onOptionSelected = onStateSelected,
-                label = "State (optional)",
-                hasError = stateError,
-                errorText = "Please select from the list",
-            )
-        }
-        if (stateSelected || countryHasNoStates) {
-            Spacer(Modifier.height(Spacing.md))
-            SearchableFieldWithError(
-                value = city,
-                options = cityOptions,
-                onQueryChange = onCityQuery,
-                onOptionSelected = onCitySelected,
-                label = "City (optional)",
-                hasError = cityError,
-            )
-        }
+        Spacer(Modifier.height(Spacing.md))
+        SearchableFieldWithError(
+            value = state,
+            options = stateOptions,
+            onQueryChange = onStateQuery,
+            onOptionSelected = onStateSelected,
+            label = "State (optional)",
+            hasError = stateError,
+            errorText = "Please select from the list",
+        )
+        Spacer(Modifier.height(Spacing.md))
+        SearchableFieldWithError(
+            value = city,
+            options = cityOptions,
+            onQueryChange = onCityQuery,
+            onOptionSelected = onCitySelected,
+            label = "City (optional)",
+            hasError = cityError,
+        )
 
         Spacer(Modifier.height(Spacing.xl))
 

@@ -57,6 +57,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
@@ -179,10 +180,10 @@ fun ProfileInfoStep(
                         name = fullName,
                     )
                     else -> Icon(
-                        painter = painterResource(R.drawable.ic_edit_photo),
+                        painter = painterResource(R.drawable.ic_navigation_profile),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(avatarSize * 0.38f),
+                        modifier = Modifier.size(avatarSize * 0.5f),
                     )
                 }
                 if (avatarPrefilling) {
@@ -220,6 +221,7 @@ fun ProfileInfoStep(
                 placeholder = "Enter your full name",
                 modifier = Modifier.fillMaxWidth(),
                 hasError = fullNameError,
+                capitalization = KeyboardCapitalization.Words,
                 trailingIcon = {
                     InfoIconButton(
                         active = showFullNameTooltip,
@@ -266,6 +268,7 @@ fun ProfileInfoStep(
                 placeholder = "Display name",
                 modifier = Modifier.fillMaxWidth(),
                 hasError = displayNameError,
+                capitalization = KeyboardCapitalization.Words,
                 trailingIcon = {
                     InfoIconButton(
                         active = showDisplayNameTooltip,
@@ -376,12 +379,15 @@ fun ProfileInfoStep(
 // ── Info icon button (trailing icon inside the field) ─────────────────────────
 @Composable
 private fun InfoIconButton(active: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(Spacing.xxxl),
+    ) {
         Icon(
             painter = painterResource(R.drawable.ic_help),
             contentDescription = "Info",
             tint = if (active) BrandPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Spacing.xl),
+            modifier = Modifier.size(Spacing.lg),
         )
     }
 }
