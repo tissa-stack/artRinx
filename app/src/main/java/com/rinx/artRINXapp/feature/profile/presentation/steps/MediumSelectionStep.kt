@@ -56,7 +56,7 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.profile.domain.model.Medium
 
-private const val MAX_MEDIUMS = 5
+private const val MAX_MEDIUMS = 3
 
 @Composable
 fun MediumSelectionStep(
@@ -98,7 +98,7 @@ fun MediumSelectionStep(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Select preferred styles",
+                text = "Select 3 Mediums",
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
@@ -181,6 +181,9 @@ fun MediumSelectionStep(
         }
 
         // ── Info link ─────────────────────────────────────────────────────────
+        // Hidden for now (per request). Restore this Row + the InfoTooltip above to bring back
+        // the "Why is my medium missing?" link.
+        /*
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
@@ -203,6 +206,7 @@ fun MediumSelectionStep(
                 )
             }
         }
+        */
 
         Spacer(Modifier.height(Spacing.xxxl))
     }
