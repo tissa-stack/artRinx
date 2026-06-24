@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.home.presentation.components.DEFAULT_FEED_ASPECT_RATIO
 
 /**
  * Mirrors DiscoverFeedItem exactly:
@@ -67,11 +69,12 @@ fun FeedShimmer(modifier: Modifier = Modifier) {
             }
         }
 
-        // ── Artwork image — full width, no corner radius ──────────────
+        // ── Artwork image — full width; aspect ratio is unknown until loaded, so use the
+        //    same square fallback the real card uses when no ratio is provided. ──
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(d.feedImageHeight)
+                .aspectRatio(DEFAULT_FEED_ASPECT_RATIO)
                 .background(brush),
         )
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -104,17 +105,18 @@ fun ShoppableFeedItem(
             }
         }
 
-        // ── Artwork image — full width, no corner radius ──────────────
+        // ── Artwork image — full width, shown whole at its natural aspect ratio ──
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(d.feedImageHeight)
+                .aspectRatio(post.aspectRatio?.takeIf { it > 0f } ?: DEFAULT_FEED_ASPECT_RATIO)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable(onClick = onClick),
         ) {
             AsyncImage(
                 model = post.imageUrl,
                 contentDescription = post.title,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
             )
         }

@@ -26,6 +26,8 @@ data class ArtworkItem(
     val ownerId: Int? = null,
     /** Credited artist's RINX profile id (null when they have no profile). */
     val artistId: Int? = null,
+    /** Image width/height (e.g. 0.74 = portrait); used to render at natural aspect ratio. */
+    val aspectRatio: Float? = null,
 )
 
 @Immutable
@@ -62,6 +64,8 @@ data class FeedPost(
     val ownerId: Int? = null,
     /** Uploader's display name (the profile that owns this art — may differ from the credited artist). */
     val ownerName: String = "",
+    /** Image width/height (e.g. 0.74 = portrait); used to render at natural aspect ratio. */
+    val aspectRatio: Float? = null,
 )
 
 @Immutable
@@ -89,6 +93,8 @@ data class ShoppablePost(
     val artistId: Int? = null,
     /** Preformatted physical size (e.g. "60 × 90 cm"); null when the artwork has no dimensions. */
     val dimensions: String? = null,
+    /** Image width/height (e.g. 0.74 = portrait); used to render at natural aspect ratio. */
+    val aspectRatio: Float? = null,
 )
 
 /** Everything the single /api/feed/discover call returns, mapped to domain models. */

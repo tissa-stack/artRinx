@@ -259,6 +259,7 @@ class HomeRepositoryImpl @Inject constructor(
         artistAvatarUrl = profilePictureUrl,
         ownerId = userId,
         artistId = artist?.artistId,
+        aspectRatio = aspectRatio?.toFloat(),
     )
 
     @VisibleForTesting
@@ -274,6 +275,7 @@ class HomeRepositoryImpl @Inject constructor(
         isLiked = isLiked ?: false,
         ownerId = userId ?: artist?.artistId,
         ownerName = displayName?.takeIf { it.isNotBlank() } ?: artistDisplay(),
+        aspectRatio = aspectRatio?.toFloat(),
     )
 
     @VisibleForTesting
@@ -295,6 +297,7 @@ class HomeRepositoryImpl @Inject constructor(
         ownerName = displayName?.takeIf { it.isNotBlank() } ?: artistDisplay(),
         artistId = artist?.artistId,
         dimensions = size?.toDimensionsDisplay(),
+        aspectRatio = aspectRatio?.toFloat(),
     )
 
     /** Build a human-readable size string from the artwork's dimensions, or null if none are set. */
