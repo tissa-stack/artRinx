@@ -172,7 +172,7 @@ fun EditProfileScreen(
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onBackground,
                 )
-            }
+        }
             Text(
                 text = "Edit profile",
                 style = MaterialTheme.typography.bodyLarge,

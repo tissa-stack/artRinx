@@ -74,6 +74,7 @@ class ArtDetailViewModel @Inject constructor(
     private val profileRefreshBus: ProfileRefreshBus,
     private val likeBus: LikeBus,
     private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
+    private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
     private val blockedArtworkStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
     private val detailCache: DetailCache,
@@ -122,6 +123,32 @@ class ArtDetailViewModel @Inject constructor(
 
     init {
         load()
+        observeBlocks()
+    }
+
+    /** Drop a blocked artwork — or any art by a blocked owner/artist — from the "More like this"
+     *  rail immediately, so a block made elsewhere (e.g. on a rail item's own detail) is reflected
+     *  the moment we return here, without waiting for a reload. */
+    private fun observeBlocks() {
+        viewModelScope.launch {
+            blockedArtworkBus.events.collect { blockedId ->
+                val idStr = blockedId.toString()
+                _uiState.update { st ->
+                    if (st.moreLikeThis.none { it.id == idStr }) st
+                    else st.copy(moreLikeThis = st.moreLikeThis.filterNot { it.id == idStr })
+                }
+            }
+        }
+        viewModelScope.launch {
+            blockedUserBus.events.collect { blockedUserId ->
+                _uiState.update { st ->
+                    val filtered = st.moreLikeThis.filterNot {
+                        it.ownerId == blockedUserId || it.artistId == blockedUserId
+                    }
+                    if (filtered.size == st.moreLikeThis.size) st else st.copy(moreLikeThis = filtered)
+                }
+            }
+        }
     }
 
     private fun load() {

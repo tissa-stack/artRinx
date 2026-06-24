@@ -23,6 +23,11 @@ class BlockedArtworkStore @Inject constructor() {
         ids.add(id)
     }
 
+    /** Clear a single id after an unblock so the data layer stops filtering this artwork out. */
+    fun remove(id: Int) {
+        ids.remove(id)
+    }
+
     fun isBlocked(id: Int): Boolean = ids.contains(id)
 
     /** Convenience for string ids (domain models carry artwork ids as strings). */

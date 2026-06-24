@@ -8,6 +8,7 @@ import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.BlockedUserBus
+import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
@@ -16,11 +17,9 @@ import com.rinx.artRINXapp.feature.profile.domain.model.PublicProfile
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -59,16 +58,13 @@ class OtherProfileViewModel @Inject constructor(
     private val profileRefreshBus: ProfileRefreshBus,
     private val blockedArtworkBus: BlockedArtworkBus,
     private val blockedUserBus: BlockedUserBus,
+    private val blockedUsersStore: BlockedUsersStore,
 ) : ViewModel() {
 
     private val userId: Int? = savedStateHandle.get<String>("userId")?.toIntOrNull()
 
     private val _uiState = MutableStateFlow(OtherProfileUiState())
     val uiState: StateFlow<OtherProfileUiState> = _uiState.asStateFlow()
-
-    /** One-shot: emitted after a successful block so the screen pops back. */
-    private val _closed = Channel<Unit>(Channel.BUFFERED)
-    val closed = _closed.receiveAsFlow()
 
     private var lastReportMessage: String = ""
     private var artPage = 1
@@ -88,18 +84,25 @@ class OtherProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(artItems = it.artItems.filterNot { item -> item.id == idStr }) }
             }
         }
+        // Unblock → re-fetch so the artwork reappears in this profile's grid.
+        viewModelScope.launch {
+            blockedArtworkBus.unblocked.collect { refresh() }
+        }
     }
 
     /** If this profile's user gets blocked (e.g. from chat while this screen is in the backstack),
-     *  drop their art from the grid immediately. A self-initiated block() pops the screen outright. */
+     *  flip it into the blocked panel and drop their art from the grid immediately. */
     private fun observeUserBlocks() {
         viewModelScope.launch {
             blockedUserBus.events.collect { blockedUserId ->
-                _uiState.update {
-                    it.copy(
-                        artItems = it.artItems.filterNot { item ->
+                _uiState.update { st ->
+                    val isThisProfile = blockedUserId == userId
+                    st.copy(
+                        profile = if (isThisProfile) st.profile?.copy(iBlocked = true) else st.profile,
+                        artItems = if (isThisProfile) emptyList() else st.artItems.filterNot { item ->
                             item.ownerId == blockedUserId || item.artistId == blockedUserId
                         },
+                        curations = if (isThisProfile) emptyList() else st.curations,
                     )
                 }
             }
@@ -115,17 +118,21 @@ class OtherProfileViewModel @Inject constructor(
             val profileJob = async { repository.getPublicProfile(id) }
             val artJob = async { repository.getPublicArtworks(id, 1, PAGE_SIZE) }
             val curationJob = async { repository.getPublicCurations(id, 1, PAGE_SIZE) }
-            val profileRes = profileJob.await()
-            val art = (artJob.await() as? ApiResult.Success)?.data
-            val cur = (curationJob.await() as? ApiResult.Success)?.data
+            val fetched = (profileJob.await() as? ApiResult.Success)?.data
+            val locallyBlocked = blockedUsersStore.isBlocked(id)
+            val profile = fetched?.let { if (locallyBlocked) it.copy(iBlocked = true) else it }
+            val blocked = profile?.iBlocked ?: _uiState.value.profile?.iBlocked ?: false
+            // Don't surface content for a blocked profile — the panel replaces both tabs.
+            val art = if (blocked) emptyList() else (artJob.await() as? ApiResult.Success)?.data
+            val cur = if (blocked) emptyList() else (curationJob.await() as? ApiResult.Success)?.data
             artPage = 1; curationPage = 1
             _uiState.update { st ->
                 st.copy(
-                    profile = (profileRes as? ApiResult.Success)?.data ?: st.profile,
-                    artItems = art ?: st.artItems,
-                    curations = cur ?: st.curations,
-                    artHasMore = (art?.size ?: st.artItems.size) >= PAGE_SIZE,
-                    curationHasMore = (cur?.size ?: st.curations.size) >= PAGE_SIZE,
+                    profile = profile ?: st.profile,
+                    artItems = if (blocked) emptyList() else art ?: st.artItems,
+                    curations = if (blocked) emptyList() else cur ?: st.curations,
+                    artHasMore = !blocked && (art?.size ?: st.artItems.size) >= PAGE_SIZE,
+                    curationHasMore = !blocked && (cur?.size ?: st.curations.size) >= PAGE_SIZE,
                     isRefreshing = false,
                 )
             }
@@ -145,12 +152,17 @@ class OtherProfileViewModel @Inject constructor(
             val curationJob = async { repository.getPublicCurations(id, 1, 30) }
             when (val profileRes = profileJob.await()) {
                 is ApiResult.Success -> {
-                    val art = (artJob.await() as? ApiResult.Success)?.data.orEmpty()
-                    val cur = (curationJob.await() as? ApiResult.Success)?.data.orEmpty()
+                    // Trust the local store too: if I blocked this user elsewhere (e.g. from an art
+                    // detail screen), force the blocked state even if the server field lags behind.
+                    val locallyBlocked = blockedUsersStore.isBlocked(id)
+                    val profile = if (locallyBlocked) profileRes.data.copy(iBlocked = true) else profileRes.data
+                    // A blocked profile shows the "Profile Blocked" panel, never their content.
+                    val art = if (profile.iBlocked) emptyList() else (artJob.await() as? ApiResult.Success)?.data.orEmpty()
+                    val cur = if (profile.iBlocked) emptyList() else (curationJob.await() as? ApiResult.Success)?.data.orEmpty()
                     artPage = 1; curationPage = 1
                     _uiState.update {
                         it.copy(
-                            profile = profileRes.data,
+                            profile = profile,
                             artItems = art,
                             curations = cur,
                             artHasMore = art.size >= PAGE_SIZE,
@@ -271,9 +283,21 @@ class OtherProfileViewModel @Inject constructor(
         _uiState.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
             when (val r = repository.blockUser(id)) {
+                // Stay on the profile and flip it into the "Profile Blocked" panel (iOS parity).
+                // The repository already signals the blocked-user bus + store, so feeds/search drop
+                // their content; we only clear this screen's content + toast a confirmation here.
                 is ApiResult.Success -> {
                     profileRefreshBus.signal()
-                    _closed.send(Unit)
+                    _uiState.update { s ->
+                        val name = s.profile?.displayName?.takeIf { it.isNotBlank() }
+                        s.copy(
+                            isActioning = false,
+                            profile = s.profile?.copy(iBlocked = true),
+                            artItems = emptyList(),
+                            curations = emptyList(),
+                            actionMessage = if (name != null) "Blocked $name" else "Blocked",
+                        )
+                    }
                 }
                 is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = r.userMessage("Couldn't block. Please try again.")) }
             }
@@ -286,8 +310,12 @@ class OtherProfileViewModel @Inject constructor(
         _uiState.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
             when (val r = repository.unblockUser(id)) {
-                is ApiResult.Success -> _uiState.update { s ->
-                    s.copy(isActioning = false, profile = s.profile?.copy(iBlocked = false), unblockedSuccess = true)
+                is ApiResult.Success -> {
+                    _uiState.update { s ->
+                        s.copy(isActioning = false, profile = s.profile?.copy(iBlocked = false), unblockedSuccess = true)
+                    }
+                    // Repopulate the grids now that the profile is visible again (silent reload).
+                    refresh()
                 }
                 is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = r.userMessage("Couldn't unblock. Please try again.")) }
             }

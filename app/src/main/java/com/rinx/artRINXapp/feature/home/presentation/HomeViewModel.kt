@@ -92,6 +92,10 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
+        // Unblock → the store no longer filters it; silently revalidate so the art returns to the feed.
+        viewModelScope.launch {
+            blockedArtworkBus.unblocked.collect { load() }
+        }
     }
 
     /** Drop every artwork/curation owned by a user the moment I block them (no refresh wait). */

@@ -82,6 +82,10 @@ class UserProfileViewModel @Inject constructor(
                 }
             }
         }
+        // Unblock → re-fetch so the artwork reappears in my grids.
+        viewModelScope.launch {
+            blockedArtworkBus.unblocked.collect { refresh() }
+        }
     }
 
     /** When I block a user, drop their art from the Liked grid immediately. My own art (artItems)

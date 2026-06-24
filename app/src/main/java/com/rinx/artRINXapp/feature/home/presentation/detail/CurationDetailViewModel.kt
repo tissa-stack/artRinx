@@ -64,6 +64,7 @@ class CurationDetailViewModel @Inject constructor(
     private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
     private val detailCache: DetailCache,
     private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
+    private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
 ) : ViewModel() {
 
     private val curationId: Int? = savedStateHandle.get<String>("curationId")?.toIntOrNull()
@@ -125,6 +126,15 @@ class CurationDetailViewModel @Inject constructor(
                         }
                     }
                     st.copy(curation = cur.copy(artworkUrls = keptUrls, artworkIds = keptIds))
+                }
+            }
+        }
+        // Blocking an artist drops their curations from the "More like this" rail right away.
+        viewModelScope.launch {
+            blockedUserBus.events.collect { blockedUserId ->
+                _uiState.update { st ->
+                    val filtered = st.moreLikeThis.filterNot { it.authorId == blockedUserId }
+                    if (filtered.size == st.moreLikeThis.size) st else st.copy(moreLikeThis = filtered)
                 }
             }
         }

@@ -56,6 +56,7 @@ class ProfileRepositoryImpl @Inject constructor(
     private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
     private val blockedStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
     private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
+    private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
 ) : ProfileRepository {
 
     // SWR cache for the Profile tab (first page only) — survives navigation (@Singleton);
@@ -66,6 +67,9 @@ class ProfileRepositoryImpl @Inject constructor(
     @Volatile private var likedArtworksCache: List<ProfileArtItem>? = null
     // Logged-in user's numeric id — cached from getMyProfile so "is this my profile?" is instant.
     @Volatile private var currentUserIdCache: Int? = null
+    // Last-known public profiles by user id. Lets a blocked profile still render its full header
+    // (captured before the block) once the server stops serving its public info post-block.
+    private val publicProfileCache = java.util.concurrent.ConcurrentHashMap<Int, PublicProfile>()
 
     override fun cachedCurrentUserId(): Int? = currentUserIdCache
     override fun cachedProfileData(): UserProfileData? = profileDataCache
@@ -81,6 +85,7 @@ class ProfileRepositoryImpl @Inject constructor(
         myCurationsCache = null
         likedArtworksCache = null
         currentUserIdCache = null
+        publicProfileCache.clear()
     }
 
     private val gson = Gson()
@@ -452,6 +457,10 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.unblockArtwork(artworkId)
             if (response.isSuccessful) {
+                // Stop the data layer from filtering it out, then tell live screens to re-fetch so
+                // the art reappears immediately (mirrors blockArtwork's store-add + bus-signal).
+                blockedStore.remove(artworkId)
+                blockedArtworkBus.signalUnblock(artworkId)
                 ApiResult.Success(Unit)
             } else {
                 response.toApiError() // carry the server's reason to the UI
@@ -501,35 +510,66 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getPublicProfile(userId)
             val dto = response.body()?.data
             if (response.isSuccessful && dto != null) {
-                ApiResult.Success(
-                    PublicProfile(
-                        userId = userId,
-                        handle = dto.username?.let { "@$it" } ?: "",
-                        displayName = dto.displayName ?: dto.username.orEmpty(),
-                        role = dto.profileTypeName.orEmpty(),
-                        bio = dto.bio.orEmpty(),
-                        website = dto.profileLink.orEmpty(),
-                        avatarUrl = dto.profilePictureUrl,
-                        artCount = dto.artworkCount ?: 0,
-                        curationCount = dto.curationCount ?: 0,
-                        followerCount = dto.followerCount ?: 0,
-                        followingCount = dto.followingCount ?: 0,
-                        isFollowing = dto.isFollowing ?: false,
-                        iBlocked = dto.iBlocked ?: false,
-                        theyBlocked = dto.theyBlocked ?: false,
-                        canMessage = dto.canMessage ?: true,
-                        blockReason = dto.blockReason,
-                        chatroomId = dto.chatroomId,
-                    ),
+                val profile = PublicProfile(
+                    userId = userId,
+                    handle = dto.username?.let { "@$it" } ?: "",
+                    displayName = dto.displayName ?: dto.username.orEmpty(),
+                    role = dto.profileTypeName.orEmpty(),
+                    bio = dto.bio.orEmpty(),
+                    website = dto.profileLink.orEmpty(),
+                    avatarUrl = dto.profilePictureUrl,
+                    artCount = dto.artworkCount ?: 0,
+                    curationCount = dto.curationCount ?: 0,
+                    followerCount = dto.followerCount ?: 0,
+                    followingCount = dto.followingCount ?: 0,
+                    isFollowing = dto.isFollowing ?: false,
+                    // Trust the local store too: a block done elsewhere may not be reflected yet.
+                    iBlocked = (dto.iBlocked ?: false) || blockedUsersStore.isBlocked(userId),
+                    theyBlocked = dto.theyBlocked ?: false,
+                    canMessage = dto.canMessage ?: true,
+                    blockReason = dto.blockReason,
+                    chatroomId = dto.chatroomId,
                 )
+                publicProfileCache[userId] = profile
+                ApiResult.Success(profile)
             } else {
-                profileError(response.code())
+                blockedProfileFallback(userId) ?: profileError(response.code())
             }
         } catch (e: IOException) {
-            ApiResult.Error.Network(e)
+            blockedProfileFallback(userId) ?: ApiResult.Error.Network(e)
         } catch (e: Exception) {
-            ApiResult.Error.Unknown(e)
+            blockedProfileFallback(userId) ?: ApiResult.Error.Unknown(e)
         }
+    }
+
+    /**
+     * When the server stops serving a blocked user's public info, still render the blocked profile
+     * instead of an error: reuse the header captured before the block, or a minimal stub if none.
+     * Returns null when the user isn't blocked (so the caller surfaces the real error).
+     */
+    private fun blockedProfileFallback(userId: Int): ApiResult.Success<PublicProfile>? {
+        if (!blockedUsersStore.isBlocked(userId)) return null
+        val profile = publicProfileCache[userId]?.copy(iBlocked = true)
+            ?: PublicProfile(
+                userId = userId,
+                handle = "",
+                displayName = "",
+                role = "",
+                bio = "",
+                website = "",
+                avatarUrl = null,
+                artCount = 0,
+                curationCount = 0,
+                followerCount = 0,
+                followingCount = 0,
+                isFollowing = false,
+                iBlocked = true,
+                theyBlocked = false,
+                canMessage = true,
+                blockReason = null,
+                chatroomId = null,
+            )
+        return ApiResult.Success(profile)
     }
 
     override suspend fun getPublicArtworks(userId: Int, page: Int, size: Int): ApiResult<List<ProfileArtItem>> {

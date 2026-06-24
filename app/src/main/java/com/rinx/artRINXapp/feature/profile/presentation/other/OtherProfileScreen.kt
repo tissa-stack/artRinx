@@ -106,14 +106,6 @@ fun OtherProfileScreen(
     var confirm by remember { mutableStateOf<ConfirmKind?>(null) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
 
-    // Pop back after a successful block (toast survives the pop — it's app-context level).
-    LaunchedEffect(Unit) {
-        viewModel.closed.collect {
-            Toast.makeText(context, "Blocked ${uiState.profile?.displayName ?: "user"}", Toast.LENGTH_SHORT).show()
-            onBack()
-        }
-    }
-
     LaunchedEffect(uiState.actionError) {
         uiState.actionError?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -246,13 +238,18 @@ fun OtherProfileScreen(
                             onBack = onBack,
                             onMessage = { onMessage(profile.userId) },
                             onShare = {
-                                shareTarget = ShareTarget(
-                                    kind = ShareKind.PROFILE,
-                                    id = profile.userId.toString(),
-                                    title = profile.displayName,
-                                    subtitle = profile.handle,
-                                    imageUrl = profile.avatarUrl,
-                                )
+                                // A blocked profile can't be shared (server rejects with 400) — block it here.
+                                if (profile.iBlocked) {
+                                    Toast.makeText(context, "You can't share a blocked profile.", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    shareTarget = ShareTarget(
+                                        kind = ShareKind.PROFILE,
+                                        id = profile.userId.toString(),
+                                        title = profile.displayName,
+                                        subtitle = profile.handle,
+                                        imageUrl = profile.avatarUrl,
+                                    )
+                                }
                             },
                             onPillClick = {
                                 if (profile.iBlocked) confirm = ConfirmKind.UNBLOCK
@@ -271,33 +268,40 @@ fun OtherProfileScreen(
                 ) { page ->
                     val tab = tabs[page]
                     item(key = "content_${tab.name}") {
-                        when (tab) {
-                            ProfileTab.CURATIONS -> if (uiState.curations.isEmpty()) {
-                                EmptyView(
+                        when {
+                            // Blocked → both tabs show the "Profile Blocked" panel instead of content.
+                            profile.iBlocked -> ProfileBlockedPanel(
+                                name = profile.displayName,
+                                modifier = Modifier.padding(top = Spacing.xxxl),
+                            )
+                            tab == ProfileTab.CURATIONS -> when {
+                                uiState.curations.isNotEmpty() -> ProfileCurationsGrid(
+                                    items = uiState.curations,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToCurationDetail(it.id) },
+                                )
+                                // Content is being (re)fetched with nothing cached yet — e.g. right
+                                // after an unblock repopulates the grids. Show a spinner, not "empty".
+                                uiState.isRefreshing -> ContentLoading()
+                                else -> EmptyView(
                                     icon = Icons.Outlined.Collections,
                                     title = "No curations yet",
                                     subtitle = "This artist hasn't created any curations.",
                                     modifier = Modifier.padding(top = Spacing.md),
                                 )
-                            } else {
-                                ProfileCurationsGrid(
-                                    items = uiState.curations,
-                                    modifier = Modifier.padding(top = Spacing.md),
-                                    onItemClick = { onNavigateToCurationDetail(it.id) },
-                                )
                             }
-                            else -> if (uiState.artItems.isEmpty()) {
-                                EmptyView(
+                            else -> when {
+                                uiState.artItems.isNotEmpty() -> ProfileArtMasonryGrid(
+                                    items = uiState.artItems,
+                                    modifier = Modifier.padding(top = Spacing.md),
+                                    onItemClick = { onNavigateToDetail(it.id) },
+                                )
+                                uiState.isRefreshing -> ContentLoading()
+                                else -> EmptyView(
                                     icon = Icons.Outlined.Image,
                                     title = "No art yet",
                                     subtitle = "This artist hasn't posted any art.",
                                     modifier = Modifier.padding(top = Spacing.md),
-                                )
-                            } else {
-                                ProfileArtMasonryGrid(
-                                    items = uiState.artItems,
-                                    modifier = Modifier.padding(top = Spacing.md),
-                                    onItemClick = { onNavigateToDetail(it.id) },
                                 )
                             }
                         }
@@ -344,7 +348,7 @@ fun OtherProfileScreen(
             confirmColor = DangerRed,
             iconRes = R.drawable.ic_block,
             isLoading = uiState.isActioning,
-            onConfirm = { viewModel.block() }, // screen pops back via `closed`
+            onConfirm = { viewModel.block(); confirm = null }, // stay on screen → must dismiss the dialog
             onDismiss = { confirm = null },
         )
         ConfirmKind.UNBLOCK -> ConfirmActionDialog(
@@ -439,11 +443,12 @@ private fun OtherProfileHeader(
             Spacer(Modifier.width(Spacing.sm))
             FollowPill(
                 label = when {
-                    profile.iBlocked -> "Unblock"
+                    profile.iBlocked -> "Blocked"
                     profile.isFollowing -> "Following"
                     else -> "Follow"
                 },
                 showChevron = !profile.iBlocked,
+                filled = profile.iBlocked,
                 onClick = onPillClick,
             )
         }
@@ -608,11 +613,16 @@ private fun OtherProfileHeader(
 }
 
 @Composable
-private fun FollowPill(label: String, showChevron: Boolean, onClick: () -> Unit) {
+private fun FollowPill(label: String, showChevron: Boolean, onClick: () -> Unit, filled: Boolean = false) {
+    // Filled = the red "Blocked" state (iOS parity); outlined = Follow / Following.
+    val contentColor = if (filled) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onBackground
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
+            .then(
+                if (filled) Modifier.background(DangerRed)
+                else Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -621,16 +631,62 @@ private fun FollowPill(label: String, showChevron: Boolean, onClick: () -> Unit)
             text = label,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = contentColor,
         )
         if (showChevron) {
             Icon(
                 Icons.Filled.KeyboardArrowDown,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onBackground,
+                tint = contentColor,
                 modifier = Modifier.size(Spacing.lg),
             )
         }
+    }
+}
+
+/** Inline spinner shown while a tab's content is being (re)fetched with nothing to display yet. */
+@Composable
+private fun ContentLoading(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = Spacing.xxxl),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(Spacing.xxl))
+    }
+}
+
+/** Replaces both content tabs once you've blocked this profile (iOS parity). */
+@Composable
+private fun ProfileBlockedPanel(name: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.xxl, vertical = Spacing.xxl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_block),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(Spacing.giant),
+        )
+        Spacer(Modifier.height(Spacing.md))
+        Text(
+            text = "Profile Blocked",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(Spacing.xs))
+        Text(
+            text = "You have blocked ${name.ifBlank { "this user" }}. Their content is no longer visible to you.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

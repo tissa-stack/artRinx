@@ -21,7 +21,16 @@ class BlockedArtworkBus @Inject constructor() {
     private val _events = MutableSharedFlow<Int>(extraBufferCapacity = 16)
     val events: SharedFlow<Int> = _events.asSharedFlow()
 
+    /** Counterpart "this artwork was unblocked" signal. The store is cleared of the id separately,
+     *  so receivers just re-fetch their current content and the art reappears in server order. */
+    private val _unblocked = MutableSharedFlow<Int>(extraBufferCapacity = 16)
+    val unblocked: SharedFlow<Int> = _unblocked.asSharedFlow()
+
     fun signal(artworkId: Int) {
         _events.tryEmit(artworkId)
+    }
+
+    fun signalUnblock(artworkId: Int) {
+        _unblocked.tryEmit(artworkId)
     }
 }

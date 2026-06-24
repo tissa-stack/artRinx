@@ -63,6 +63,14 @@ class SearchViewModel @Inject constructor(
                 }
             }
         }
+        // Unblock → the store no longer filters it, so re-fetch the active query + recommendations
+        // and the artwork reappears in its proper place.
+        viewModelScope.launch {
+            blockedArtworkBus.unblocked.collect {
+                if (_uiState.value.query.isNotBlank()) runSearch()
+                loadIdleContent()
+            }
+        }
     }
 
     /** Drop a blocked user's art, curations, and the user themselves from results the moment I block them. */

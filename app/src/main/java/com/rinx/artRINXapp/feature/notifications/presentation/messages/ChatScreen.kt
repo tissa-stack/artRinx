@@ -140,12 +140,13 @@ fun ChatScreen(
         }
     }
     LaunchedEffect(menuState.blockedSuccess) {
-        // Blocked → leave the chat for a safe screen (you can no longer message this user).
+        // Blocked → stay in the chat; refresh so the gate flips to BLOCKED_BY_ME (footer banner +
+        // "Unblock profile" menu). "View profile" now lands on the blocked-profile panel.
         if (menuState.blockedSuccess) {
             Toast.makeText(context, "Blocked ${menuState.name}", Toast.LENGTH_SHORT).show()
             blockConfirm = false
             menuViewModel.onBlockedHandled()
-            onBlocked()
+            viewModel.loadConversation()
         }
     }
     LaunchedEffect(menuState.unblockedSuccess) {
@@ -279,7 +280,10 @@ fun ChatScreen(
                 style      = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color      = iconColor,
-                modifier   = Modifier.weight(1f),
+                // Tapping the name opens the partner's profile (blocked or not).
+                modifier   = Modifier
+                    .weight(1f)
+                    .clickable { onViewProfile() },
                 textAlign  = TextAlign.Center,
             )
             // Hidden while the chat genuinely couldn't load — its actions would only error out.
@@ -293,52 +297,43 @@ fun ChatScreen(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                 ) {
-                    when (state.gate) {
-                        // I blocked them → only Unblock + Delete; their profile is inaccessible.
-                        ChatGate.BLOCKED_BY_ME -> {
-                            DropdownMenuItem(
-                                text = { Text("Unblock profile") },
-                                onClick = { menuExpanded = false; unblockConfirm = true },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Delete messages") },
-                                onClick = { menuExpanded = false; showDeleteConfirm = true },
-                            )
-                        }
-                        // They blocked me → their profile is inaccessible (would 500), so no
-                        // "View profile"; I can still delete, report, or block them back.
-                        ChatGate.BLOCKED_BY_THEM -> {
-                            DropdownMenuItem(
-                                text = { Text("Delete messages") },
-                                onClick = { menuExpanded = false; showDeleteConfirm = true },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Report profile") },
-                                onClick = { menuExpanded = false; showReasonSheet = true },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Block profile") },
-                                onClick = { menuExpanded = false; blockConfirm = true },
-                            )
-                        }
-                        else -> {
-                            DropdownMenuItem(
-                                text = { Text("View profile") },
-                                onClick = { menuExpanded = false; onViewProfile() },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Delete messages") },
-                                onClick = { menuExpanded = false; showDeleteConfirm = true },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Report profile") },
-                                onClick = { menuExpanded = false; showReasonSheet = true },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Block profile") },
-                                onClick = { menuExpanded = false; blockConfirm = true },
-                            )
-                        }
+                    // Always four options (iOS parity). "View profile" is valid even when blocked:
+                    // BLOCKED_BY_ME → the "Profile Blocked" panel; BLOCKED_BY_THEM → the
+                    // "This profile isn't available" state. The 3rd/4th rows swap by state:
+                    //   not blocked → … Report · Block       blocked → … Unblock · Report
+                    val iBlockedThem = state.gate == ChatGate.BLOCKED_BY_ME
+                    DropdownMenuItem(
+                        text = { Text("View profile") },
+                        leadingIcon = { MenuIcon(R.drawable.ic_eye) },
+                        onClick = { menuExpanded = false; onViewProfile() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete messages") },
+                        leadingIcon = { MenuIcon(R.drawable.ic_delete) },
+                        onClick = { menuExpanded = false; showDeleteConfirm = true },
+                    )
+                    if (iBlockedThem) {
+                        DropdownMenuItem(
+                            text = { Text("Unblock profile") },
+                            leadingIcon = { MenuIcon(R.drawable.ic_block) },
+                            onClick = { menuExpanded = false; unblockConfirm = true },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Report profile") },
+                            leadingIcon = { MenuIcon(R.drawable.ic_report) },
+                            onClick = { menuExpanded = false; showReasonSheet = true },
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text("Report profile") },
+                            leadingIcon = { MenuIcon(R.drawable.ic_report) },
+                            onClick = { menuExpanded = false; showReasonSheet = true },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Block profile") },
+                            leadingIcon = { MenuIcon(R.drawable.ic_block) },
+                            onClick = { menuExpanded = false; blockConfirm = true },
+                        )
                     }
                 }
             }
@@ -726,6 +721,17 @@ private fun ChatGateBanner(
             }
         }
     }
+}
+
+/** Leading icon for the chat overflow-menu rows (tinted to the current theme). */
+@Composable
+private fun MenuIcon(@androidx.annotation.DrawableRes res: Int) {
+    Icon(
+        painter = painterResource(res),
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(Spacing.xl),
+    )
 }
 
 @Composable
