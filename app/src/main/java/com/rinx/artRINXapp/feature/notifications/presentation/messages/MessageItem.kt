@@ -46,6 +46,7 @@ fun MessageRow(
         RowActionsMenu(
             expanded = menuOpen,
             deleteLabel = "Delete chat",
+            showMarkRead = item.isUnread,
             onMarkRead = onMarkRead,
             onDelete = onDelete,
             onDismiss = onDismissMenu,

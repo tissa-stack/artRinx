@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -49,6 +48,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
@@ -351,11 +352,15 @@ private fun SettingsRow(
             )
         }
         Spacer(Modifier.size(Spacing.lg))
+        // Label keeps its own width on a single line; the trailing value takes the remaining space and
+        // ellipsizes (so a long email/phone never wraps the label or pushes the chevron off-screen).
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             color = tint,
-            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (trailingValue.isNullOrBlank()) Modifier.weight(1f) else Modifier,
         )
         if (!trailingValue.isNullOrBlank()) {
             Text(
@@ -363,8 +368,11 @@ private fun SettingsRow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = Spacing.sm).widthIn(max = dimens.chatBubbleMaxWidth),
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = Spacing.sm),
             )
         }
         Icon(

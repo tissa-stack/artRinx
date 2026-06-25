@@ -16,6 +16,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -254,7 +255,7 @@ fun EditProfileScreen(
                 )
                 ImageSourceOption(
                     label = "Take Photo",
-                    iconRes = R.drawable.ic_edit_photo,
+                    iconRes = R.drawable.ic_camera,
                     onClick = {
                         showImageSourceSheet = false
                         cameraPermLauncher.launch(Manifest.permission.CAMERA)
@@ -357,20 +358,21 @@ private fun ColumnScope.EditProfileContent(
                                 )
                             },
                             error = {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_navigation_profile),
+                                Image(
+                                    painter = painterResource(R.drawable.ic_profile_empty),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(avatarSize * 0.5f),
+                                    modifier = Modifier.size(avatarSize).clip(CircleShape),
+                                    contentScale = ContentScale.Crop,
                                 )
                             },
                         )
                     } else {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_navigation_profile),
+                        // No image → the empty-profile illustration fills the avatar (nothing else).
+                        Image(
+                            painter = painterResource(R.drawable.ic_profile_empty),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(avatarSize * 0.5f),
+                            modifier = Modifier.size(avatarSize).clip(CircleShape),
+                            contentScale = ContentScale.Crop,
                         )
                     }
                 }

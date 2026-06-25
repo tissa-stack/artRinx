@@ -82,6 +82,7 @@ fun NotificationRow(
         RowActionsMenu(
             expanded = menuOpen,
             deleteLabel = "Delete notification",
+            showMarkRead = !item.isRead,
             onMarkRead = onMarkRead,
             onDelete = onDelete,
             onDismiss = onDismissMenu,
@@ -95,7 +96,7 @@ fun NotificationRow(
                     if (menuOpen) BrandPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
                 )
                 .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-                .padding(horizontal = Spacing.md, vertical = Spacing.md),
+                .padding(horizontal = Spacing.md, vertical = Spacing.lg),
             verticalAlignment = Alignment.Top,
         ) {
             // ── Leading preview ───────────────────────────────────────────

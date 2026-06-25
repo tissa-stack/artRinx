@@ -26,6 +26,7 @@ fun RowActionsMenu(
     onMarkRead: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
+    showMarkRead: Boolean = true,
 ) {
     val onBg = MaterialTheme.colorScheme.onBackground
     DropdownMenu(
@@ -33,13 +34,16 @@ fun RowActionsMenu(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        DropdownMenuItem(
-            text = { Text("Mark as read", color = onBg) },
-            leadingIcon = {
-                Icon(Icons.Outlined.MailOutline, null, Modifier.size(Spacing.lg), tint = onBg)
-            },
-            onClick = onMarkRead,
-        )
+        // Already-read rows only get Delete (no point offering "Mark as read").
+        if (showMarkRead) {
+            DropdownMenuItem(
+                text = { Text("Mark as read", color = onBg) },
+                leadingIcon = {
+                    Icon(Icons.Outlined.MailOutline, null, Modifier.size(Spacing.lg), tint = onBg)
+                },
+                onClick = onMarkRead,
+            )
+        }
         DropdownMenuItem(
             text = { Text(deleteLabel, color = DangerRed) },
             leadingIcon = {

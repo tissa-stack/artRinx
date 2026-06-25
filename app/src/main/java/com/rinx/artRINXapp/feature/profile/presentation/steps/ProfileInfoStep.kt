@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -176,11 +177,12 @@ fun ProfileInfoStep(
                         size = avatarSize,
                         name = fullName,
                     )
-                    else -> Icon(
-                        painter = painterResource(R.drawable.ic_navigation_profile),
+                    // No image → the empty-profile illustration fills the avatar (nothing else).
+                    else -> Image(
+                        painter = painterResource(R.drawable.ic_profile_empty),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(avatarSize * 0.5f),
+                        modifier = Modifier.size(avatarSize).clip(CircleShape),
+                        contentScale = ContentScale.Crop,
                     )
                 }
                 if (avatarPrefilling) {
@@ -335,7 +337,7 @@ fun ProfileInfoStep(
                 )
                 SheetOption(
                     label = "Take Photo",
-                    iconRes = R.drawable.ic_edit_photo,
+                    iconRes = R.drawable.ic_camera,
                     onClick = {
                         onImageSourceSheetDismiss()
                         cameraPermLauncher.launch(Manifest.permission.CAMERA)

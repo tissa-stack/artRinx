@@ -369,7 +369,7 @@ private fun QuickAction(
             .clip(RoundedCornerShape(50))
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = BrandPrimary,
                 shape = RoundedCornerShape(50),
             )
             .clickable { onClick() }
@@ -380,14 +380,14 @@ private fun QuickAction(
         Icon(
             painter = painterResource(iconRes),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground,
+            tint = BrandPrimary,
             modifier = Modifier.size(Spacing.lg),
         )
         Spacer(Modifier.width(Spacing.sm))
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = BrandPrimary,
             maxLines = 1,
         )
     }
