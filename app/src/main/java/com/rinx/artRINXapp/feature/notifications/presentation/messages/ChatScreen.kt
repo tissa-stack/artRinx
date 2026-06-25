@@ -73,6 +73,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ChatShimmer
 import com.rinx.artRINXapp.core.theme.ChatBubbleReceived
 import com.rinx.artRINXapp.core.theme.ChatBubbleReceivedText
 import com.rinx.artRINXapp.core.theme.ChatBubbleSentText
@@ -353,10 +354,7 @@ fun ChatScreen(
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
         when {
-            state.isLoading -> CircularProgressIndicator(
-                color    = BrandPrimary,
-                modifier = Modifier.align(Alignment.Center).size(Spacing.xxxl),
-            )
+            state.isLoading -> ChatShimmer(modifier = Modifier.fillMaxSize())
             state.error -> Column(
                 modifier            = Modifier.align(Alignment.Center).padding(Spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,

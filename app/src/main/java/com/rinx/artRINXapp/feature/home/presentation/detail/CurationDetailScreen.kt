@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,7 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
-import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
@@ -59,6 +57,7 @@ import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.CurationDetailShimmer
 import com.rinx.artRINXapp.feature.home.presentation.components.CollectionCard
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationCardStack
 import com.rinx.artRINXapp.feature.home.presentation.components.EmptyCurationStack
@@ -203,10 +202,9 @@ fun CurationDetailScreen(
 
             // ── Scrollable content — card stack + metadata ─────────────────
             when {
-                uiState.isLoading -> Box(
+                uiState.isLoading -> CurationDetailShimmer(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(color = BrandPrimary) }
+                )
 
                 uiState.curation != null -> CurationDetailContent(
                     uiState              = uiState,

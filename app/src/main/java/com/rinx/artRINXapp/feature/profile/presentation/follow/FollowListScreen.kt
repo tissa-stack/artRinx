@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +52,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ListShimmer
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.PagingFooter
@@ -162,10 +162,9 @@ fun FollowListScreen(
             }
             when {
                 state.isLoading -> item(key = "loading-$page") {
-                    Box(
+                    ListShimmer(
                         modifier = Modifier.fillParentMaxHeight(0.8f).fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
-                    ) { CircularProgressIndicator(color = BrandPrimary) }
+                    )
                 }
 
                 state.error != null -> item(key = "error-$page") {

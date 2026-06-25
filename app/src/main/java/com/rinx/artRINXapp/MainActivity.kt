@@ -1,7 +1,10 @@
 package com.rinx.artRINXapp
 
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,6 +40,20 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var notificationsRepository: NotificationsRepository
     @Inject lateinit var deepLinkRouter: DeepLinkRouter
     @Inject lateinit var unreadNotificationsStore: UnreadNotificationsStore
+
+    /**
+     * Render at the app's own fixed font + display scale, independent of the device's
+     * Accessibility font-size and display-size settings: pin fontScale to 1.0 and density to the
+     * device's stable (default) density. The whole Activity — Compose LocalConfiguration/LocalDensity,
+     * ResponsiveDimens, sp text and dp layout — derives from this fixed config. A later system
+     * font/display-size change recreates the Activity, which re-pins to the same constants.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        val config = Configuration(newBase.resources.configuration)
+        config.fontScale = 1f
+        config.densityDpi = DisplayMetrics.DENSITY_DEVICE_STABLE
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()

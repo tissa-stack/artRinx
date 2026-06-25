@@ -68,6 +68,7 @@ import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ArtDetailShimmer
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.ShopArtButton
@@ -219,10 +220,7 @@ fun ArtDetailScreen(
                 .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             when {
-                uiState.isLoading -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(color = BrandPrimary) }
+                uiState.isLoading -> ArtDetailShimmer(modifier = Modifier.fillMaxSize())
 
                 uiState.post != null -> ArtDetailContent(
                     uiState = uiState,

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -23,8 +22,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ListShimmer
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
 import com.rinx.artRINXapp.feature.notifications.presentation.SharedContentPreview
@@ -65,9 +64,8 @@ fun NotificationsContent(
             )
         }
         when {
-            isLoading && notifications.isEmpty() -> CircularProgressIndicator(
-                color    = BrandPrimary,
-                modifier = Modifier.align(Alignment.Center).size(Spacing.xxxl),
+            isLoading && notifications.isEmpty() -> ListShimmer(
+                modifier = Modifier.fillMaxSize(),
             )
             // Network/server failure with nothing cached to fall back on → show the reason + Retry.
             notifications.isEmpty() && error != null -> SearchMessageView(

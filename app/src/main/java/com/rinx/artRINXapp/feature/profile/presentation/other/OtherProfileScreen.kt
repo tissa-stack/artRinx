@@ -733,7 +733,7 @@ private fun ProfileBlockedPanel(name: String, modifier: Modifier = Modifier) {
         Icon(
             painter = painterResource(R.drawable.ic_block),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            tint = DangerRed,
             modifier = Modifier.size(Spacing.giant),
         )
         Spacer(Modifier.height(Spacing.md))

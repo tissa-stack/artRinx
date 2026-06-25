@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,6 +46,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ListShimmer
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import androidx.compose.material.icons.Icons
@@ -185,12 +185,9 @@ fun MessagesContent(
                             when {
                                 // First load still in flight — show a spinner, never the "Start a chat"
                                 // empty state, which would otherwise flash before conversations arrive.
-                                isLoading -> Box(
-                                    modifier         = Modifier.fillParentMaxSize(),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(color = BrandPrimary)
-                                }
+                                isLoading -> ListShimmer(
+                                    modifier = Modifier.fillParentMaxSize(),
+                                )
                                 messageQuery.isNotEmpty() ->
                                     // Search returned nothing, but the inbox isn't actually empty.
                                     SearchMessageView(
