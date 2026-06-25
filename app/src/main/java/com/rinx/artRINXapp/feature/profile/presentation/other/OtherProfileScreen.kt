@@ -75,6 +75,7 @@ import com.rinx.artRINXapp.feature.profile.presentation.components.PortfolioLink
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
+import com.rinx.artRINXapp.feature.profile.presentation.other.components.BlockConfirmDialog
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileArtMasonryGrid
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.EnlargedAvatarDialog
@@ -329,11 +330,8 @@ fun OtherProfileScreen(
             onConfirm = { viewModel.unfollow(); confirm = null },
             onDismiss = { confirm = null },
         )
-        ConfirmKind.BLOCK -> ConfirmActionDialog(
-            title = "Are you sure want\nto block \"${profile?.displayName.orEmpty()}\"?",
-            confirmLabel = "Block",
-            confirmColor = DangerRed,
-            iconRes = R.drawable.ic_block,
+        ConfirmKind.BLOCK -> BlockConfirmDialog(
+            name = profile?.displayName.orEmpty(),
             isLoading = uiState.isActioning,
             onConfirm = { viewModel.block(); confirm = null }, // stay on screen → must dismiss the dialog
             onDismiss = { confirm = null },

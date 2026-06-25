@@ -328,6 +328,40 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun startAddPhone(newPhone: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactStartAdd(ContactStartAddRequest(kind = "phone", value = newPhone))
+            if (response.isSuccessful) {
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun confirmAddPhone(newPhone: String, code: String): ApiResult<Unit> {
+        return try {
+            val response = apiService.contactConfirmAdd(
+                ContactConfirmAddRequest(kind = "phone", value = newPhone, code = code),
+            )
+            if (response.isSuccessful) {
+                adoptSessionIfEnvelope(response.body()?.string())
+                sessionDataSource.savePhone(newPhone)
+                ApiResult.Success(Unit)
+            } else {
+                nativeErrorResult(response.code(), response.errorBody()?.string(), response)
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
     /**
      * Contact confirm endpoints may return a fresh auth envelope (the server revokes other devices'
      * refresh tokens) or an empty success. If an envelope is present, adopt the new token pair so

@@ -1,8 +1,9 @@
-package com.rinx.artRINXapp.feature.settings.presentation.changephone
+package com.rinx.artRINXapp.feature.settings.presentation.addphone
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +15,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,23 +33,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.feature.settings.presentation.components.SettingsOtpContent
-import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
+import com.rinx.artRINXapp.core.util.LegalLinks
+import com.rinx.artRINXapp.core.util.appendLegalLink
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.components.PhoneNumberField
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.components.WaitlistCheckbox
+import com.rinx.artRINXapp.feature.settings.presentation.components.SettingsOtpContent
 
 @Composable
-fun ChangePhoneScreen(
+fun AddPhoneScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
-    viewModel: ChangePhoneViewModel = hiltViewModel(),
+    viewModel: AddPhoneViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val d = LocalDimens.current
@@ -54,7 +63,7 @@ fun ChangePhoneScreen(
 
     LaunchedEffect(uiState.done) {
         if (uiState.done) {
-            Toast.makeText(context, "Phone updated", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Phone added", Toast.LENGTH_SHORT).show()
             onDone()
         }
     }
@@ -73,7 +82,7 @@ fun ChangePhoneScreen(
             .navigationBarsPadding()
             .imePadding(),
     ) {
-        if (uiState.step == ChangePhoneStep.OTP) {
+        if (uiState.step == AddPhoneStep.OTP) {
             SettingsOtpContent(
                 contact = uiState.newPhoneE164,
                 otp = uiState.otp,
@@ -104,7 +113,7 @@ fun ChangePhoneScreen(
                 )
             }
             Text(
-                text = "Change phone number",
+                text = "Add phone",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -117,20 +126,75 @@ fun ChangePhoneScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = d.screenPaddingHorizontal),
         ) {
-            Spacer(Modifier.height(Spacing.xl))
+            Spacer(Modifier.height(Spacing.lg))
 
-            PhoneStep(
-                currentPhone = uiState.currentPhone,
+            Text(
+                text = "Add phone number",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                text = "We'll send a one-time code to verify your number.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(Spacing.xl))
+            Text(
+                text = "Enter your phone number",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            PhoneNumberField(
                 rawPhone = uiState.rawPhone,
+                onPhoneChange = viewModel::onRawPhoneChange,
                 selectedCountry = uiState.selectedCountry,
-                availableCountries = uiState.availableCountries,
-                isSubmitting = uiState.isSubmitting,
-                onRawPhoneChange = viewModel::onRawPhoneChange,
                 onCountryChange = viewModel::onCountryChange,
-                onSendCode = viewModel::onSendCode,
-                buttonHeight = d.authButtonHeight,
+                countries = uiState.availableCountries,
+                searchable = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(Spacing.lg))
+
+            // ── Consents ─────────────────────────────────────────────────
+            val linkStyle = SpanStyle(color = BrandPrimary, textDecoration = TextDecoration.Underline)
+            WaitlistCheckbox(
+                checked = uiState.acceptedTerms,
+                onCheckedChange = viewModel::onAcceptTermsChange,
+                text = buildAnnotatedString {
+                    append("I accept the ")
+                    appendLegalLink("Terms and Conditions", LegalLinks.TERMS_OF_USE, linkStyle)
+                    append(" & ")
+                    appendLegalLink("Privacy Policy", LegalLinks.PRIVACY_POLICY, linkStyle)
+                    append(".")
+                },
+            )
+            WaitlistCheckbox(
+                checked = uiState.sms2faConsent,
+                onCheckedChange = viewModel::onSms2faChange,
+                text = AnnotatedString(
+                    "I consent to receive 2FA notifications and verification codes via SMS from artRinx at the number provided.",
+                ),
+            )
+            WaitlistCheckbox(
+                checked = uiState.accountNotificationSms,
+                onCheckedChange = viewModel::onAccountNotificationChange,
+                text = AnnotatedString("I consent to receive account notifications from artRinx!"),
+            )
+
+            Spacer(Modifier.height(Spacing.md))
+            Text(
+                text = "For all SMS communications above: Message frequency varies. Msg & data rates may " +
+                    "apply. Reply HELP for help and STOP to opt-out at any time.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             AnimatedVisibility(visible = uiState.errorMessage != null) {
@@ -145,76 +209,34 @@ fun ChangePhoneScreen(
                     )
                 }
             }
+
+            Spacer(Modifier.height(Spacing.xl))
+
+            Button(
+                onClick = viewModel::onSendCode,
+                enabled = uiState.canSendCode,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(d.authButtonHeight),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BrandPrimary,
+                    disabledContainerColor = InactiveButton,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                ),
+            ) {
+                if (uiState.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(Spacing.xl),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = Spacing.xs / 2,
+                    )
+                } else {
+                    Text("Send code", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            Spacer(Modifier.height(Spacing.xxl))
         }
     }
 }
-
-@Composable
-private fun PhoneStep(
-    currentPhone: String,
-    rawPhone: String,
-    selectedCountry: CountryCode,
-    availableCountries: List<CountryCode>,
-    isSubmitting: Boolean,
-    onRawPhoneChange: (String) -> Unit,
-    onCountryChange: (CountryCode) -> Unit,
-    onSendCode: () -> Unit,
-    buttonHeight: androidx.compose.ui.unit.Dp,
-) {
-    if (currentPhone.isNotBlank()) {
-        Text(
-            text = "Current number",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = currentPhone,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(Modifier.height(Spacing.xl))
-    }
-
-    Text(
-        text = "New number",
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Spacer(Modifier.height(Spacing.xs))
-    PhoneNumberField(
-        rawPhone = rawPhone,
-        onPhoneChange = onRawPhoneChange,
-        selectedCountry = selectedCountry,
-        onCountryChange = onCountryChange,
-        countries = availableCountries,
-        searchable = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(Spacing.xl))
-
-    Button(
-        onClick = onSendCode,
-        enabled = rawPhone.isNotBlank() && !isSubmitting,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(buttonHeight),
-        shape = RoundedCornerShape(50),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = BrandPrimary,
-            disabledContainerColor = InactiveButton,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-        ),
-    ) {
-        if (isSubmitting) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(Spacing.xl),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = Spacing.xs / 2,
-            )
-        } else {
-            Text("Send code", style = MaterialTheme.typography.labelLarge)
-        }
-    }
-}
-

@@ -15,11 +15,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MailOutline
@@ -54,6 +57,8 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.settings.presentation.components.DeleteAccountDialog
 import com.rinx.artRINXapp.feature.settings.presentation.components.LogoutDialog
+import com.rinx.artRINXapp.feature.settings.presentation.components.SignOutAllDevicesDialog
+import com.rinx.artRINXapp.core.theme.DangerRed
 
 @Composable
 fun SettingsScreen(
@@ -61,7 +66,9 @@ fun SettingsScreen(
     onEditProfile: () -> Unit,
     onChangeEmail: () -> Unit,
     onChangePhone: () -> Unit,
-    onProfileTitleAndPlan: () -> Unit,
+    onAddPhone: () -> Unit,
+    onChangeRole: () -> Unit,
+    onSubscription: () -> Unit,
     onInviteFriends: () -> Unit,
     onAppTutorial: () -> Unit,
     onBlockedAccounts: () -> Unit,
@@ -77,6 +84,7 @@ fun SettingsScreen(
     val dimens = LocalDimens.current
     val state by viewModel.state.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showSignOutAllDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     // Account deletion succeeded → drop to the auth flow (same exit as logout).
@@ -140,28 +148,42 @@ fun SettingsScreen(
             SettingsRow(
                 imageVector = Icons.Outlined.MailOutline,
                 label = if (state.hasEmail) "Change email" else "Add email",
+                trailingValue = state.currentEmail.takeIf { state.hasEmail && it.isNotBlank() },
                 onClick = onChangeEmail,
             )
-            // Phone change is offered only to accounts that have a phone (email-only users don't see it).
-            // Require an email first so the user keeps a login/recovery path when phone login is retired.
+            // Always offer a phone option: "Change Phone" when one exists, otherwise "Add phone".
+            // Changing requires an email first so the user keeps a login/recovery path.
             if (state.hasPhone) {
                 SettingsRow(
                     imageVector = Icons.Outlined.PhoneAndroid,
-                    label = "Change phone number",
+                    label = "Change Phone",
+                    trailingValue = state.currentPhone.takeIf { it.isNotBlank() },
                     onClick = { if (state.hasEmail) onChangePhone() else showAddEmailPrompt = true },
                 )
+            } else {
+                SettingsRow(
+                    imageVector = Icons.Outlined.PhoneAndroid,
+                    label = "Add phone",
+                    onClick = onAddPhone,
+                )
             }
-            SettingsRow(painter = R.drawable.ic_profile_title_and_plan, label = "Profile title and plan", onClick = onProfileTitleAndPlan)
+            SettingsRow(imageVector = Icons.Outlined.Badge, label = "Change Role", onClick = onChangeRole)
+            SettingsRow(imageVector = Icons.Outlined.CreditCard, label = "Subscription", onClick = onSubscription)
             SettingsRow(painter = R.drawable.ic_invite_friends, label = "Invite Friends", onClick = onInviteFriends)
-            SettingsRow(imageVector = Icons.Outlined.Info, label = "App tutorial", onClick = onAppTutorial)
+            SettingsRow(
+                imageVector = Icons.Outlined.DeleteOutline,
+                label = "Delete Account",
+                destructive = true,
+                onClick = { showDeleteDialog = true },
+            )
 
             SectionHeader("Privacy")
             SettingsRow(painter = R.drawable.ic_blocked_accounts, label = "Blocked accounts", onClick = onBlockedAccounts)
             SettingsRow(imageVector = Icons.Outlined.Block, label = "Blocked artworks", onClick = onBlockedArtworks)
             SettingsRow(imageVector = Icons.Outlined.PhoneAndroid, label = "Phone Permissions", onClick = onPhonePermissions)
-            SettingsRow(imageVector = Icons.Outlined.DeleteOutline, label = "Delete account", onClick = { showDeleteDialog = true })
 
             SectionHeader("Resources")
+            SettingsRow(imageVector = Icons.Outlined.Info, label = "App tutorial", onClick = onAppTutorial)
             SettingsRow(painter = R.drawable.ic_terms_and_conditions, label = "Terms and conditions", onClick = onTermsAndConditions)
             SettingsRow(painter = R.drawable.ic_guidelines, label = "Community Guidelines", onClick = onCommunityGuidelines)
             SettingsRow(painter = R.drawable.ic_about_us, label = "About us", onClick = onAboutUs)
@@ -201,6 +223,15 @@ fun SettingsScreen(
                     )
                 }
 
+                // Sign out of all devices — revokes every session, not just this one.
+                Text(
+                    text = "Sign out of all devices",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { showSignOutAllDialog = true },
+                )
+
                 // App version (handout §9)
                 Text(
                     text = "App Version ${state.appVersion}",
@@ -218,6 +249,16 @@ fun SettingsScreen(
                 viewModel.logout()
             },
             onDismiss = { showLogoutDialog = false },
+        )
+    }
+
+    if (showSignOutAllDialog) {
+        SignOutAllDevicesDialog(
+            onConfirm = {
+                showSignOutAllDialog = false
+                viewModel.signOutEverywhere()
+            },
+            onDismiss = { showSignOutAllDialog = false },
         )
     }
 
@@ -283,8 +324,11 @@ private fun SettingsRow(
     onClick: () -> Unit,
     painter: Int? = null,
     imageVector: ImageVector? = null,
+    trailingValue: String? = null,
+    destructive: Boolean = false,
 ) {
     val dimens = LocalDimens.current
+    val tint = if (destructive) DangerRed else MaterialTheme.colorScheme.onBackground
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -296,13 +340,13 @@ private fun SettingsRow(
             painter != null -> Icon(
                 painter = painterResource(painter),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onBackground,
+                tint = tint,
                 modifier = Modifier.size(Spacing.xl),
             )
             imageVector != null -> Icon(
                 imageVector = imageVector,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onBackground,
+                tint = tint,
                 modifier = Modifier.size(Spacing.xl),
             )
         }
@@ -310,9 +354,19 @@ private fun SettingsRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = tint,
             modifier = Modifier.weight(1f),
         )
+        if (!trailingValue.isNullOrBlank()) {
+            Text(
+                text = trailingValue,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = Spacing.sm).widthIn(max = dimens.chatBubbleMaxWidth),
+            )
+        }
         Icon(
             painter = painterResource(R.drawable.ic_arrow_right),
             contentDescription = null,

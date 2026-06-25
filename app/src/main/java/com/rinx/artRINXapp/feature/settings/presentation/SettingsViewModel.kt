@@ -21,8 +21,11 @@ data class SettingsUiState(
     val deleteError: String? = null,
     /** False for phone-only accounts → the account row reads "Add email" instead of "Change email". */
     val hasEmail: Boolean = true,
-    /** True when the account has a phone → show the "Change phone number" row (hidden for email-only). */
+    /** True when the account has a phone → the row reads "Change Phone"; false → "Add phone". */
     val hasPhone: Boolean = true,
+    /** Current contact values, shown as the row's trailing text (parity with iOS). */
+    val currentEmail: String = "",
+    val currentPhone: String = "",
     /** Displayed at the bottom of Settings as "App Version X". */
     val appVersion: String = "",
 )
@@ -37,18 +40,22 @@ class SettingsViewModel @Inject constructor(
         SettingsUiState(
             hasEmail = !authRepository.getEmail().isNullOrBlank(),
             hasPhone = !authRepository.getPhone().isNullOrBlank(),
+            currentEmail = authRepository.getEmail().orEmpty(),
+            currentPhone = authRepository.getPhone().orEmpty(),
             appVersion = readAppVersion(),
         ),
     )
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
     /** Re-read email/phone presence — call on resume so the rows reflect changes made elsewhere
-     *  (e.g. "Add email" flips to "Change email"; the new number shows after a phone change). */
+     *  (e.g. "Add email" flips to "Change email"; "Add phone" flips to "Change Phone"). */
     fun refreshContactState() {
         _state.update {
             it.copy(
                 hasEmail = !authRepository.getEmail().isNullOrBlank(),
                 hasPhone = !authRepository.getPhone().isNullOrBlank(),
+                currentEmail = authRepository.getEmail().orEmpty(),
+                currentPhone = authRepository.getPhone().orEmpty(),
             )
         }
     }
@@ -64,6 +71,16 @@ class SettingsViewModel @Inject constructor(
         _state.update { it.copy(isLoggingOut = true) }
         viewModelScope.launch {
             authRepository.logout()   // revokes server-side (best effort) + wipes local session
+            _state.update { it.copy(isLoggingOut = false, loggedOut = true) }
+        }
+    }
+
+    /** Settings → "Sign out of all devices": revoke every refresh token server-side, then wipe local. */
+    fun signOutEverywhere() {
+        if (_state.value.isLoggingOut) return
+        _state.update { it.copy(isLoggingOut = true) }
+        viewModelScope.launch {
+            authRepository.signOutEverywhere() // best-effort server revoke + full local wipe (clearAll)
             _state.update { it.copy(isLoggingOut = false, loggedOut = true) }
         }
     }

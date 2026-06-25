@@ -61,6 +61,7 @@ import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
+import com.rinx.artRINXapp.feature.profile.presentation.other.components.BlockConfirmDialog
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
@@ -154,16 +155,24 @@ fun ArtDetailScreen(
 
     // Always confirm before blocking (whether reached directly or after a report).
     blockConfirm?.let { kind ->
-        ConfirmActionDialog(
-            title = if (kind == "art") "Are you sure want\nto block this art?"
-                    else "Are you sure want\nto block \"${uiState.post?.ownerName?.takeIf { it.isNotBlank() } ?: uiState.post?.artistName.orEmpty()}\"?",
-            confirmLabel = "Block",
-            confirmColor = DangerRed,
-            iconRes = R.drawable.ic_block,
-            isLoading = uiState.isBlocking,
-            onConfirm = { if (kind == "art") viewModel.blockArt() else viewModel.blockUser() },
-            onDismiss = { blockConfirm = null },
-        )
+        if (kind == "art") {
+            ConfirmActionDialog(
+                title = "Are you sure want\nto block this art?",
+                confirmLabel = "Block",
+                confirmColor = DangerRed,
+                iconRes = R.drawable.ic_block,
+                isLoading = uiState.isBlocking,
+                onConfirm = { viewModel.blockArt() },
+                onDismiss = { blockConfirm = null },
+            )
+        } else {
+            BlockConfirmDialog(
+                name = uiState.post?.ownerName?.takeIf { it.isNotBlank() } ?: uiState.post?.artistName.orEmpty(),
+                isLoading = uiState.isBlocking,
+                onConfirm = { viewModel.blockUser() },
+                onDismiss = { blockConfirm = null },
+            )
+        }
     }
 
     if (showDeleteDialog) {

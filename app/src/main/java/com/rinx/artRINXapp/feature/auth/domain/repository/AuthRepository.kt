@@ -58,4 +58,10 @@ interface AuthRepository {
 
     /** Verify the OTP and apply the phone change (§1.8); adopts the fresh token pair if returned. */
     suspend fun confirmChangePhone(newPhone: String, code: String): ApiResult<Unit>
+
+    /** Begin ADDING a first phone (phone-less account) — OTP is sent to [newPhone] (E.164). */
+    suspend fun startAddPhone(newPhone: String): ApiResult<Unit>
+
+    /** Verify the OTP and attach [newPhone]; adopts the fresh token pair if returned. */
+    suspend fun confirmAddPhone(newPhone: String, code: String): ApiResult<Unit>
 }

@@ -2,9 +2,7 @@ package com.rinx.artRINXapp.feature.settings.presentation.changeemail
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +23,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -48,7 +45,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.feature.auth.presentation.otp.components.OtpBoxRow
+import com.rinx.artRINXapp.feature.settings.presentation.components.SettingsOtpContent
 
 @Composable
 fun ChangeEmailScreen(
@@ -82,6 +79,23 @@ fun ChangeEmailScreen(
             .navigationBarsPadding()
             .imePadding(),
     ) {
+        if (uiState.step == ChangeEmailStep.OTP) {
+            // Centered code screen (logo + Cancel/Verify) — no top bar.
+            SettingsOtpContent(
+                contact = uiState.newEmail,
+                otp = uiState.otp,
+                isSubmitting = uiState.isSubmitting,
+                cooldownSeconds = uiState.resendCooldownSeconds,
+                canResend = uiState.canResend,
+                errorMessage = uiState.errorMessage,
+                onOtpChange = viewModel::onOtpChange,
+                onVerify = viewModel::onVerify,
+                onResend = viewModel::onResend,
+                onCancel = onBack,
+            )
+            return@Column
+        }
+
         // ── Header ────────────────────────────────────────────────────
         Row(
             modifier = Modifier
@@ -114,27 +128,16 @@ fun ChangeEmailScreen(
         ) {
             Spacer(Modifier.height(Spacing.xl))
 
-            when (uiState.step) {
-                ChangeEmailStep.EMAIL -> EmailStep(
-                    currentEmail = uiState.currentEmail,
-                    newEmail = uiState.newEmail,
-                    isSubmitting = uiState.isSubmitting,
-                    onNewEmailChange = viewModel::onNewEmailChange,
-                    onSendCode = viewModel::onSendCode,
-                    buttonHeight = d.authButtonHeight,
-                )
-                ChangeEmailStep.OTP -> OtpStep(
-                    newEmail = uiState.newEmail,
-                    otp = uiState.otp,
-                    isSubmitting = uiState.isSubmitting,
-                    cooldownSeconds = uiState.resendCooldownSeconds,
-                    canResend = uiState.canResend,
-                    onOtpChange = viewModel::onOtpChange,
-                    onVerify = viewModel::onVerify,
-                    onResend = viewModel::onResend,
-                    buttonHeight = d.authButtonHeight,
-                )
-            }
+            EmailStep(
+                currentEmail = uiState.currentEmail,
+                newEmail = uiState.newEmail,
+                confirmEmail = uiState.confirmEmail,
+                isSubmitting = uiState.isSubmitting,
+                onNewEmailChange = viewModel::onNewEmailChange,
+                onConfirmEmailChange = viewModel::onConfirmEmailChange,
+                onSendCode = viewModel::onSendCode,
+                buttonHeight = d.authButtonHeight,
+            )
 
             AnimatedVisibility(visible = uiState.errorMessage != null) {
                 Column {
@@ -156,8 +159,10 @@ fun ChangeEmailScreen(
 private fun EmailStep(
     currentEmail: String,
     newEmail: String,
+    confirmEmail: String,
     isSubmitting: Boolean,
     onNewEmailChange: (String) -> Unit,
+    onConfirmEmailChange: (String) -> Unit,
     onSendCode: () -> Unit,
     buttonHeight: androidx.compose.ui.unit.Dp,
 ) {
@@ -186,6 +191,28 @@ private fun EmailStep(
         onValueChange = onNewEmailChange,
         singleLine = true,
         placeholder = { Text("you@example.com") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(Spacing.md),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = BrandPrimary,
+            cursorColor = BrandPrimary,
+        ),
+    )
+    Spacer(Modifier.height(Spacing.md))
+
+    // Re-enter to confirm — must match before "Send code" is allowed (parity with iOS).
+    Text(
+        text = "Confirm new email",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(Spacing.xs))
+    OutlinedTextField(
+        value = confirmEmail,
+        onValueChange = onConfirmEmailChange,
+        singleLine = true,
+        placeholder = { Text("you@example.com") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Spacing.md),
@@ -198,7 +225,7 @@ private fun EmailStep(
 
     Button(
         onClick = onSendCode,
-        enabled = newEmail.isNotBlank() && !isSubmitting,
+        enabled = newEmail.isNotBlank() && confirmEmail.isNotBlank() && !isSubmitting,
         modifier = Modifier
             .fillMaxWidth()
             .height(buttonHeight),
@@ -222,102 +249,3 @@ private fun EmailStep(
     }
 }
 
-@Composable
-private fun OtpStep(
-    newEmail: String,
-    otp: String,
-    isSubmitting: Boolean,
-    cooldownSeconds: Int,
-    canResend: Boolean,
-    onOtpChange: (String) -> Unit,
-    onVerify: () -> Unit,
-    onResend: () -> Unit,
-    buttonHeight: androidx.compose.ui.unit.Dp,
-) {
-    Text(
-        text = "Enter the code sent to $newEmail",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onBackground,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(Spacing.xl))
-
-    OtpBoxRow(otp = otp, onOtpChange = onOtpChange, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(Spacing.lg))
-
-    // ── Resend countdown (this timer gates Resend, not code expiry) ─────
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Resend in: ",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = formatCountdown(cooldownSeconds),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-    }
-    Spacer(Modifier.height(Spacing.lg))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-    ) {
-        OutlinedButton(
-            onClick = onResend,
-            enabled = canResend && !isSubmitting,
-            modifier = Modifier
-                .weight(1f)
-                .height(buttonHeight),
-            shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = BrandPrimary,
-                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-            ),
-            border = BorderStroke(
-                Spacing.xs / 4,
-                if (canResend && !isSubmitting) BrandPrimary else MaterialTheme.colorScheme.outline,
-            ),
-        ) {
-            Text("Resend code", style = MaterialTheme.typography.labelLarge)
-        }
-
-        Button(
-            onClick = onVerify,
-            enabled = otp.length == 6 && !isSubmitting,
-            modifier = Modifier
-                .weight(1f)
-                .height(buttonHeight),
-            shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = BrandPrimary,
-                disabledContainerColor = InactiveButton,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-            ),
-        ) {
-            if (isSubmitting) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(Spacing.xl),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = Spacing.xs / 2,
-                )
-            } else {
-                Text("Verify", style = MaterialTheme.typography.labelLarge)
-            }
-        }
-    }
-}
-
-/** Formats remaining seconds as MM:SS. */
-private fun formatCountdown(seconds: Int): String {
-    val safe = seconds.coerceAtLeast(0)
-    return "%02d:%02d".format(safe / 60, safe % 60)
-}

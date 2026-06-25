@@ -1,10 +1,14 @@
-package com.rinx.artRINXapp.feature.settings.presentation.changeemail
+package com.rinx.artRINXapp.feature.settings.presentation.addphone
 
-import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodeProvider
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodes
+import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
+import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -15,69 +19,85 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class ChangeEmailStep { EMAIL, OTP }
+enum class AddPhoneStep { PHONE, OTP }
 
-data class ChangeEmailUiState(
-    val step: ChangeEmailStep = ChangeEmailStep.EMAIL,
-    val currentEmail: String = "",
-    val newEmail: String = "",
-    val confirmEmail: String = "",
+data class AddPhoneUiState(
+    val step: AddPhoneStep = AddPhoneStep.PHONE,
+    val selectedCountry: CountryCode = CountryCodes.default,
+    val availableCountries: List<CountryCode> = CountryCodes.all,
+    val rawPhone: String = "",
     val otp: String = "",
+    // Consents (parity with iOS Add-phone). T&C is a required gate; the two SMS consents are persisted.
+    val acceptedTerms: Boolean = false,
+    val sms2faConsent: Boolean = false,
+    val accountNotificationSms: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
     val codeResent: Boolean = false,
     val done: Boolean = false,
-    /** True when the account has no email yet (phone signup) — we ADD rather than change. */
-    val isAdding: Boolean = false,
-    /** Seconds left before the code expires / Resend re-enables (0 = can resend). */
     val resendCooldownSeconds: Int = 0,
 ) {
     val canResend: Boolean get() = resendCooldownSeconds == 0
+    val newPhoneE164: String get() = selectedCountry.dialCode + rawPhone
+    val canSendCode: Boolean get() = rawPhone.length >= MIN_PHONE_DIGITS && acceptedTerms && !isSubmitting
 }
 
+private const val MIN_PHONE_DIGITS = 6
+
+/**
+ * Add a FIRST phone to a phone-less account. Two steps: send an OTP to the new number
+ * (`startAddPhone`), then verify it (`confirmAddPhone`). On success the SMS consents are persisted via
+ * the profile update. Mirrors [com.rinx.artRINXapp.feature.settings.presentation.changephone.ChangePhoneViewModel].
+ */
 @HiltViewModel
-class ChangeEmailViewModel @Inject constructor(
+class AddPhoneViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val profileRepository: ProfileRepository,
+    private val countryCodeProvider: CountryCodeProvider,
 ) : ViewModel() {
 
-    // No email on the account (phone signup) → ADD a first email; otherwise CHANGE the existing one.
-    private val isAdding = authRepository.getEmail().isNullOrBlank()
-
-    private val _uiState = MutableStateFlow(
-        ChangeEmailUiState(
-            currentEmail = authRepository.getEmail().orEmpty(),
-            isAdding = isAdding,
-        ),
-    )
-    val uiState: StateFlow<ChangeEmailUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(AddPhoneUiState())
+    val uiState: StateFlow<AddPhoneUiState> = _uiState.asStateFlow()
 
     private var cooldownJob: Job? = null
 
-    fun onNewEmailChange(value: String) =
-        _uiState.update { it.copy(newEmail = value.trim(), errorMessage = null) }
+    init {
+        loadCountryCodes()
+    }
 
-    fun onConfirmEmailChange(value: String) =
-        _uiState.update { it.copy(confirmEmail = value.trim(), errorMessage = null) }
+    private fun loadCountryCodes() {
+        viewModelScope.launch {
+            val countries = countryCodeProvider.load()
+            _uiState.update { state ->
+                val selected = countries.firstOrNull { it.code == state.selectedCountry.code }
+                    ?: countries.firstOrNull { it.code == CountryCodes.default.code }
+                    ?: countries.firstOrNull()
+                    ?: state.selectedCountry
+                state.copy(availableCountries = countries, selectedCountry = selected)
+            }
+        }
+    }
 
-    /** Step 1 → request an OTP to the new email, then advance to the code step. */
+    fun onCountryChange(country: CountryCode) =
+        _uiState.update { it.copy(selectedCountry = country, errorMessage = null) }
+
+    fun onRawPhoneChange(value: String) =
+        _uiState.update { it.copy(rawPhone = value.filter { c -> c.isDigit() }.take(15), errorMessage = null) }
+
+    fun onAcceptTermsChange(v: Boolean) = _uiState.update { it.copy(acceptedTerms = v) }
+    fun onSms2faChange(v: Boolean) = _uiState.update { it.copy(sms2faConsent = v) }
+    fun onAccountNotificationChange(v: Boolean) = _uiState.update { it.copy(accountNotificationSms = v) }
+
     fun onSendCode() {
         val state = _uiState.value
-        val email = state.newEmail.trim()
-        when {
-            !Patterns.EMAIL_ADDRESS.matcher(email).matches() ->
-                return _uiState.update { it.copy(errorMessage = "Enter a valid email address.") }
-            !email.equals(state.confirmEmail.trim(), ignoreCase = true) ->
-                return _uiState.update { it.copy(errorMessage = "Emails don't match.") }
-            email.equals(state.currentEmail, ignoreCase = true) ->
-                return _uiState.update { it.copy(errorMessage = "That's already your email.") }
+        if (!state.canSendCode) {
+            return _uiState.update { it.copy(errorMessage = "Enter a valid number and accept the terms.") }
         }
         _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
-            val res = if (isAdding) authRepository.startAddEmail(email)
-            else authRepository.startChangeEmail(email)
-            when (res) {
+            when (val res = authRepository.startAddPhone(state.newPhoneE164)) {
                 is ApiResult.Success -> {
-                    _uiState.update { it.copy(isSubmitting = false, step = ChangeEmailStep.OTP, otp = "") }
+                    _uiState.update { it.copy(isSubmitting = false, step = AddPhoneStep.OTP, otp = "") }
                     startCooldown(OTP_TTL_SECONDS)
                 }
                 is ApiResult.Error -> _uiState.update {
@@ -93,16 +113,23 @@ class ChangeEmailViewModel @Inject constructor(
         if (digits.length == OTP_LENGTH) onVerify()
     }
 
-    /** Step 2 → verify the OTP; on success the email is changed (repo adopts any fresh tokens). */
     fun onVerify() {
         val state = _uiState.value
         if (state.otp.length < OTP_LENGTH || state.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
-            val res = if (isAdding) authRepository.confirmAddEmail(state.newEmail, state.otp)
-            else authRepository.confirmChangeEmail(state.newEmail, state.otp)
-            when (res) {
-                is ApiResult.Success -> _uiState.update { it.copy(isSubmitting = false, done = true) }
+            when (val res = authRepository.confirmAddPhone(state.newPhoneE164, state.otp)) {
+                is ApiResult.Success -> {
+                    // Phone attached → persist the SMS consents (best-effort; don't block on it).
+                    profileRepository.updateProfile(
+                        ProfileUpdate(
+                            sms2faConsent = state.sms2faConsent,
+                            accountNotificationSms = state.accountNotificationSms,
+                        ),
+                        newPictureUri = null,
+                    )
+                    _uiState.update { it.copy(isSubmitting = false, done = true) }
+                }
                 is ApiResult.Error -> _uiState.update {
                     it.copy(isSubmitting = false, otp = "", errorMessage = res.toMessage())
                 }
@@ -115,9 +142,7 @@ class ChangeEmailViewModel @Inject constructor(
         if (state.isSubmitting || !state.canResend) return
         _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
-            val res = if (isAdding) authRepository.startAddEmail(state.newEmail)
-            else authRepository.startChangeEmail(state.newEmail)
-            when (res) {
+            when (val res = authRepository.startAddPhone(state.newPhoneE164)) {
                 is ApiResult.Success -> {
                     _uiState.update { it.copy(isSubmitting = false, codeResent = true, otp = "") }
                     startCooldown(OTP_TTL_SECONDS)
@@ -134,8 +159,6 @@ class ChangeEmailViewModel @Inject constructor(
     }
 
     fun onCodeResentShown() = _uiState.update { it.copy(codeResent = false) }
-
-    fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 
     private fun startCooldown(seconds: Int) {
         cooldownJob?.cancel()

@@ -299,6 +299,8 @@ class ProfileRepositoryImpl @Inject constructor(
                 changes.city?.let { parts["city"] = it.toRequestBody(textPlain) }
                 changes.profileTypeId?.let { parts["profile_type_id"] = it.toString().toRequestBody(textPlain) }
                 changes.marketingSmsConsent?.let { parts["marketing_sms_consent"] = it.toString().toRequestBody(textPlain) }
+                changes.sms2faConsent?.let { parts["sms_2fa_consent"] = it.toString().toRequestBody(textPlain) }
+                changes.accountNotificationSms?.let { parts["account_notification_sms"] = it.toString().toRequestBody(textPlain) }
                 // Mediums are sent as a comma-separated list (server expects CSV, not a JSON array).
                 changes.preferredMediumIds?.let {
                     parts["preferred_medium_ids"] = it.joinToString(",").toRequestBody(textPlain)

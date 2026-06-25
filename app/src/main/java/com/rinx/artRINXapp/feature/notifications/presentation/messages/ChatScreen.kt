@@ -86,6 +86,7 @@ import com.rinx.artRINXapp.feature.notifications.presentation.messages.component
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ReportSentSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
+import com.rinx.artRINXapp.feature.profile.presentation.other.components.BlockConfirmDialog
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatGate
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatMessage
@@ -174,11 +175,8 @@ fun ChatScreen(
     }
 
     if (blockConfirm) {
-        ConfirmActionDialog(
-            title = "Are you sure want\nto block \"${menuState.name}\"?",
-            confirmLabel = "Block",
-            confirmColor = com.rinx.artRINXapp.core.theme.DangerRed,
-            iconRes = R.drawable.ic_block,
+        BlockConfirmDialog(
+            name = menuState.name,
             isLoading = menuState.isActioning,
             onConfirm = { menuViewModel.blockUser() },
             onDismiss = { blockConfirm = false },

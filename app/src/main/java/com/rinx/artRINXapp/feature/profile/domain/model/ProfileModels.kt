@@ -163,10 +163,12 @@ data class ProfileUpdate(
     val city: String? = null,
     val profileTypeId: Int? = null, // sent as profile_type_id (the profile title/role)
     val marketingSmsConsent: Boolean? = null, // sent as marketing_sms_consent
+    val sms2faConsent: Boolean? = null, // sent as sms_2fa_consent
+    val accountNotificationSms: Boolean? = null, // sent as account_notification_sms
     val preferredMediumIds: List<Int>? = null, // sent as preferred_medium_ids (CSV)
 ) {
     val hasAnyField: Boolean
         get() = listOf(username, fullName, displayName, bio, dob, country, state, city)
             .any { it != null } || profileTypeId != null || marketingSmsConsent != null ||
-            preferredMediumIds != null
+            sms2faConsent != null || accountNotificationSms != null || preferredMediumIds != null
 }

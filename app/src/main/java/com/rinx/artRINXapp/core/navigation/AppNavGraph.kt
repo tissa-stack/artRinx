@@ -54,8 +54,11 @@ import com.rinx.artRINXapp.feature.settings.presentation.SettingsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedAccountsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedArtworksScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changeemail.ChangeEmailScreen
+import com.rinx.artRINXapp.feature.settings.presentation.addphone.AddPhoneScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changemediums.ChangeMediumsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changephone.ChangePhoneScreen
+import com.rinx.artRINXapp.feature.settings.presentation.role.ChangeRoleScreen
+import com.rinx.artRINXapp.feature.settings.presentation.subscription.SubscriptionScreen
 import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileScreen
 import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileViewModel
 import com.rinx.artRINXapp.feature.settings.presentation.permissions.PhonePermissionsScreen
@@ -552,7 +555,9 @@ fun AppNavGraph(
                 onEditProfile         = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                 onChangeEmail         = { navController.navigate(NavRoutes.CHANGE_EMAIL) },
                 onChangePhone         = { navController.navigate(NavRoutes.CHANGE_PHONE) },
-                onProfileTitleAndPlan = { navController.navigate(NavRoutes.PROFILE_TITLE_PLAN) },
+                onAddPhone            = { navController.navigate(NavRoutes.ADD_PHONE) },
+                onChangeRole          = { navController.navigate(NavRoutes.CHANGE_ROLE) },
+                onSubscription        = { navController.navigate(NavRoutes.SUBSCRIPTION) },
                 onInviteFriends       = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
                 onAppTutorial         = { tour.restart(); navController.navigateToTab(NavRoutes.HOME) },
                 onBlockedAccounts     = { navController.navigate(NavRoutes.BLOCKED_ACCOUNTS) },
@@ -605,6 +610,24 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onDone = { navController.popBackStack() },
             )
+        }
+
+        composable(NavRoutes.ADD_PHONE) {
+            AddPhoneScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
+            )
+        }
+
+        composable(NavRoutes.CHANGE_ROLE) {
+            ChangeRoleScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
+        }
+
+        composable(NavRoutes.SUBSCRIPTION) {
+            SubscriptionScreen(onBack = { navController.popBackStack() })
         }
 
         composable(NavRoutes.PROFILE_TITLE_PLAN) {
