@@ -2,7 +2,6 @@ package com.rinx.artRINXapp.feature.profile.presentation.artistarts
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,8 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,8 +24,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -37,7 +38,9 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.PagingFooter
 import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
+import com.rinx.artRINXapp.feature.home.presentation.components.state.ErrorView
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileArtMasonryGrid
 
@@ -55,6 +58,14 @@ fun ArtByArtistScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val d = LocalDimens.current
+    val listState = rememberLazyListState()
+
+    // Infinite scroll: load the next page once the list can't scroll any further.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.canScrollForward }.collect { canScroll ->
+            if (!canScroll) viewModel.loadMore()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -92,42 +103,62 @@ fun ArtByArtistScreen(
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator(color = BrandPrimary) }
 
-            else -> Column(
+            // First-load failure with nothing to show → full-screen "No internet / Retry".
+            state.error != null && state.arts.isEmpty() -> ErrorView(
+                error = state.error!!,
+                onRetry = viewModel::onRetry,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            else -> LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .navigationBarsPadding(),
             ) {
-                ArtistRow(
-                    state = state,
-                    onOpenProfile = { viewModel.profileId?.let(onOpenProfile) },
-                )
-
-                Spacer(Modifier.height(Spacing.md))
-                Text(
-                    text = "Art by ${state.artistName}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    // Align with the artist row + masonry grid (all share Spacing.md left padding).
-                    modifier = Modifier.padding(horizontal = Spacing.md),
-                )
-                Spacer(Modifier.height(Spacing.sm))
-
-                if (state.arts.isEmpty()) {
-                    EmptyView(
-                        icon = Icons.Outlined.Image,
-                        title = "No art yet",
-                        subtitle = "Nothing credited to this artist yet.",
-                        modifier = Modifier.fillMaxWidth().padding(top = Spacing.xl),
-                    )
-                } else {
-                    ProfileArtMasonryGrid(
-                        items = state.arts,
-                        onItemClick = { onNavigateToDetail(it.id) },
+                item(key = "artist-row") {
+                    ArtistRow(
+                        state = state,
+                        onOpenProfile = { viewModel.profileId?.let(onOpenProfile) },
                     )
                 }
-                Spacer(Modifier.height(Spacing.xxl))
+
+                item(key = "art-by-title") {
+                    Spacer(Modifier.height(Spacing.md))
+                    Text(
+                        text = "Art by ${state.artistName}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        // Align with the artist row + masonry grid (all share Spacing.md left padding).
+                        modifier = Modifier.padding(horizontal = Spacing.md),
+                    )
+                    Spacer(Modifier.height(Spacing.sm))
+                }
+
+                if (state.arts.isEmpty()) {
+                    item(key = "empty") {
+                        EmptyView(
+                            icon = Icons.Outlined.Image,
+                            title = "No art yet",
+                            subtitle = "Nothing credited to this artist yet.",
+                            modifier = Modifier.fillMaxWidth().padding(top = Spacing.xl),
+                        )
+                    }
+                } else {
+                    item(key = "grid") {
+                        ProfileArtMasonryGrid(
+                            items = state.arts,
+                            onItemClick = { onNavigateToDetail(it.id) },
+                        )
+                    }
+                }
+
+                item(key = "paging-footer") {
+                    PagingFooter(state.artsPaging, onRetry = viewModel::retryLoadMore)
+                }
+
+                item(key = "bottom-spacer") { Spacer(Modifier.height(Spacing.xxl)) }
             }
         }
     }

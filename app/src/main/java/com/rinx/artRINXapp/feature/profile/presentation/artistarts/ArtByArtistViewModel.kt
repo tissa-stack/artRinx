@@ -5,6 +5,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.paging.ListPage
+import com.rinx.artRINXapp.core.paging.toLoadMoreMessage
+import com.rinx.artRINXapp.feature.home.presentation.HomeError
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.PublicProfile
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -24,9 +27,11 @@ data class ArtByArtistUiState(
     val hasProfile: Boolean = false,
     val profile: PublicProfile? = null,
     val arts: List<ProfileArtItem> = emptyList(),
+    val artsPaging: ListPage = ListPage(),
     val isFollowing: Boolean = false,
     val isLoading: Boolean = true,
-    val error: Boolean = false,
+    /** Full-screen first-load error (no cached data to show). null once arts are on screen. */
+    val error: HomeError? = null,
 )
 
 @HiltViewModel
@@ -52,7 +57,7 @@ class ArtByArtistViewModel @Inject constructor(
 
     private fun load() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = false) }
+            _state.update { it.copy(isLoading = true, error = null) }
             val artsJob = async { profileRepository.getArtworksByName(artistName, PAGE, SIZE) }
             val profJob = artistId?.let { id -> async { profileRepository.getPublicProfile(id) } }
             val artsRes = artsJob.await()
@@ -62,15 +67,62 @@ class ArtByArtistViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     arts = arts,
+                    artsPaging = ListPage(page = PAGE, hasMore = arts.size >= SIZE),
                     profile = prof,
                     isFollowing = prof?.isFollowing ?: false,
-                    error = artsRes is ApiResult.Error && arts.isEmpty(),
+                    // Full-screen error only on a first-load failure with nothing to show.
+                    error = (artsRes as? ApiResult.Error)?.takeIf { arts.isEmpty() }?.toHomeError(),
                 )
             }
         }
     }
 
+    /** Infinite scroll: load the next page, append (dedup by id), stop when a short page comes back. */
+    fun loadMore() {
+        val s = _state.value
+        // blocked = isLoadingMore || !hasMore || loadMoreError != null
+        if (s.isLoading || s.artsPaging.blocked) return
+        _state.update { it.copy(artsPaging = it.artsPaging.copy(isLoadingMore = true)) }
+        viewModelScope.launch {
+            // Advance the page + clear the error ONLY on success. On a transient failure we keep the
+            // page index so the next attempt retries the same page instead of skipping it, and surface
+            // a footer message + Retry (auto-loading pauses via `blocked` until the user retries).
+            val next = _state.value.artsPaging.page + 1
+            when (val res = profileRepository.getArtworksByName(artistName, next, SIZE)) {
+                is ApiResult.Success -> _state.update { st ->
+                    val existing = st.arts.associateBy { it.id }
+                    st.copy(
+                        arts = st.arts + res.data.filter { it.id !in existing },
+                        artsPaging = st.artsPaging.copy(
+                            page = next,
+                            hasMore = res.data.size >= SIZE,
+                            isLoadingMore = false,
+                            loadMoreError = null,
+                        ),
+                    )
+                }
+                is ApiResult.Error -> _state.update { st ->
+                    st.copy(
+                        artsPaging = st.artsPaging.copy(
+                            isLoadingMore = false,
+                            loadMoreError = res.toLoadMoreMessage(),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Footer Retry: clear the failed-page error and try the same page again. */
+    fun retryLoadMore() {
+        _state.update { it.copy(artsPaging = it.artsPaging.copy(loadMoreError = null)) }
+        loadMore()
+    }
+
     fun onRetry() = load()
+
+    private fun ApiResult.Error.toHomeError(): HomeError =
+        if (this is ApiResult.Error.Network) HomeError.NoInternet else HomeError.Generic()
 
     private companion object {
         const val PAGE = 1
