@@ -14,6 +14,7 @@ import com.rinx.artRINXapp.feature.profile.data.remote.dto.FollowUserDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportArtworkRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportCurationRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportMessageRequest
+import com.rinx.artRINXapp.feature.profile.data.remote.dto.UpdateMediumsRequestDto
 import com.rinx.artRINXapp.feature.profile.domain.model.BlockedArtwork
 import com.rinx.artRINXapp.feature.profile.domain.model.BlockedUser
 import com.rinx.artRINXapp.feature.profile.domain.model.CurrentUser
@@ -767,14 +768,35 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun getUserMediums(): ApiResult<List<Medium>> {
         return try {
-            val response = apiService.getMyProfile()
+            // Authoritative dedicated endpoint — not the (stale/inconsistent) profile GET mediums field.
+            val response = apiService.getUserMediums()
             if (response.isSuccessful) {
-                val mediums = response.body()?.data?.mediums.orEmpty().map {
+                val mediums = response.body()?.data?.map {
                     Medium(it.id, it.title, it.picture)
-                }
+                } ?: emptyList()
                 ApiResult.Success(mediums)
             } else {
                 profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
+    override suspend fun updateUserMediums(mediumIds: List<Int>): ApiResult<Unit> {
+        return try {
+            val response = apiService.updateUserMediums(UpdateMediumsRequestDto(mediumIds))
+            if (response.isSuccessful) {
+                // The user's mediums changed → let the Profile tab re-fetch (same as updateProfile).
+                profileRefreshBus.signal()
+                ApiResult.Success(Unit)
+            } else {
+                when (response.code()) {
+                    422 -> ApiResult.Error.Validation(parseValidationError(response.errorBody()?.string()))
+                    else -> profileError(response.code())
+                }
             }
         } catch (e: IOException) {
             ApiResult.Error.Network(e)

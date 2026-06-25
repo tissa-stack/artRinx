@@ -73,8 +73,10 @@ interface ProfileRepository {
     suspend fun checkUsername(username: String): ApiResult<Boolean>
     /** The full catalog of selectable mediums (GET /api/mediums/). */
     suspend fun getMediums(): ApiResult<List<Medium>>
-    /** The current user's currently-selected mediums (read from GET /api/profile). */
+    /** The current user's currently-selected mediums (GET /api/profile/mediums). */
     suspend fun getUserMediums(): ApiResult<List<Medium>>
+    /** Replace the user's selected mediums (PUT /api/profile/mediums). */
+    suspend fun updateUserMediums(mediumIds: List<Int>): ApiResult<Unit>
     suspend fun getMyArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>>
     suspend fun getMyCurations(page: Int, size: Int): ApiResult<List<ProfileCurationItem>>
     suspend fun getLikedArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>>

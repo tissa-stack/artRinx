@@ -19,6 +19,7 @@ import com.rinx.artRINXapp.feature.profile.data.remote.dto.FeedbackRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportArtworkRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportCurationRequest
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.ReportMessageRequest
+import com.rinx.artRINXapp.feature.profile.data.remote.dto.UpdateMediumsRequestDto
 import com.rinx.artRINXapp.feature.profile.data.remote.dto.UsernameCheckResponseDto
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -170,6 +171,16 @@ interface ProfileApiService {
 
     @GET("api/mediums/")
     suspend fun getMediums(): Response<MediumsResponseDto>
+
+    /** The current user's selected mediums (authoritative; api docs §profile/mediums). */
+    @GET("api/profile/mediums")
+    suspend fun getUserMediums(): Response<MediumsResponseDto>
+
+    /** Replace the current user's mediums. Returns the updated profile envelope. */
+    @PUT("api/profile/mediums")
+    suspend fun updateUserMediums(
+        @Body body: UpdateMediumsRequestDto,
+    ): Response<EnvelopeDto<MyProfileDto>>
 
     @Multipart
     @POST("api/profile")

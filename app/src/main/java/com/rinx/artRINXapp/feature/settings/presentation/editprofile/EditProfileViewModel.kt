@@ -63,6 +63,10 @@ data class EditProfileUiState(
     val mediumsLoading: Boolean = false,
     val mediumsError: String? = null,
     val showMediumsTooltip: Boolean = false,
+    // Standalone medium save (Change Medium screen's own Save button → PUT /api/profile/mediums).
+    val mediumsSaving: Boolean = false,
+    val mediumsSaveStatus: SaveStatus? = null,
+    val mediumsSaveError: String? = null,
 ) {
     val canSave: Boolean
         // Country, State & City are all optional (the bundled catalog only covers major countries,
@@ -173,6 +177,28 @@ class EditProfileViewModel @Inject constructor(
     }
 
     fun onMediumsTooltipToggle() = _state.update { it.copy(showMediumsTooltip = !it.showMediumsTooltip) }
+
+    /** Persist the medium selection on its own (Change Medium screen Save) via PUT /api/profile/mediums. */
+    fun saveMediums() {
+        val s = _state.value
+        if (s.mediumsSaving || s.selectedMediumIds.isEmpty()) return
+        _state.update { it.copy(mediumsSaving = true, mediumsSaveError = null) }
+        viewModelScope.launch {
+            when (val res = repository.updateUserMediums(s.selectedMediumIds.toList())) {
+                is ApiResult.Success -> {
+                    // Persisted standalone → move the baseline so a later profile Save won't redundantly resend.
+                    originalMediumIds = s.selectedMediumIds
+                    _state.update { it.copy(mediumsSaving = false, mediumsSaveStatus = SaveStatus.SAVED) }
+                }
+                is ApiResult.Error -> _state.update {
+                    it.copy(mediumsSaving = false, mediumsSaveStatus = SaveStatus.FAILED, mediumsSaveError = res.toSaveMessage())
+                }
+            }
+        }
+    }
+
+    /** Clears the one-time medium-save result after the screen has consumed it. */
+    fun onMediumsSaveHandled() = _state.update { it.copy(mediumsSaveStatus = null, mediumsSaveError = null) }
 
     fun onSave() {
         val o = original ?: return
