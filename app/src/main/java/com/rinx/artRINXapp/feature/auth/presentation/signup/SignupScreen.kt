@@ -1,6 +1,5 @@
 package com.rinx.artRINXapp.feature.auth.presentation.signup
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.animateColorAsState
@@ -99,12 +98,6 @@ fun SignupScreen(
     LaunchedEffect(uiState.navigateToProfileCompletion) {
         if (uiState.navigateToProfileCompletion) onNavigateToProfileCompletion()
     }
-
-    // Explicit, screen-level back handling. navigation-compose 2.8.9's NavHost back callback doesn't
-    // commit the pop under activity-compose 1.13.0's newer back dispatcher (esp. on OEM ROMs), so the
-    // system back could get stuck here. This BackHandler — from activity-compose 1.13.0 itself —
-    // registers after the NavHost's callback (higher priority) and reliably runs the same pop.
-    BackHandler { onBack() }
 
     ArtRinxTheme {
         SignupContent(

@@ -79,7 +79,12 @@ fun InviteCodeScreen(
     }
 
     LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) onNavigateToSignup(uiState.inviteCode)
+        if (uiState.isSuccess) {
+            onNavigateToSignup(uiState.inviteCode)
+            // Consume the one-shot so returning here doesn't auto-bounce back to signup, and so a
+            // later Continue can re-trigger navigation (isSuccess must change false→true again).
+            viewModel.onSignupNavigated()
+        }
     }
 
     // Agent (Gallery) codes: Gallery signups complete on the web — no in-app OTP path.

@@ -38,6 +38,16 @@ class InviteCodeViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
+    /**
+     * Consume the one-shot navigation flag once the screen has navigated to signup. Without this the
+     * flag stays true, so (a) returning to this screen re-fires the navigate effect and bounces the
+     * user straight back to signup, and (b) tapping Continue again can't re-trigger navigation because
+     * isSuccess never changes value. Reset it so each successful verify is a fresh false→true edge.
+     */
+    fun onSignupNavigated() {
+        _uiState.update { it.copy(isSuccess = false) }
+    }
+
     fun dismissGalleryWebModal() {
         _uiState.update { it.copy(showGalleryWebModal = false) }
     }

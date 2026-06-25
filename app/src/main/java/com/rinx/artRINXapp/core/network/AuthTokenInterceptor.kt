@@ -39,9 +39,14 @@ class AuthTokenInterceptor @Inject constructor(
     }
 
     private fun isAuthPath(path: String): Boolean =
-        // Login/onboarding native-auth endpoints are unauthenticated, EXCEPT the contact
-        // add/change endpoints (§1.8), which are Bearer-authed and must carry the token.
-        (path.contains("/api/auth/native") && !path.contains("/api/auth/native/contact")) ||
+        // Login/onboarding native-auth endpoints are unauthenticated, EXCEPT the Bearer-authed ones
+        // that also live under /api/auth/native: the contact add/change endpoints (§1.8) and
+        // sign-out-all (revoke all sessions) — those must carry the token.
+        (
+            path.contains("/api/auth/native") &&
+                !path.contains("/api/auth/native/contact") &&
+                !path.contains("/api/auth/native/sign-out-all")
+            ) ||
             path.contains("/api/verify-invite") ||
             path.contains("/api/waitlist")
 

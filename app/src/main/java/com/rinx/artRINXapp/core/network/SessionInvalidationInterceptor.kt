@@ -52,9 +52,14 @@ class SessionInvalidationInterceptor @Inject constructor(
         return chain.proceed(retried)
     }
 
-    // Mirror AuthTokenInterceptor: never touch the unauthenticated auth/onboarding endpoints.
+    // Mirror AuthTokenInterceptor: never touch the unauthenticated auth/onboarding endpoints, but DO
+    // cover the Bearer-authed natives (contact add/change, sign-out-all) so a stale-token retry works.
     private fun isAuthPath(path: String): Boolean =
-        (path.contains("/api/auth/native") && !path.contains("/api/auth/native/contact")) ||
+        (
+            path.contains("/api/auth/native") &&
+                !path.contains("/api/auth/native/contact") &&
+                !path.contains("/api/auth/native/sign-out-all")
+            ) ||
             path.contains("/api/verify-invite") ||
             path.contains("/api/waitlist")
 
