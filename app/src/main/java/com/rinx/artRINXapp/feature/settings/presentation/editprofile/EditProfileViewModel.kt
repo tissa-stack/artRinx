@@ -163,7 +163,8 @@ class EditProfileViewModel @Inject constructor(
     }
 
     fun onMediumToggle(id: Int) {
-        userEdited = true
+        // Mediums save on their own (Change Medium screen's Save), so a toggle is NOT a profile-form
+        // edit. Their dirtiness is tracked separately via [isDirty] (selection vs. originalMediumIds).
         _state.update { s ->
             val updated = s.selectedMediumIds.toMutableSet().apply {
                 when {
@@ -272,7 +273,9 @@ class EditProfileViewModel @Inject constructor(
      * diff did (loaded representation vs. picker-normalized form). Reset to false after a load.
      */
     private var userEdited = false
-    val isDirty: Boolean get() = userEdited
+    // Dirty when a profile field changed, OR mediums differ from their saved baseline (unsaved medium
+    // edits still warn; a standalone medium Save moves the baseline, so saved mediums don't prompt).
+    val isDirty: Boolean get() = userEdited || _state.value.selectedMediumIds != originalMediumIds
 
     fun onUsernameChange(v: String) {
         userEdited = true
