@@ -70,6 +70,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
@@ -94,6 +98,9 @@ import com.rinx.artRINXapp.feature.notifications.domain.model.ChatMessage
 import com.rinx.artRINXapp.feature.notifications.domain.model.SendStatus
 
 private const val EDIT_WINDOW_MS = 15 * 60 * 1000L
+
+/** Safety-net resync cadence while a chat is on screen (the WebSocket is the instant path). */
+private const val CHAT_RESYNC_INTERVAL_MS = 10_000L
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -238,6 +245,20 @@ fun ChatScreen(
     }
 
     LaunchedEffect(Unit) { viewModel.loadConversation() }
+    // Guarantee the on-screen user sees new messages without a manual refresh: reconcile with the
+    // server on every resume and on a periodic tick while the chat is visible. The live WebSocket is
+    // the instant path; this is the safety net for anything it misses. The loop is cancelled when the
+    // screen leaves RESUMED, so there's no cost off-screen.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.resyncFromServer()
+            while (true) {
+                delay(CHAT_RESYNC_INTERVAL_MS)
+                viewModel.resyncFromServer()
+            }
+        }
+    }
     LaunchedEffect(Unit) {
         viewModel.toasts.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }

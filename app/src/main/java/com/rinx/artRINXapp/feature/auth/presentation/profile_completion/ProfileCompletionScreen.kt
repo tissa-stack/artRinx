@@ -2,6 +2,7 @@ package com.rinx.artRINXapp.feature.auth.presentation.profile_completion
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -25,19 +25,22 @@ import com.rinx.artRINXapp.core.theme.Spacing
 
 @Composable
 fun ProfileCompletionScreen() {
-    ArtRinxTheme(darkTheme = true) {
+    ArtRinxTheme {
         val dimens = LocalDimens.current
+        val isDark = isSystemInDarkTheme()
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF0A0A0A))
+                .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             Image(
-                painter = painterResource(R.drawable.artrinx_logo_dark_theme),
+                painter = painterResource(
+                    if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
+                ),
                 contentDescription = "artRinx logo",
                 modifier = Modifier
                     .height(dimens.logoHeight),
@@ -47,14 +50,14 @@ fun ProfileCompletionScreen() {
             Text(
                 text = "Complete your profile",
                 style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(Spacing.md))
             Text(
                 text = "Coming soon",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
         }

@@ -39,7 +39,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
-import com.rinx.artRINXapp.core.theme.DarkCardSurface
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.LinkSafetyInfoIcon
 import com.rinx.artRINXapp.core.ui.LinkSafetyInfoOverlay
@@ -185,7 +184,7 @@ fun ShopLinkDialog(
                     modifier         = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(50))
-                        .background(DarkCardSurface)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { onDismiss() }
                         .padding(vertical = Spacing.md),
                     contentAlignment = Alignment.Center,
@@ -193,7 +192,7 @@ fun ShopLinkDialog(
                     Text(
                         text       = "Go back",
                         style      = MaterialTheme.typography.labelLarge,
-                        color      = Color.White,
+                        color      = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }

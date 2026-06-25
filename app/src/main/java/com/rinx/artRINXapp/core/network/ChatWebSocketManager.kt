@@ -81,7 +81,10 @@ class ChatWebSocketManager @Inject constructor(
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             if (foreground) {
+                // Regaining the network is also a fresh chance: reset backoff AND the auth-fail cap so
+                // a socket that gave up earlier reconnects instead of staying down for the session.
                 attempt = 0
+                consecutive4401 = 0
                 connect()
             }
         }
@@ -104,6 +107,11 @@ class ChatWebSocketManager @Inject constructor(
     fun onAppForeground() {
         foreground = true
         manualClose = false
+        // Returning to the foreground is a fresh chance to connect: clear the auth-fail and backoff
+        // counters so a prior session's "gave up after 2× 4401" never permanently keeps the live
+        // socket down (which would silently fall the user back to push-only — no in-chat messages).
+        consecutive4401 = 0
+        attempt = 0
         connect()
     }
 

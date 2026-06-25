@@ -1,11 +1,13 @@
 package com.rinx.artRINXapp.feature.auth.presentation.signup
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,7 +44,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -99,7 +100,13 @@ fun SignupScreen(
         if (uiState.navigateToProfileCompletion) onNavigateToProfileCompletion()
     }
 
-    ArtRinxTheme(darkTheme = true) {
+    // Explicit, screen-level back handling. navigation-compose 2.8.9's NavHost back callback doesn't
+    // commit the pop under activity-compose 1.13.0's newer back dispatcher (esp. on OEM ROMs), so the
+    // system back could get stuck here. This BackHandler — from activity-compose 1.13.0 itself —
+    // registers after the NavHost's callback (higher priority) and reliably runs the same pop.
+    BackHandler { onBack() }
+
+    ArtRinxTheme {
         SignupContent(
             uiState = uiState,
             onBack = onBack,
@@ -129,11 +136,12 @@ private fun SignupContent(
     onGoogleSignIn: () -> Unit,
 ) {
     val dimens = LocalDimens.current
+    val isDark = isSystemInDarkTheme()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0A))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding(),
@@ -150,11 +158,13 @@ private fun SignupContent(
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Back",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Image(
-                painter = painterResource(R.drawable.artrinx_logo_dark_theme),
+                painter = painterResource(
+                    if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
+                ),
                 contentDescription = "artRinx logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
@@ -175,13 +185,13 @@ private fun SignupContent(
             Text(
                 text = "Let's get started",
                 style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
                 text = "Let's create your account and start exploring the art world together.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(Spacing.xxxl))
@@ -256,15 +266,15 @@ private fun SignupContent(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = continueColor,
                     disabledContainerColor = InactiveButton,
-                    contentColor = Color.White,
-                    disabledContentColor = Color.White.copy(alpha = 0.7f),
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = Spacing.xs * 0),
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(Spacing.xl),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = Spacing.xs / 2,
                     )
                 } else {
@@ -287,7 +297,7 @@ private fun SignupContent(
                 Text(
                     text = "or",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.55f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),
@@ -305,7 +315,7 @@ private fun SignupContent(
                     .fillMaxWidth()
                     .height(dimens.authButtonHeight),
                 shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                 border = BorderStroke(
                     Spacing.xs / 4,
                     MaterialTheme.colorScheme.outline,
@@ -314,7 +324,7 @@ private fun SignupContent(
                 if (uiState.isGoogleLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(Spacing.xl),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         strokeWidth = Spacing.xs / 2,
                     )
                 } else {
@@ -347,12 +357,12 @@ private fun SignupContent(
             Text(
                 text = "Already have an account? ",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = "Sign in",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .clickable(onClick = onNavigateToLogin)
                     .padding(horizontal = Spacing.xs),

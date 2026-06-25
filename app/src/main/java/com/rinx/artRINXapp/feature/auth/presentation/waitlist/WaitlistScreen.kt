@@ -283,15 +283,15 @@ private fun WaitlistFormContent(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = joinColor,
                     disabledContainerColor = InactiveButton,
-                    contentColor = Color.White,
-                    disabledContentColor = Color.White.copy(alpha = 0.7f),
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(Spacing.xl),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp,
                     )
                 } else {

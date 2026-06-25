@@ -9,22 +9,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-
-private val CardFront = Color(0xFF6B6B6B)
-private val CardMiddle = Color(0xFF4D4D4D)
-private val CardBack = Color(0xFF3A3A3A)
 
 /**
  * The "create a collection" empty placeholder — three grey cards stacked BEHIND each other (front
@@ -38,6 +34,12 @@ fun EmptyCurationStack(modifier: Modifier = Modifier) {
     val cardHeight = d.uploadImageHeight * 0.80f
     val cardWidth = d.uploadImageHeight * 0.68f
     val cornerRadius = d.cardCornerRadius
+    // Theme-aware stacked-card shades: onSurface overlays read as neutral grey on a light background
+    // and a subtle lighter grey on a dark one. Front is the most prominent (highest alpha).
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val cardFront = onSurface.copy(alpha = 0.22f)
+    val cardMiddle = onSurface.copy(alpha = 0.15f)
+    val cardBack = onSurface.copy(alpha = 0.10f)
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         // Back card — rightmost, darkest
@@ -49,7 +51,7 @@ fun EmptyCurationStack(modifier: Modifier = Modifier) {
                 .zIndex(0f)
                 .shadow(4.dp, RoundedCornerShape(cornerRadius))
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(CardBack),
+                .background(cardBack),
         )
         // Middle card
         Box(
@@ -60,7 +62,7 @@ fun EmptyCurationStack(modifier: Modifier = Modifier) {
                 .zIndex(1f)
                 .shadow(4.dp, RoundedCornerShape(cornerRadius))
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(CardMiddle),
+                .background(cardMiddle),
         )
         // Front card — has add photo icon
         Box(
@@ -70,13 +72,13 @@ fun EmptyCurationStack(modifier: Modifier = Modifier) {
                 .zIndex(2f)
                 .shadow(6.dp, RoundedCornerShape(cornerRadius))
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(CardFront),
+                .background(cardFront),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_add_photo),
                 contentDescription = "Add art",
-                tint = Color.White.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(Spacing.giant),
             )
         }

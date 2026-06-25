@@ -340,8 +340,12 @@ class ChatViewModel @Inject constructor(
         toMark.forEach { markedRead.add(it.id); markReadFireAndForget(it.id) }
     }
 
-    /** Refetch the thread and merge-by-id without disturbing in-flight optimistic messages. */
-    private fun backfill() {
+    /**
+     * Refetch the thread and merge-by-id without disturbing in-flight optimistic messages.
+     * [preservePaging] = true for the on-resume / periodic resync: reconcile only the message list,
+     * never move the scroll-back cursor (so reading older history isn't disrupted).
+     */
+    private fun backfill(preservePaging: Boolean = false) {
         if (partnerUserId == 0 || currentUserId == 0) return
         viewModelScope.launch {
             val res = messagesRepository.getThread(partnerUserId, currentUserId)
@@ -353,7 +357,7 @@ class ChatViewModel @Inject constructor(
             theyBlocked = server.theyBlocked
             blockReason = server.blockReason
             canMessage = server.canMessage
-            if (server.nextCursor != null) nextCursor = server.nextCursor
+            if (!preservePaging && server.nextCursor != null) nextCursor = server.nextCursor
             confirmed = mergeById(confirmed, server.messages)
             outgoingStore.removeConfirmed(partnerUserId, server.messages.mapNotNull { it.clientMessageId }.toSet())
             val merged = displayMessages()
@@ -363,12 +367,23 @@ class ChatViewModel @Inject constructor(
                     gate = deriveGate(merged),
                     gateConfirmed = true,
                     remainingInvites = server.remainingInvites ?: st.remainingInvites,
-                    canLoadEarlier = nextCursor != null,
+                    canLoadEarlier = if (preservePaging) st.canLoadEarlier else nextCursor != null,
                 )
             }
             cacheSnapshot(_state.value) // keep the SWR cache fresh after a reconnect backfill
             // Visible messages get marked read by onMessagesVisible after the list recomposes.
         }
+    }
+
+    /**
+     * Silent reconciliation driven by the chat screen's lifecycle (on-resume + a periodic tick while
+     * visible). The live WebSocket is the instant path; this guarantees a message the socket missed
+     * still appears with no manual refresh. Merge-by-id dedupes, so it never double-shows, and it
+     * leaves pagination untouched. No-ops until the first load and while a full (re)load is in flight.
+     */
+    fun resyncFromServer() {
+        if (!hasLoadedOnce || _state.value.isLoading) return
+        backfill(preservePaging = true)
     }
 
     /**
@@ -594,8 +609,11 @@ class ChatViewModel @Inject constructor(
 
     /** Inbound: show the "typing…" bubble for the other participant, with a 6s safety auto-clear. */
     private fun handlePartnerTyping(event: ChatEvent.Typing) {
-        val room = chatroomId
-        if (room == null || event.chatroomId != room || event.userId != partnerUserId) return
+        // This screen is a 1:1 thread keyed by partnerUserId, so the sender id alone tells us the
+        // event is for this chat. Don't also require a chatroomId match: it's null for a not-yet-
+        // resolved chat and the server's typing room-id format can differ from the resolved id —
+        // either of which would wrongly drop a valid "typing…" signal.
+        if (event.userId != partnerUserId) return
         typingClearJob?.cancel()
         if (event.isTyping) {
             _state.update { it.copy(partnerIsTyping = true) }
