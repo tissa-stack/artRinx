@@ -1,19 +1,27 @@
 package com.rinx.artRINXapp.feature.notifications.presentation
 
 import android.widget.Toast
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,11 +31,19 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -110,9 +126,26 @@ fun NotificationsScreen(
                 .padding(bottom = innerPadding.calculateBottomPadding())
                 .statusBarsPadding(),
         ) {
-            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
-                // ── Tab bar: Notifications | Messages ─────────────────────
-                Row(
+            Column(Modifier.fillMaxSize()) {
+                val tabCount = NotifTab.entries.size
+                val pagerState = rememberPagerState(initialPage = state.activeTab.ordinal) { tabCount }
+                val scope = rememberCoroutineScope()
+                val density = LocalDensity.current
+
+                // Swipe/settle → ViewModel; tap → animate the pager. (Two-way sync, like Home tabs.)
+                LaunchedEffect(pagerState) {
+                    snapshotFlow { pagerState.settledPage }.collect { page ->
+                        NotifTab.entries.getOrNull(page)?.let { if (it != state.activeTab) viewModel.onTabSelected(it) }
+                    }
+                }
+                LaunchedEffect(state.activeTab) {
+                    if (pagerState.currentPage != state.activeTab.ordinal) {
+                        pagerState.animateScrollToPage(state.activeTab.ordinal)
+                    }
+                }
+
+                // ── Draggable pill tab header (sliding BrandPrimary pill follows the pager) ──
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm)
@@ -121,72 +154,104 @@ fun NotificationsScreen(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(Spacing.xs),
                 ) {
-                    NotifTab.entries.forEach { tab ->
-                        val isActive = tab == state.activeTab
-                        val bgColor by animateColorAsState(
-                            targetValue  = if (isActive) BrandPrimary else Color.Transparent,
-                            animationSpec = tween(220),
-                            label        = "notif-tab-bg",
-                        )
-                        val textColor by animateColorAsState(
-                            targetValue  = if (isActive) Color.White
-                                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            animationSpec = tween(220),
-                            label        = "notif-tab-text",
-                        )
-                        Box(
-                            modifier         = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(50))
-                                .background(bgColor)
-                                .clickable { viewModel.onTabSelected(tab) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text  = tab.label,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = textColor,
+                    val cellWidth = maxWidth / tabCount
+                    val cellWidthPx = with(density) { cellWidth.toPx() }
+                    Box(
+                        modifier = Modifier
+                            .width(cellWidth)
+                            .fillMaxHeight()
+                            .offset {
+                                val pos = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
+                                    .coerceIn(0f, (tabCount - 1).toFloat())
+                                IntOffset((pos * cellWidthPx).roundToInt(), 0)
+                            }
+                            .clip(RoundedCornerShape(50))
+                            .background(BrandPrimary),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                            .draggable(
+                                orientation = Orientation.Horizontal,
+                                state = rememberDraggableState { delta ->
+                                    val pageSize = pagerState.layoutInfo.pageSize.takeIf { it > 0 }
+                                        ?: return@rememberDraggableState
+                                    if (cellWidthPx <= 0f) return@rememberDraggableState
+                                    scope.launch { pagerState.scrollBy(delta * (pageSize / cellWidthPx)) }
+                                },
+                                onDragStopped = {
+                                    scope.launch {
+                                        val target = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
+                                            .roundToInt().coerceIn(0, tabCount - 1)
+                                        pagerState.animateScrollToPage(target)
+                                    }
+                                },
+                            ),
+                    ) {
+                        NotifTab.entries.forEach { tab ->
+                            val pos = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
+                                .coerceIn(0f, (tabCount - 1).toFloat())
+                            val dist = abs(pos - tab.ordinal).coerceIn(0f, 1f)
+                            val textColor = lerp(
+                                Color.White,
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                dist,
                             )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clickable { viewModel.onTabSelected(tab) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(tab.label, style = MaterialTheme.typography.labelLarge, color = textColor)
+                            }
                         }
                     }
                 }
 
-                // ── Tab content ───────────────────────────────────────────
-                when (state.activeTab) {
-                    NotifTab.NOTIFICATIONS -> NotificationsContent(
-                        notifications = state.notifications,
-                        isLoading     = state.isLoadingNotifications,
-                        onDelete      = viewModel::onDeleteNotification,
-                        onMarkRead    = viewModel::onMarkNotificationRead,
-                        onOpenEvent    = viewModel::onOpenEvent,
-                        onOpenProfile  = onOpenUserProfile,
-                        onOpenArt      = onOpenArtDetail,
-                        onOpenCuration = onOpenCurationDetail,
-                        previews       = state.previews,
-                        onLoadPreview  = viewModel::loadPreview,
-                        error          = state.notificationsError,
-                        onRetry       = viewModel::retryNotifications,
-                        isRefreshing  = state.isRefreshingNotifications,
-                        onRefresh     = viewModel::refreshNotifications,
-                        modifier      = Modifier.weight(1f),
-                    )
-                    NotifTab.MESSAGES -> MessagesContent(
-                        conversations      = state.conversations,
-                        messageQuery       = state.messageQuery,
-                        invitationCount    = state.invitationCount,
-                        isLoading          = state.isLoadingConversations,
-                        isRefreshing       = state.isRefreshing,
-                        onRefresh          = { viewModel.refreshConversations(isUserRefresh = true) },
-                        onQueryChange      = viewModel::onMessageQueryChange,
-                        onConversationClick = { conv -> onNavigateToChat(conv) },
-                        onNewMessage       = onNavigateToNewMessage,
-                        onMarkRead         = viewModel::onMarkConversationRead,
-                        onDelete           = viewModel::onDeleteConversation,
-                        error              = state.conversationsError,
-                        onRetry            = { viewModel.refreshConversations(isUserRefresh = true) },
-                        modifier           = Modifier.weight(1f),
-                    )
+                // ── Swipeable pager: Notifications | Messages ──────────────
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    beyondViewportPageCount = 1,
+                ) { page ->
+                    when (page) {
+                        NotifTab.NOTIFICATIONS.ordinal -> NotificationsContent(
+                            notifications = state.notifications,
+                            isLoading     = state.isLoadingNotifications,
+                            onDelete      = viewModel::onDeleteNotification,
+                            onMarkRead    = viewModel::onMarkNotificationRead,
+                            onOpenEvent    = viewModel::onOpenEvent,
+                            onOpenProfile  = onOpenUserProfile,
+                            onOpenArt      = onOpenArtDetail,
+                            onOpenCuration = onOpenCurationDetail,
+                            previews       = state.previews,
+                            onLoadPreview  = viewModel::loadPreview,
+                            error          = state.notificationsError,
+                            onRetry       = viewModel::retryNotifications,
+                            isRefreshing  = state.isRefreshingNotifications,
+                            onRefresh     = viewModel::refreshNotifications,
+                            modifier      = Modifier.fillMaxSize(),
+                        )
+                        else -> MessagesContent(
+                            conversations      = state.conversations,
+                            messageQuery       = state.messageQuery,
+                            invitationCount    = state.invitationCount,
+                            isLoading          = state.isLoadingConversations,
+                            isRefreshing       = state.isRefreshing,
+                            onRefresh          = { viewModel.refreshConversations(isUserRefresh = true) },
+                            onQueryChange      = viewModel::onMessageQueryChange,
+                            onConversationClick = { conv -> onNavigateToChat(conv) },
+                            onNewMessage       = onNavigateToNewMessage,
+                            onMarkRead         = viewModel::onMarkConversationRead,
+                            onDelete           = viewModel::onDeleteConversation,
+                            error              = state.conversationsError,
+                            onRetry            = { viewModel.refreshConversations(isUserRefresh = true) },
+                            modifier           = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
 

@@ -147,7 +147,8 @@ fun MessagesContent(
                            it.userName.contains(messageQuery, ignoreCase = true)
                        }
 
-        // Swipe-delete asks for confirmation before wiping the conversation.
+        // Long-press selects a row (anchored menu); delete asks for confirmation first.
+        var menuTargetId by remember { mutableStateOf<String?>(null) }
         var pendingDelete by remember { mutableStateOf<ConversationItem?>(null) }
         pendingDelete?.let { target ->
             ConfirmDialog(
@@ -212,11 +213,14 @@ fun MessagesContent(
                         }
                     } else {
                         items(filtered, key = { it.id }) { conv ->
-                            SwipeableMessageItem(
-                                item      = conv,
-                                onClick   = { onConversationClick(conv) },
-                                onMarkRead = { onMarkRead(conv) },
-                                onDelete   = { pendingDelete = conv },
+                            MessageRow(
+                                item          = conv,
+                                menuOpen      = menuTargetId == conv.id,
+                                onLongPress   = { menuTargetId = conv.id },
+                                onDismissMenu = { menuTargetId = null },
+                                onClick       = { onConversationClick(conv) },
+                                onMarkRead    = { onMarkRead(conv); menuTargetId = null },
+                                onDelete      = { pendingDelete = conv; menuTargetId = null },
                             )
                             HorizontalDivider(
                                 color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),

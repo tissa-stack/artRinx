@@ -1,17 +1,13 @@
 package com.rinx.artRINXapp.feature.notifications.presentation.notifications
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,22 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.outlined.MailOutline
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -46,7 +34,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
@@ -56,37 +43,32 @@ import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
 import com.rinx.artRINXapp.feature.notifications.presentation.SharedContentPreview
+import com.rinx.artRINXapp.feature.notifications.presentation.components.RowActionsMenu
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
-
-private val REVEAL_WIDTH = 160.dp
-private const val SNAP_OPEN_THRESHOLD = -60f   // drag this far in dp to snap open
 
 /**
- * A non-event notification row: swipe-to-reveal mark-read/delete, a content-appropriate leading
- * preview (curation → fan of cards, artwork → thumbnail, follow/profile → actor avatar), and a
- * message whose named components (actor, content owner, title) are highlighted and individually
- * navigable. The curation/artwork owner + preview images are resolved lazily via [onLoadPreview].
+ * A non-event notification row: long-press opens a menu (Mark as read / Delete notification) anchored
+ * to the row, with the row highlighted while the menu is open. The leading preview is
+ * content-appropriate (curation → fan of cards, artwork → thumbnail, follow/profile → actor avatar),
+ * and the message's named components (actor, content owner, title) are highlighted and navigable.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SwipeableNotificationItem(
+fun NotificationRow(
     item: NotificationItem,
     preview: SharedContentPreview?,
-    onDelete: () -> Unit,
+    menuOpen: Boolean,
+    onLongPress: () -> Unit,
+    onDismissMenu: () -> Unit,
     onMarkRead: () -> Unit,
+    onDelete: () -> Unit,
     onLoadPreview: () -> Unit,
     onOpenProfile: (Long) -> Unit,
     onOpenArt: (Long) -> Unit,
     onOpenCuration: (Long) -> Unit,
     onClick: () -> Unit = {},
 ) {
-    val scope        = rememberCoroutineScope()
-    val density      = LocalDensity.current
-    val revealPx     = with(density) { REVEAL_WIDTH.toPx() }
-    val snapThreshPx = with(density) { SNAP_OPEN_THRESHOLD.dp.toPx() }
-    val offsetPx     = remember { Animatable(0f) }
-    val d            = LocalDimens.current
+    val d = LocalDimens.current
 
     val isCuration = item.kind == NotificationKind.CURATION_SHARE || item.kind == NotificationKind.CURATION_LIKE
     val isArtwork  = item.kind == NotificationKind.ARTWORK_SHARE || item.kind == NotificationKind.ARTWORK_LIKE
@@ -96,65 +78,23 @@ fun SwipeableNotificationItem(
         LaunchedEffect(item.targetId) { onLoadPreview() }
     }
 
-    Box(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        RowActionsMenu(
+            expanded = menuOpen,
+            deleteLabel = "Delete notification",
+            onMarkRead = onMarkRead,
+            onDelete = onDelete,
+            onDismiss = onDismissMenu,
+        )
 
-        // ── Action buttons revealed on swipe ──────────────────────────────
-        Row(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(REVEAL_WIDTH),
-        ) {
-            Box(
-                modifier         = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(BrandPrimary)
-                    .clickable {
-                        scope.launch { offsetPx.animateTo(0f) }
-                        onMarkRead()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.MailOutline, "Mark read", tint = Color.White, modifier = Modifier.size(Spacing.xxl))
-            }
-            Box(
-                modifier         = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(Color(0xFFE53935))
-                    .clickable {
-                        scope.launch { offsetPx.animateTo(0f) }
-                        onDelete()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Delete, "Delete", tint = Color.White, modifier = Modifier.size(Spacing.xxl))
-            }
-        }
-
-        // ── Notification row (slides left) ────────────────────────────────
+        // ── Notification row (long-press → menu; highlighted while open) ───
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .offset { IntOffset(offsetPx.value.roundToInt(), 0) }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state       = rememberDraggableState { delta ->
-                        scope.launch {
-                            val new = (offsetPx.value + delta).coerceIn(-revealPx, 0f)
-                            offsetPx.snapTo(new)
-                        }
-                    },
-                    onDragStopped = {
-                        scope.launch {
-                            if (offsetPx.value < snapThreshPx) offsetPx.animateTo(-revealPx)
-                            else offsetPx.animateTo(0f)
-                        }
-                    },
+                .background(
+                    if (menuOpen) BrandPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
                 )
-                .clickable { onClick() }
-                .background(MaterialTheme.colorScheme.surface)
+                .combinedClickable(onClick = onClick, onLongClick = onLongPress)
                 .padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalAlignment = Alignment.Top,
         ) {

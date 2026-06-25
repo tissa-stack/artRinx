@@ -1,127 +1,64 @@
 package com.rinx.artRINXapp.feature.notifications.presentation.messages
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.outlined.MailOutline
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationState
+import com.rinx.artRINXapp.feature.notifications.presentation.components.RowActionsMenu
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
-private val MSG_REVEAL_WIDTH = 160.dp
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SwipeableMessageItem(
+fun MessageRow(
     item: ConversationItem,
+    menuOpen: Boolean,
+    onLongPress: () -> Unit,
+    onDismissMenu: () -> Unit,
     onClick: () -> Unit,
     onMarkRead: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val scope    = rememberCoroutineScope()
-    val density  = LocalDensity.current
-    val revealPx = with(density) { MSG_REVEAL_WIDTH.toPx() }
-    val threshPx = revealPx * 0.4f
-    val offsetPx = remember(item.id) { Animatable(0f) }
-    val d        = LocalDimens.current
+    val d = LocalDimens.current
 
-    Box(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        RowActionsMenu(
+            expanded = menuOpen,
+            deleteLabel = "Delete chat",
+            onMarkRead = onMarkRead,
+            onDelete = onDelete,
+            onDismiss = onDismissMenu,
+        )
 
-        // ── Action buttons ────────────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(MSG_REVEAL_WIDTH),
-        ) {
-            Box(
-                modifier         = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(BrandPrimary)
-                    .clickable {
-                        scope.launch { offsetPx.animateTo(0f) }
-                        onMarkRead()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.MailOutline, "Mark read",
-                    tint = Color.White, modifier = Modifier.size(Spacing.xxl))
-            }
-            Box(
-                modifier         = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(Color(0xFFE53935))
-                    .clickable {
-                        scope.launch { offsetPx.animateTo(0f) }
-                        onDelete()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Delete, "Delete",
-                    tint = Color.White, modifier = Modifier.size(Spacing.xxl))
-            }
-        }
-
-        // ── Conversation row (slides left on swipe) ───────────────────────
+        // ── Conversation row (long-press → menu; highlighted while open) ───
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .offset { IntOffset(offsetPx.value.roundToInt(), 0) }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state       = rememberDraggableState { delta ->
-                        scope.launch {
-                            offsetPx.snapTo((offsetPx.value + delta).coerceIn(-revealPx, 0f))
-                        }
-                    },
-                    onDragStopped = {
-                        scope.launch {
-                            if (offsetPx.value < -threshPx) offsetPx.animateTo(-revealPx)
-                            else offsetPx.animateTo(0f)
-                        }
-                    },
+                .background(
+                    if (menuOpen) BrandPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
                 )
-                .background(MaterialTheme.colorScheme.surface)
-                .clickable { onClick() }
+                .combinedClickable(onClick = onClick, onLongClick = onLongPress)
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -181,8 +118,16 @@ fun SwipeableMessageItem(
     }
 }
 
-// Simple non-swipeable wrapper kept for backwards compat
+// Simple row with no long-press actions (e.g. new-message search results).
 @Composable
 fun MessageItem(item: ConversationItem, onClick: () -> Unit) {
-    SwipeableMessageItem(item = item, onClick = onClick, onMarkRead = {}, onDelete = {})
+    MessageRow(
+        item = item,
+        menuOpen = false,
+        onLongPress = {},
+        onDismissMenu = {},
+        onClick = onClick,
+        onMarkRead = {},
+        onDelete = {},
+    )
 }

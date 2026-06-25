@@ -17,6 +17,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.rinx.artRINXapp.core.theme.BrandPrimary
@@ -24,6 +28,7 @@ import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
 import com.rinx.artRINXapp.feature.notifications.presentation.SharedContentPreview
+import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.ConfirmDialog
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +50,20 @@ fun NotificationsContent(
     isRefreshing: Boolean = false,
     onRefresh: () -> Unit = {},
 ) {
+    // Long-press selects a row (its menu opens, anchored to it); delete asks to confirm first.
+    var menuTargetId by remember { mutableStateOf<String?>(null) }
+    var pendingDelete by remember { mutableStateOf<NotificationItem?>(null) }
+
     Box(modifier = modifier.fillMaxSize()) {
+        pendingDelete?.let { target ->
+            ConfirmDialog(
+                title = "Delete notification?",
+                message = "This notification will be removed from your list.",
+                confirmLabel = "Delete",
+                onConfirm = { onDelete(target.id); pendingDelete = null },
+                onDismiss = { pendingDelete = null },
+            )
+        }
         when {
             isLoading && notifications.isEmpty() -> CircularProgressIndicator(
                 color    = BrandPrimary,
@@ -85,11 +103,14 @@ fun NotificationsContent(
                             onOpenProfile = onOpenProfile,
                         )
                     } else {
-                        SwipeableNotificationItem(
+                        NotificationRow(
                             item          = item,
                             preview       = item.targetId?.let { previews[it] },
-                            onDelete      = { onDelete(item.id) },
-                            onMarkRead    = { onMarkRead(item.id) },
+                            menuOpen      = menuTargetId == item.id,
+                            onLongPress   = { menuTargetId = item.id },
+                            onDismissMenu = { menuTargetId = null },
+                            onMarkRead    = { onMarkRead(item.id); menuTargetId = null },
+                            onDelete      = { pendingDelete = item; menuTargetId = null },
                             onLoadPreview = { onLoadPreview(item) },
                             onOpenProfile = onOpenProfile,
                             onOpenArt     = onOpenArt,
