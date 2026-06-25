@@ -20,10 +20,11 @@ import javax.inject.Inject
 
 @Immutable
 data class ShareUiState(
-    val followers: List<FollowUser> = emptyList(),
+    /** The people the current user follows — the share-to candidates. */
+    val following: List<FollowUser> = emptyList(),
     val isLoading: Boolean = true,
     val isSending: Boolean = false,
-    /** Inline error shown if loading followers fails. */
+    /** Inline error shown if loading the following list fails. */
     val loadFailed: Boolean = false,
 )
 
@@ -51,9 +52,9 @@ class ShareViewModel @Inject constructor(
     private fun load() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, loadFailed = false) }
-            when (val result = profileRepository.getFollowers(PAGE, SIZE)) {
+            when (val result = profileRepository.getFollowing(PAGE, SIZE)) {
                 is ApiResult.Success ->
-                    _uiState.update { it.copy(isLoading = false, followers = result.data) }
+                    _uiState.update { it.copy(isLoading = false, following = result.data) }
                 is ApiResult.Error ->
                     _uiState.update { it.copy(isLoading = false, loadFailed = true) }
             }

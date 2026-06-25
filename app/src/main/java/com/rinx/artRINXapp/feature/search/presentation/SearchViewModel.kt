@@ -171,10 +171,10 @@ class SearchViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, isError = false) }
             val mediumIds = state.filter.mediumIds.toList()
             val f = state.filter
-            val tags = f.tags.toList()
             when (state.selectedTab) {
                 ResultTab.ART -> {
-                    when (val res = searchRepository.searchArtworks(query, mediumIds, tags, f.shopArtOnly, state.sortOption, f.country, f.state, f.city)) {
+                    // Tag filtering was removed (no iOS parity) — always send no tags.
+                    when (val res = searchRepository.searchArtworks(query, mediumIds, emptyList(), f.shopArtOnly, state.sortOption, f.country, f.state, f.city)) {
                         is ApiResult.Success -> _uiState.update { it.copy(isLoading = false, isError = false, artResults = res.data) }
                         is ApiResult.Error -> _uiState.update { it.copy(isLoading = false, isError = true) }
                     }
@@ -271,21 +271,6 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    /** Add a free-text tag to the filter (normalized lowercase; no-op if blank/duplicate). */
-    fun onAddTag(tag: String) {
-        val normalized = tag.trim().lowercase()
-        if (normalized.isEmpty()) return
-        _uiState.update { state ->
-            state.copy(filter = state.filter.copy(tags = state.filter.tags + normalized))
-        }
-    }
-
-    fun onRemoveTag(tag: String) {
-        _uiState.update { state ->
-            state.copy(filter = state.filter.copy(tags = state.filter.tags - tag))
-        }
-    }
-
     /** Country picked — clears state/city (they depend on the country) and loads its state options. */
     fun onCountrySelected(country: String?) {
         val c = country?.ifBlank { null }
@@ -359,6 +344,41 @@ class SearchViewModel @Inject constructor(
             )
         }
     }
+
+    // ── Dismiss a single active filter from the chips shown above the results ─────────
+
+    private fun applyFilterChange(transform: (SearchFilter) -> SearchFilter) {
+        _uiState.update { it.copy(filter = transform(it.filter)) }
+        if (_uiState.value.query.isNotBlank()) runSearch()
+    }
+
+    fun onRemoveShopArtFilter() = applyFilterChange { it.copy(shopArtOnly = false) }
+
+    fun onRemoveMediumFilter(id: Int) = applyFilterChange { it.copy(mediumIds = it.mediumIds - id) }
+
+    /** Removing the country also clears the dependent state/city (and their option lists). */
+    fun onRemoveCountryFilter() {
+        locationJob?.cancel()
+        _uiState.update {
+            it.copy(
+                filter = it.filter.copy(country = null, state = null, city = null),
+                stateOptions = emptyList(),
+                cityOptions = emptyList(),
+            )
+        }
+        if (_uiState.value.query.isNotBlank()) runSearch()
+    }
+
+    /** Removing the state also clears the dependent city. */
+    fun onRemoveStateFilter() {
+        locationJob?.cancel()
+        _uiState.update {
+            it.copy(filter = it.filter.copy(state = null, city = null), cityOptions = emptyList())
+        }
+        if (_uiState.value.query.isNotBlank()) runSearch()
+    }
+
+    fun onRemoveCityFilter() = applyFilterChange { it.copy(city = null) }
 
     private companion object {
         const val DEBOUNCE_MS = 350L

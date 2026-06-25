@@ -30,8 +30,15 @@ class CreateViewModel @Inject constructor(
         val uploadLimitText: String = "",
     )
 
-    private val _state = MutableStateFlow(State())
+    // Seed synchronously from the cached quota so re-entering Create shows the real count immediately
+    // (no flicker/reset); falls back to the Basic-plan default until the very first fetch lands.
+    private val _state = MutableStateFlow(seedState())
     val state: StateFlow<State> = _state.asStateFlow()
+
+    private fun seedState(): State {
+        val cached = profileRepository.cachedUploadQuota()
+        return State(quota = cached, uploadLimitText = cached?.label ?: "0 / 10 uploads")
+    }
 
     init { refresh() }
 
@@ -40,12 +47,12 @@ class CreateViewModel @Inject constructor(
             val result = profileRepository.getUploadQuota()
             if (result is ApiResult.Success) {
                 val q = result.data
-                _state.update {
-                    it.copy(quota = q, uploadLimitText = "${q.artworkCount} / ${q.maxUploads} uploads")
-                }
+                _state.update { it.copy(quota = q, uploadLimitText = q.label) }
             }
         }
     }
+
+    private val UploadQuota.label: String get() = "$artworkCount / $maxUploads uploads"
 
     /** Resolve the Upload-Art tap branch. Degrades to OPEN_PICKER when the quota hasn't loaded
      * (the backend re-checks on POST, so client gating is UX-only — never a hard security gate). */

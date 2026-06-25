@@ -89,7 +89,14 @@ class CurationRepositoryImpl @Inject constructor(
                 artworkIds = merged,
             ),
         )
-        if (putResp.isSuccessful) ApiResult.Success(Unit) else errorFor(putResp)
+        if (putResp.isSuccessful) {
+            // Tell observers (Add-to-Collection sheet, Profile grids) the curation changed so previews
+            // refresh — otherwise a just-emptied/just-filled collection keeps its stale thumbnail.
+            profileRefreshBus.signal()
+            ApiResult.Success(Unit)
+        } else {
+            errorFor(putResp)
+        }
     }
 
     override suspend fun getCurationForEdit(id: Int): ApiResult<EditableCuration> = safeCall {

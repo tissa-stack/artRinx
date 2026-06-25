@@ -36,6 +36,7 @@ import coil.compose.AsyncImage
 import com.rinx.artRINXapp.core.theme.DarkCardSurface
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.home.presentation.components.EmptyCurationPreview
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
 
 @Composable
@@ -105,24 +106,28 @@ fun ProfileCurationCard(
             val imageWidth = if (count <= 1) cardWidth else cardWidth * 0.68f
             val stackOffset = if (count <= 1) 0.dp else (cardWidth - imageWidth) / (count - 1)
 
-            // Render back-to-front
-            previews.indices.reversed().forEach { index ->
-                val isMain = index == 0
-                Box(
-                    modifier = Modifier
-                        .width(imageWidth)
-                        .height(d.profileCurationCardHeight)
-                        .offset(x = stackOffset * index.toFloat())
-                        .zIndex((previews.size - index).toFloat())
-                        .clip(RoundedCornerShape(d.cardCornerRadius))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                ) {
-                    AsyncImage(
-                        model = previews[index],
-                        contentDescription = if (isMain) item.title else null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+            if (previews.isEmpty()) {
+                EmptyCurationPreview(modifier = Modifier.fillMaxSize())
+            } else {
+                // Render back-to-front
+                previews.indices.reversed().forEach { index ->
+                    val isMain = index == 0
+                    Box(
+                        modifier = Modifier
+                            .width(imageWidth)
+                            .height(d.profileCurationCardHeight)
+                            .offset(x = stackOffset * index.toFloat())
+                            .zIndex((previews.size - index).toFloat())
+                            .clip(RoundedCornerShape(d.cardCornerRadius))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        AsyncImage(
+                            model = previews[index],
+                            contentDescription = if (isMain) item.title else null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }

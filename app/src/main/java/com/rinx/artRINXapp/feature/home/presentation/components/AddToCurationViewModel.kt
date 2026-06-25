@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.paging.ListPage
+import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.core.paging.toLoadMoreMessage
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -38,6 +39,7 @@ class AddToCurationViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val curationRepository: CurationRepository,
     private val seedStore: CurationSeedStore,
+    private val profileRefreshBus: ProfileRefreshBus,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddToCurationUiState())
@@ -53,11 +55,14 @@ class AddToCurationViewModel @Inject constructor(
 
     init {
         load()
+        // A curation mutation anywhere (e.g. adding art from this sheet, or a new collection) signals
+        // this bus — reload so the list + previews are fresh next time the sheet is opened.
+        viewModelScope.launch { profileRefreshBus.events.collect { load(showLoading = false) } }
     }
 
-    private fun load() {
+    private fun load(showLoading: Boolean = true) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            if (showLoading) _uiState.update { it.copy(isLoading = true) }
             val result = profileRepository.getMyCurations(PAGE, SIZE)
             _uiState.update {
                 if (result is ApiResult.Success) {

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.feature.profile.domain.model.EditableProfile
+import com.rinx.artRINXapp.feature.profile.domain.model.Medium
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
 import com.rinx.artRINXapp.feature.profile.domain.repository.CountryOption
 import com.rinx.artRINXapp.feature.profile.domain.repository.MasterLocationRepository
@@ -56,6 +57,12 @@ data class EditProfileUiState(
     val showDisplayNameTooltip: Boolean = false,
     /** Full name may be changed at most twice (handout §9); false once the cap is reached. */
     val canEditFullName: Boolean = true,
+    // Mediums — edited on the Change Medium screen (which shares this VM) but persisted only on Save.
+    val mediums: List<Medium> = emptyList(),
+    val selectedMediumIds: Set<Int> = emptySet(),
+    val mediumsLoading: Boolean = false,
+    val mediumsError: String? = null,
+    val showMediumsTooltip: Boolean = false,
 ) {
     val canSave: Boolean
         // Country, State & City are all optional (the bundled catalog only covers major countries,
@@ -77,6 +84,9 @@ class EditProfileViewModel @Inject constructor(
 
     /** Snapshot of the loaded profile, used to send only changed fields on save. */
     private var original: EditableProfile? = null
+
+    /** The user's medium ids at load time — compared on save so mediums are sent only when changed. */
+    private var originalMediumIds: Set<Int> = emptySet()
 
     // Loaded master catalogs (full names + ids); the UI shows names, these resolve the cascade ids.
     private var countries: List<CountryOption> = emptyList()
@@ -119,9 +129,50 @@ class EditProfileViewModel @Inject constructor(
                 }
             }
         }
+        loadMediums()
     }
 
     fun onRetryLoad() = load()
+
+    // ── Mediums ─────────────────────────────────────────────────────────────────
+    // State lives here (not in a separate VM) so the Change Medium screen — which shares this VM via
+    // the EDIT_PROFILE back-stack entry — edits a working copy that's only persisted on profile Save.
+
+    fun retryLoadMediums() = loadMediums()
+
+    private fun loadMediums() {
+        _state.update { it.copy(mediumsLoading = true, mediumsError = null) }
+        viewModelScope.launch {
+            // Master catalog drives the grid; the user's current mediums pre-select it (matched by id).
+            val all = repository.getMediums()
+            val current = repository.getUserMediums()
+            if (all is ApiResult.Success) {
+                val selected = (current as? ApiResult.Success)?.data?.map { it.id }?.toSet().orEmpty()
+                originalMediumIds = selected
+                _state.update {
+                    it.copy(mediums = all.data, selectedMediumIds = selected, mediumsLoading = false, mediumsError = null)
+                }
+            } else {
+                _state.update { it.copy(mediumsLoading = false, mediumsError = "Couldn't load mediums. Tap to retry.") }
+            }
+        }
+    }
+
+    fun onMediumToggle(id: Int) {
+        userEdited = true
+        _state.update { s ->
+            val updated = s.selectedMediumIds.toMutableSet().apply {
+                when {
+                    contains(id) -> remove(id)
+                    size < MAX_MEDIUMS -> add(id)
+                    else -> {} // at the cap → ignore (the grid also disables unselected items)
+                }
+            }
+            s.copy(selectedMediumIds = updated)
+        }
+    }
+
+    fun onMediumsTooltipToggle() = _state.update { it.copy(showMediumsTooltip = !it.showMediumsTooltip) }
 
     fun onSave() {
         val o = original ?: return
@@ -135,6 +186,8 @@ class EditProfileViewModel @Inject constructor(
             country = s.country.trim().takeIf { it != o.country },
             state = s.state.trim().takeIf { it != o.state },
             city = s.city.trim().takeIf { it != o.city },
+            // Send mediums only when the working selection differs from what was loaded.
+            preferredMediumIds = s.selectedMediumIds.toList().takeIf { s.selectedMediumIds != originalMediumIds },
         )
 
         // Nothing changed and no new picture — just close the screen.
@@ -371,6 +424,7 @@ class EditProfileViewModel @Inject constructor(
     private companion object {
         const val MAX_FULL_NAME_EDITS = 2
         const val CITY_DEBOUNCE_MS = 350L
+        const val MAX_MEDIUMS = 3
     }
 }
 

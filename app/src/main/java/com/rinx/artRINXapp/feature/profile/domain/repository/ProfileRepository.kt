@@ -71,7 +71,10 @@ interface ProfileRepository {
     /** Persist changed profile fields (and optionally a new picture). */
     suspend fun updateProfile(changes: ProfileUpdate, newPictureUri: Uri?): ApiResult<Unit>
     suspend fun checkUsername(username: String): ApiResult<Boolean>
+    /** The full catalog of selectable mediums (GET /api/mediums/). */
     suspend fun getMediums(): ApiResult<List<Medium>>
+    /** The current user's currently-selected mediums (read from GET /api/profile). */
+    suspend fun getUserMediums(): ApiResult<List<Medium>>
     suspend fun getMyArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>>
     suspend fun getMyCurations(page: Int, size: Int): ApiResult<List<ProfileCurationItem>>
     suspend fun getLikedArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>>
@@ -84,5 +87,7 @@ interface ProfileRepository {
     fun cachedMyArtworks(): List<ProfileArtItem>?
     fun cachedMyCurations(): List<ProfileCurationItem>?
     fun cachedLikedArtworks(): List<ProfileArtItem>?
+    /** Last-known upload quota, cached from [getUploadQuota]; seeds the Create screen without flicker. */
+    fun cachedUploadQuota(): UploadQuota?
     fun clearCache()
 }

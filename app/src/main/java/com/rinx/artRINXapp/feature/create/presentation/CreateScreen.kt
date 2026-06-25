@@ -54,6 +54,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 
 private val UploadArtColor     = Color(0xFF45B1E8)
 private val NewCollectionColor = Color(0xFF9C5CF8)
@@ -218,6 +219,16 @@ fun CreateScreen(
             Spacer(Modifier.height(Spacing.md))
 
             // ── Upload limit card ─────────────────────────────────────────
+            // Until the quota lands for the first time (no cached value), the count + Upgrade CTA
+            // would otherwise show placeholder/false data — shimmer them instead.
+            val loadingQuota = state.quota == null
+            val shimmer = rememberShimmerBrush(
+                colors = listOf(
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.30f),
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
+                ),
+            )
             Row(
                 modifier          = Modifier
                     .fillMaxWidth()
@@ -233,17 +244,36 @@ fun CreateScreen(
                         fontWeight = FontWeight.SemiBold,
                         color      = MaterialTheme.colorScheme.onBackground,
                     )
-                    Text(
-                        text  = state.uploadLimitText.ifBlank { "Uploads" },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    if (loadingQuota) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.5f)
+                                .height(Spacing.lg)
+                                .clip(RoundedCornerShape(Spacing.xs))
+                                .background(shimmer),
+                        )
+                    } else {
+                        Text(
+                            text  = state.uploadLimitText.ifBlank { "Uploads" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 // Upgrade (Artist Free → Artist Pro) only applies to artist users — Collector /
                 // Art Curious (and web-billed Gallery) don't get an in-app upgrade CTA.
                 val isArtist = state.quota?.role?.contains("artist", ignoreCase = true) == true
-                if (isArtist) {
-                    Box(
+                when {
+                    loadingQuota -> Box(
+                        // Placeholder for the Upgrade pill until the plan/role is known.
+                        modifier = Modifier
+                            .width(Spacing.giant + Spacing.xl)
+                            .height(Spacing.xxl)
+                            .clip(RoundedCornerShape(50))
+                            .background(shimmer),
+                    )
+                    isArtist -> Box(
                         modifier         = Modifier
                             .clip(RoundedCornerShape(50))
                             .border(1.dp, BrandPrimary, RoundedCornerShape(50))

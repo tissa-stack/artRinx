@@ -38,5 +38,6 @@ data class SearchUserDto(
     @SerializedName("profile_type_name") val profileTypeName: String? = null,
     @SerializedName("profile_picture_url") val profilePictureUrl: String? = null,
     @SerializedName("bio") val bio: String? = null,
+    @SerializedName("follower_count") val followerCount: Int? = null,
     @SerializedName("is_following") val isFollowing: Boolean? = null,
 )

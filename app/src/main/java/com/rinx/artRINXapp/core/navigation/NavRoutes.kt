@@ -22,6 +22,7 @@ object NavRoutes {
     // Settings flow
     const val SETTINGS               = "settings"
     const val EDIT_PROFILE           = "edit_profile"
+    const val CHANGE_MEDIUMS         = "change_mediums"
     const val CHANGE_EMAIL           = "change_email"
     const val CHANGE_PHONE           = "change_phone"
     const val PROFILE_TITLE_PLAN     = "profile_title_plan"

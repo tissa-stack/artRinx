@@ -226,6 +226,7 @@ class SearchRepositoryImpl @Inject constructor(
         displayName = displayName ?: username.orEmpty(),
         profileTypeName = profileTypeName.orEmpty(),
         profilePictureUrl = profilePictureUrl,
+        followerCount = followerCount ?: 0,
     )
 
     /** aspect_ratio is width/height: <1 = portrait (tall), >1 = landscape (short). */

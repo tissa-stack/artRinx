@@ -198,7 +198,7 @@ fun InviteFriendsScreen(
                             .clip(RoundedCornerShape(50))
                             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
                             .clickable(enabled = hasCode) {
-                                context.shareText("Join me on RINX! Use my invitation code: ${state.code}")
+                                context.shareText("Join me on artRinx! Use my invitation code: ${state.code}")
                             }
                             .padding(vertical = Spacing.md),
                         verticalAlignment = Alignment.CenterVertically,

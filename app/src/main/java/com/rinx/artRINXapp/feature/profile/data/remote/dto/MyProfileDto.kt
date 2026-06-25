@@ -27,6 +27,8 @@ data class MyProfileDto(
     @SerializedName(value = "max_uploads", alternate = ["maxUploads"]) val maxUploads: Int? = null,
     // New-chats-this-month counter (2026-06 semantic). Optional.
     @SerializedName(value = "remaining_chat_invites", alternate = ["remainingChatInvites"]) val remainingChatInvites: Int? = null,
+    // The user's currently-selected mediums (used to pre-select the Change Medium screen).
+    @SerializedName("mediums") val mediums: List<MediumDto>? = null,
     @SerializedName("artwork_count") val artworkCount: Int? = null,
     @SerializedName("curation_count") val curationCount: Int? = null,
     @SerializedName("follower_count") val followerCount: Int? = null,

@@ -51,11 +51,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
-import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
-import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.share.domain.model.ShareKind
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
@@ -63,8 +61,8 @@ import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.CollectionCard
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationCardStack
+import com.rinx.artRINXapp.feature.home.presentation.components.EmptyCurationStack
 import com.rinx.artRINXapp.feature.home.presentation.components.LikeButton
-import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.SectionHeader
 import com.rinx.artRINXapp.feature.home.presentation.components.SendMessageBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
@@ -87,8 +85,6 @@ fun CurationDetailScreen(
     viewModel: CurationDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showReportSheet by remember { mutableStateOf(false) }
-    var showBlockConfirm by remember { mutableStateOf(false) }
     var showAddToCuration by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -106,11 +102,10 @@ fun CurationDetailScreen(
         }
     }
 
-    // Close the sheet and pop back once the curation's author is blocked (toast survives the pop).
+    // Pop back once the curation's author is blocked (toast survives the pop).
     LaunchedEffect(Unit) {
         viewModel.blocked.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            showReportSheet = false
             onBack()
         }
     }
@@ -120,37 +115,6 @@ fun CurationDetailScreen(
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.onActionErrorShown()
         }
-    }
-
-    if (showReportSheet) {
-        ReportBottomSheet(
-            artTitle = uiState.curation?.title ?: "",
-            profileName = uiState.curation?.curatorName ?: "",
-            subjectLabel = "collection",
-            isReporting = uiState.isReporting,
-            reportSent = uiState.reportSent,
-            isBlocking = uiState.isBlocking,
-            onSubmitReport = viewModel::submitReport,
-            onBlockArt = null, // no curation-block API; only the curator can be blocked
-            onBlockUser = { showBlockConfirm = true },
-            onDismiss = {
-                showReportSheet = false
-                viewModel.onReportSheetClosed()
-            },
-        )
-    }
-
-    // Always confirm before blocking the curator (whether direct or after a report).
-    if (showBlockConfirm) {
-        ConfirmActionDialog(
-            title = "Are you sure want\nto block \"${uiState.curation?.curatorName.orEmpty()}\"?",
-            confirmLabel = "Block",
-            confirmColor = DangerRed,
-            iconRes = R.drawable.ic_block,
-            isLoading = uiState.isBlocking,
-            onConfirm = { viewModel.blockUser() },
-            onDismiss = { showBlockConfirm = false },
-        )
     }
 
     if (showDeleteDialog) {
@@ -232,15 +196,9 @@ fun CurationDetailScreen(
                             tint               = MaterialTheme.colorScheme.onBackground,
                         )
                     }
-                } else {
-                    IconButton(onClick = { showReportSheet = true }) {
-                        Icon(
-                            painter            = painterResource(R.drawable.ic_report),
-                            contentDescription = "Report",
-                            tint               = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
                 }
+                // Non-owners have no actions here: report-collection is intentionally omitted
+                // (parity with iOS, which has no report option for collections).
             }
 
             // ── Scrollable content — card stack + metadata ─────────────────
@@ -297,19 +255,12 @@ private fun CurationDetailContent(
         // renders nothing when empty), so the screen never looks broken/blank.
         item(key = "card-stack") {
             if (curation.artworkUrls.isEmpty()) {
-                Box(
+                EmptyCurationStack(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(d.artDetailImageHeight)
                         .padding(horizontal = Spacing.md),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text  = "No artworks in this collection yet.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                )
             } else {
                 CurationCardStack(
                     artworks           = curation.artworkUrls,

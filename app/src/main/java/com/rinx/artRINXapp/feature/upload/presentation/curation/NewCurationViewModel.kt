@@ -198,8 +198,8 @@ class NewCurationViewModel @Inject constructor(
     fun onCreate(): Boolean {
         val s = _state.value
         if (!s.isValid) return false
+        // A curation may be created with no artworks (added later) — empty list is allowed.
         val artworkIds = s.selectedArts.mapNotNull { it.artworkId }
-        if (artworkIds.isEmpty()) return false
         val isPrivate = s.privacy == PrivacyOption.PRIVATE
         // Private creations stay on this screen and show the overlay instead of navigating.
         if (isPrivate) {
@@ -231,8 +231,8 @@ class NewCurationViewModel @Inject constructor(
         val s = _state.value
         if (!s.isValid) return
         val id = s.editCurationId ?: return
+        // Empty list is allowed — the user may remove every artwork from a collection.
         val artworkIds = s.selectedArts.mapNotNull { it.artworkId }
-        if (artworkIds.isEmpty()) return
         _state.update { it.copy(creationStatus = CreationStatus.LOADING, creationError = null) }
         viewModelScope.launch {
             val result = curationRepository.updateCuration(

@@ -54,8 +54,10 @@ import com.rinx.artRINXapp.feature.settings.presentation.SettingsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedAccountsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.blocked.BlockedArtworksScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changeemail.ChangeEmailScreen
+import com.rinx.artRINXapp.feature.settings.presentation.changemediums.ChangeMediumsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.changephone.ChangePhoneScreen
 import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileScreen
+import com.rinx.artRINXapp.feature.settings.presentation.editprofile.EditProfileViewModel
 import com.rinx.artRINXapp.feature.settings.presentation.permissions.PhonePermissionsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.invite.InviteFriendsScreen
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.ProfileTitleAndPlanEditScreen
@@ -572,6 +574,18 @@ fun AppNavGraph(
             EditProfileScreen(
                 onBack  = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() },
+                onChangeMedium = { navController.navigate(NavRoutes.CHANGE_MEDIUMS) },
+            )
+        }
+
+        composable(NavRoutes.CHANGE_MEDIUMS) { entry ->
+            // Share the EDIT_PROFILE screen's ViewModel so medium edits are held there and persisted
+            // only when the overall profile is saved (same parent-scoped pattern as NEW_ART flows).
+            val parentEntry = remember(entry) { navController.getBackStackEntry(NavRoutes.EDIT_PROFILE) }
+            val editViewModel: EditProfileViewModel = hiltViewModel(parentEntry)
+            ChangeMediumsScreen(
+                onBack = { navController.popBackStack() },
+                viewModel = editViewModel,
             )
         }
 

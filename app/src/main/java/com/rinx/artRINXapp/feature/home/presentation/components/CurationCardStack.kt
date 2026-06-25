@@ -73,9 +73,18 @@ fun CurationCardStack(
     /** When set (edit mode), the focused card shows a delete badge; tapping it invokes this with the page. */
     onDeleteArt: ((Int) -> Unit)? = null,
 ) {
-    if (artworks.isEmpty()) return
-
     val d = LocalDimens.current
+
+    // No artworks → the create-collection "stacked behind" placeholder (matches the editor/detail).
+    if (artworks.isEmpty()) {
+        EmptyCurationStack(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(d.artDetailImageHeight * 1.08f),
+        )
+        return
+    }
+
     val pagerState = rememberPagerState(pageCount = { artworks.size })
 
     // Report the SETTLED focused card (only once the swipe settles — no mid-gesture churn).

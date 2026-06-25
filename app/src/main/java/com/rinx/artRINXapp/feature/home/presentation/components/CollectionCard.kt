@@ -70,24 +70,28 @@ fun CollectionCard(
                 .height(d.collectionCardHeight),
             contentAlignment = Alignment.TopStart,
         ) {
-            // Render back-to-front so higher zIndex is on top visually
-            previews.indices.reversed().forEach { index ->
-                val isMain = index == 0
-                Box(
-                    modifier = Modifier
-                        .width(imageWidth)
-                        .height(d.collectionCardHeight)
-                        .offset(x = stackOffset * index.toFloat())
-                        .zIndex((previews.size - index).toFloat())
-                        .clip(RoundedCornerShape(d.cardCornerRadius))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                ) {
-                    AsyncImage(
-                        model = previews[index],
-                        contentDescription = if (isMain) item.title else null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+            if (previews.isEmpty()) {
+                EmptyCurationPreview(modifier = Modifier.fillMaxSize())
+            } else {
+                // Render back-to-front so higher zIndex is on top visually
+                previews.indices.reversed().forEach { index ->
+                    val isMain = index == 0
+                    Box(
+                        modifier = Modifier
+                            .width(imageWidth)
+                            .height(d.collectionCardHeight)
+                            .offset(x = stackOffset * index.toFloat())
+                            .zIndex((previews.size - index).toFloat())
+                            .clip(RoundedCornerShape(d.cardCornerRadius))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        AsyncImage(
+                            model = previews[index],
+                            contentDescription = if (isMain) item.title else null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
         }

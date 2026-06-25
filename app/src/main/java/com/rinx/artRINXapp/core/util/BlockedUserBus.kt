@@ -23,7 +23,16 @@ class BlockedUserBus @Inject constructor() {
     private val _events = MutableSharedFlow<Int>(extraBufferCapacity = 16)
     val events: SharedFlow<Int> = _events.asSharedFlow()
 
+    // "I just UNblocked this user" — the inverse signal so screens showing the blocked state (e.g. a
+    // profile in the back stack, when unblock happens from the chat) flip back and re-fetch content.
+    private val _unblocked = MutableSharedFlow<Int>(extraBufferCapacity = 16)
+    val unblocked: SharedFlow<Int> = _unblocked.asSharedFlow()
+
     fun signal(userId: Int) {
         _events.tryEmit(userId)
+    }
+
+    fun signalUnblocked(userId: Int) {
+        _unblocked.tryEmit(userId)
     }
 }

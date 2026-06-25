@@ -1,7 +1,6 @@
 package com.rinx.artRINXapp.feature.profile.presentation.artistarts
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
@@ -27,20 +25,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
@@ -48,12 +39,11 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
-import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileArtMasonryGrid
 
 /**
  * "Art by <artist>" — reached by tapping the credited artist on an artwork. Shows the artist's
- * profile + follow (when they have a RINX id) or a placeholder + "No artRINX profile" (when they
+ * profile + follow (when they have a RINX id) or a placeholder + "No artRinx profile" (when they
  * don't), then a waterfall grid of art credited to that name.
  */
 @Composable
@@ -65,22 +55,6 @@ fun ArtByArtistScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val d = LocalDimens.current
-    val context = LocalContext.current
-    var showUnfollowConfirm by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        viewModel.message.collect { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show() }
-    }
-
-    if (showUnfollowConfirm) {
-        ConfirmActionDialog(
-            title = "Unfollow ${state.profile?.displayName ?: state.artistName}?",
-            confirmLabel = "Unfollow",
-            iconRes = R.drawable.ic_navigation_profile,
-            onConfirm = { showUnfollowConfirm = false; viewModel.unfollow() },
-            onDismiss = { showUnfollowConfirm = false },
-        )
-    }
 
     Column(
         modifier = Modifier
@@ -127,8 +101,6 @@ fun ArtByArtistScreen(
                 ArtistRow(
                     state = state,
                     onOpenProfile = { viewModel.profileId?.let(onOpenProfile) },
-                    onFollow = viewModel::follow,
-                    onUnfollowRequest = { showUnfollowConfirm = true },
                 )
 
                 Spacer(Modifier.height(Spacing.md))
@@ -137,7 +109,8 @@ fun ArtByArtistScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(horizontal = d.screenPaddingHorizontal),
+                    // Align with the artist row + masonry grid (all share Spacing.md left padding).
+                    modifier = Modifier.padding(horizontal = Spacing.md),
                 )
                 Spacer(Modifier.height(Spacing.sm))
 
@@ -164,15 +137,14 @@ fun ArtByArtistScreen(
 private fun ArtistRow(
     state: ArtByArtistUiState,
     onOpenProfile: () -> Unit,
-    onFollow: () -> Unit,
-    onUnfollowRequest: () -> Unit,
 ) {
     val d = LocalDimens.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (state.hasProfile) Modifier.clickable { onOpenProfile() } else Modifier)
-            .padding(horizontal = d.screenPaddingHorizontal, vertical = Spacing.sm),
+            // Align the avatar with the "Art by" title + masonry grid (all share Spacing.md).
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RinxAvatar(
@@ -191,58 +163,41 @@ private fun ArtistRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // Username (when the artist has an artRinx profile).
+            val handle = state.profile?.handle?.removePrefix("@").orEmpty()
+            if (state.hasProfile && handle.isNotBlank()) {
+                Text(
+                    text = "@$handle",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            // No follow button (parity with iOS). The status line carries it: "Following" when
+            // followed, the artist's follower count when not, or "No artRinx profile" for guests.
             Text(
-                text = if (state.hasProfile) {
-                    if (state.isFollowing) "Following" else "Tap to view profile"
-                } else {
-                    "No artRINX profile"
+                text = when {
+                    !state.hasProfile -> "No artRinx profile"
+                    state.isFollowing -> "Following"
+                    else -> {
+                        val count = state.profile?.followerCount ?: 0
+                        "${formatCount(count)} ${if (count == 1) "follower" else "followers"}"
+                    }
                 },
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (state.hasProfile) {
-            FollowPill(
-                isFollowing = state.isFollowing,
-                onClick = { if (state.isFollowing) onUnfollowRequest() else onFollow() },
-            )
-        }
     }
 }
 
-@Composable
-private fun FollowPill(isFollowing: Boolean, onClick: () -> Unit) {
-    if (isFollowing) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .border(1.dp, BrandPrimary, RoundedCornerShape(50))
-                .clickable { onClick() }
-                .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
-        ) {
-            Text(
-                text = "Following",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = BrandPrimary,
-            )
-        }
-    } else {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(BrandPrimary)
-                .clickable { onClick() }
-                .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
-        ) {
-            Text(
-                text = "Follow",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = androidx.compose.ui.graphics.Color.White,
-            )
-        }
-    }
+/** Compact follower-count formatting (e.g. 1.2K, 3M) — mirrors the profile stat columns. */
+private fun formatCount(value: Int): String = when {
+    value >= 1_000_000 -> "${value / 1_000_000}M"
+    value >= 1_000 -> "${value / 1_000}K"
+    else -> value.toString()
 }

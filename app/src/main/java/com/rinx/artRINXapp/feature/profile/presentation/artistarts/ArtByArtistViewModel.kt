@@ -5,7 +5,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
-import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileArtItem
 import com.rinx.artRINXapp.feature.profile.domain.model.PublicProfile
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -14,7 +13,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -48,10 +46,6 @@ class ArtByArtistViewModel @Inject constructor(
     /** The profile id to open when the header is tapped (null when the artist has no RINX profile). */
     val profileId: Int? = artistId
 
-    // One-shot follow/unfollow result toast.
-    private val _message = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.BUFFERED)
-    val message = _message.receiveAsFlow()
-
     init {
         load()
     }
@@ -77,39 +71,6 @@ class ArtByArtistViewModel @Inject constructor(
     }
 
     fun onRetry() = load()
-
-    fun follow() {
-        val id = artistId ?: return
-        if (_state.value.isFollowing) return
-        _state.update { it.copy(isFollowing = true) }
-        viewModelScope.launch {
-            val r = profileRepository.followUser(id)
-            if (r is ApiResult.Error) {
-                _state.update { it.copy(isFollowing = false) }
-                _message.send(r.userMessage("Couldn't follow — try again"))
-            } else {
-                _message.send("Following ${displayName()}")
-            }
-        }
-    }
-
-    /** Caller confirms the unfollow first (see the screen's confirm dialog). */
-    fun unfollow() {
-        val id = artistId ?: return
-        if (!_state.value.isFollowing) return
-        _state.update { it.copy(isFollowing = false) }
-        viewModelScope.launch {
-            val r = profileRepository.unfollowUser(id)
-            if (r is ApiResult.Error) {
-                _state.update { it.copy(isFollowing = true) }
-                _message.send(r.userMessage("Couldn't unfollow — try again"))
-            } else {
-                _message.send("Unfollowed ${displayName()}")
-            }
-        }
-    }
-
-    private fun displayName(): String = _state.value.profile?.displayName ?: _state.value.artistName
 
     private companion object {
         const val PAGE = 1

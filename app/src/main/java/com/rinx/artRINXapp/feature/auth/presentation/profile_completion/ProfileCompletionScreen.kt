@@ -38,7 +38,7 @@ fun ProfileCompletionScreen() {
         ) {
             Image(
                 painter = painterResource(R.drawable.artrinx_logo_dark_theme),
-                contentDescription = "RiNX logo",
+                contentDescription = "artRinx logo",
                 modifier = Modifier
                     .height(dimens.logoHeight),
                 contentScale = ContentScale.Fit,

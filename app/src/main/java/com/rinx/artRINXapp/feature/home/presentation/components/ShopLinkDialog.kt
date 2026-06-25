@@ -103,7 +103,7 @@ fun ShopLinkDialog(
 
                 // ── Warning body ─────────────────────────────────────────
                 Text(
-                    text      = "Following this link will take you to a third party website, RINX is not responsible for your safety.",
+                    text      = "Following this link will take you to a third party website, artRinx is not responsible for your safety.",
                     style     = MaterialTheme.typography.bodyMedium,
                     color     = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

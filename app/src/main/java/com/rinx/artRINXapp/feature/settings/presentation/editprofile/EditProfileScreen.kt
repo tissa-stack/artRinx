@@ -87,6 +87,7 @@ import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
 fun EditProfileScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit,
+    onChangeMedium: () -> Unit = {},
     viewModel: EditProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -215,6 +216,7 @@ fun EditProfileScreen(
                 state = state,
                 viewModel = viewModel,
                 onAvatarTapped = { showImageSourceSheet = true },
+                onChangeMedium = onChangeMedium,
             )
         }
     }
@@ -295,6 +297,7 @@ private fun ColumnScope.EditProfileContent(
     state: EditProfileUiState,
     viewModel: EditProfileViewModel,
     onAvatarTapped: () -> Unit,
+    onChangeMedium: () -> Unit,
 ) {
     val dimens = LocalDimens.current
     // ── Scroll body ──────────────────────────────────────────────────────────
@@ -503,6 +506,10 @@ private fun ColumnScope.EditProfileContent(
                 onQueryChange = viewModel::onCityQuery,
                 onOptionSelected = viewModel::onCitySelected,
             )
+            Spacer(Modifier.height(Spacing.md))
+
+            // Change medium → opens the medium-selection screen pre-filled with current choices.
+            NavFieldRow(label = "Change medium", onClick = onChangeMedium)
 
             Spacer(Modifier.height(Spacing.xxxl))
         }
@@ -598,6 +605,35 @@ private fun Tooltip(visible: Boolean, text: String, onClose: () -> Unit) {
         exit = shrinkVertically(tween(180)) + fadeOut(tween(180)),
     ) {
         InfoTooltip(text = text, onClose = onClose)
+    }
+}
+
+/** A field-styled row that navigates elsewhere on tap (label + chevron). */
+@Composable
+private fun NavFieldRow(label: String, onClick: () -> Unit) {
+    val dimens = LocalDimens.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(dimens.textFieldHeight)
+            .clip(RoundedCornerShape(dimens.authButtonHeight / 4))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            painter = painterResource(R.drawable.ic_arrow_right),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(Spacing.xl),
+        )
     }
 }
 

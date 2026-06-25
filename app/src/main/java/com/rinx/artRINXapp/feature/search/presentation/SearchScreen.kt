@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,11 +23,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -38,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,8 +52,10 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
+import com.rinx.artRINXapp.feature.profile.domain.model.Medium
 import com.rinx.artRINXapp.feature.search.presentation.components.CurationGridCard
 import com.rinx.artRINXapp.feature.search.domain.model.ResultTab
+import com.rinx.artRINXapp.feature.search.domain.model.SearchFilter
 import com.rinx.artRINXapp.feature.search.domain.model.SearchPhase
 import com.rinx.artRINXapp.feature.search.domain.model.SearchResultItem
 import com.rinx.artRINXapp.feature.search.domain.model.SortOption
@@ -137,6 +145,11 @@ fun SearchScreen(
                             onDismissSortMenu = viewModel::onDismissSortMenu,
                             onSortSelected = viewModel::onSortSelected,
                             onShowFilter = viewModel::onShowFilter,
+                            onRemoveShopArt = viewModel::onRemoveShopArtFilter,
+                            onRemoveMedium = viewModel::onRemoveMediumFilter,
+                            onRemoveCountry = viewModel::onRemoveCountryFilter,
+                            onRemoveState = viewModel::onRemoveStateFilter,
+                            onRemoveCity = viewModel::onRemoveCityFilter,
                             onRetry = viewModel::onRetry,
                             onNavigateToDetail = onNavigateToDetail,
                             onNavigateToCurationDetail = onNavigateToCurationDetail,
@@ -156,8 +169,6 @@ fun SearchScreen(
                 onToggleStyle = viewModel::onToggleStyleExpanded,
                 onToggleShopArt = viewModel::onToggleShopArt,
                 onToggleMedium = viewModel::onToggleMedium,
-                onAddTag = viewModel::onAddTag,
-                onRemoveTag = viewModel::onRemoveTag,
                 onReset = viewModel::onResetFilter,
                 onViewResults = viewModel::onApplyFilter,
                 onDismiss = viewModel::onDismissFilter,
@@ -214,6 +225,11 @@ private fun SearchResultsContent(
     onDismissSortMenu: () -> Unit,
     onSortSelected: (SortOption) -> Unit,
     onShowFilter: () -> Unit,
+    onRemoveShopArt: () -> Unit,
+    onRemoveMedium: (Int) -> Unit,
+    onRemoveCountry: () -> Unit,
+    onRemoveState: () -> Unit,
+    onRemoveCity: () -> Unit,
     onRetry: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCurationDetail: (String) -> Unit,
@@ -282,6 +298,17 @@ private fun SearchResultsContent(
             }
         }
 
+        // ── Active filter chips (each dismissible) ────────────────────
+        ActiveFilterChips(
+            filter = uiState.filter,
+            mediums = uiState.mediums,
+            onRemoveShopArt = onRemoveShopArt,
+            onRemoveMedium = onRemoveMedium,
+            onRemoveCountry = onRemoveCountry,
+            onRemoveState = onRemoveState,
+            onRemoveCity = onRemoveCity,
+        )
+
         // ── Results body ──────────────────────────────────────────────
         when {
             uiState.isLoading -> SearchResultsShimmer(modifier = Modifier.weight(1f))
@@ -336,6 +363,72 @@ private fun SearchResultsContent(
                 }
             }
         }
+    }
+}
+
+// ── Active filter chips ─────────────────────────────────────────────────────────
+
+/**
+ * A horizontally-scrollable row of the currently-applied filters, each dismissible via its close
+ * icon. Tapping a chip clears just that filter and re-runs the search. Renders nothing when no
+ * filter is active.
+ */
+@Composable
+private fun ActiveFilterChips(
+    filter: SearchFilter,
+    mediums: List<Medium>,
+    onRemoveShopArt: () -> Unit,
+    onRemoveMedium: (Int) -> Unit,
+    onRemoveCountry: () -> Unit,
+    onRemoveState: () -> Unit,
+    onRemoveCity: () -> Unit,
+) {
+    val chips: List<Pair<String, () -> Unit>> = buildList {
+        if (filter.shopArtOnly) add("Shop Art" to onRemoveShopArt)
+        filter.mediumIds.forEach { id ->
+            val title = mediums.firstOrNull { it.id == id }?.title ?: "Medium"
+            add(title to { onRemoveMedium(id) })
+        }
+        filter.country?.takeIf { it.isNotBlank() }?.let { add(it to onRemoveCountry) }
+        filter.state?.takeIf { it.isNotBlank() }?.let { add(it to onRemoveState) }
+        filter.city?.takeIf { it.isNotBlank() }?.let { add(it to onRemoveCity) }
+    }
+    if (chips.isEmpty()) return
+
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        items(items = chips) { (label, onRemove) ->
+            ActiveFilterChip(label = label, onRemove = onRemove)
+        }
+    }
+}
+
+@Composable
+private fun ActiveFilterChip(label: String, onRemove: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable { onRemove() }
+            .padding(start = Spacing.md, end = Spacing.sm, top = Spacing.xs, bottom = Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+        )
+        Spacer(Modifier.width(Spacing.xs))
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = "Remove $label filter",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(Spacing.md),
+        )
     }
 }
 

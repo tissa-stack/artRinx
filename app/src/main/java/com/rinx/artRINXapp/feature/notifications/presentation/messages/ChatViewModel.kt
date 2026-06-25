@@ -540,7 +540,13 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             when (messagesRepository.deleteMessage(message.id)) {
                 is ApiResult.Success -> {
-                    confirmed = confirmed.map { if (it.id == message.id) it.copy(isDeleted = true) else it }
+                    confirmed = if (message.isSent) {
+                        // Own message → soft-delete (shows the "deleted" placeholder; WS notifies the peer).
+                        confirmed.map { if (it.id == message.id) it.copy(isDeleted = true) else it }
+                    } else {
+                        // Received message → remove it from my thread only (parity with iOS).
+                        confirmed.filterNot { it.id == message.id }
+                    }
                     publishMessages()
                 }
                 else -> _toasts.trySend("Couldn't delete message.")

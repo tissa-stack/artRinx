@@ -62,6 +62,7 @@ fun UserResultRow(
             val subtitle = listOf(
                 user.username.takeIf { it.isNotBlank() }?.let { "@$it" },
                 user.profileTypeName.takeIf { it.isNotBlank() },
+                "${formatCount(user.followerCount)} ${if (user.followerCount == 1) "follower" else "followers"}",
             ).filterNotNull().joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(
@@ -74,4 +75,11 @@ fun UserResultRow(
             }
         }
     }
+}
+
+/** Compact follower-count formatting (e.g. 1.2K, 3M) — mirrors the profile stat columns. */
+private fun formatCount(value: Int): String = when {
+    value >= 1_000_000 -> "${value / 1_000_000}M"
+    value >= 1_000 -> "${value / 1_000}K"
+    else -> value.toString()
 }

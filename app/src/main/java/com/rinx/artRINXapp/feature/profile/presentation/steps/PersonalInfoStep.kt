@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -55,9 +53,8 @@ fun PersonalInfoStep(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
+        // No internal scroll — the parent ProfileCreationScreen owns one scroll for the whole flow.
+        modifier = modifier.fillMaxWidth(),
     ) {
         Spacer(Modifier.height(Spacing.xxl))
 
@@ -165,7 +162,7 @@ fun PersonalInfoStep(
             exit = shrinkVertically(tween(180)) + fadeOut(tween(180)),
         ) {
             InfoTooltip(
-                text = "To provide recommendations based on others your age and connect you with local artists.",
+                text = "To provide recommendations and connect you with local artists.",
                 onClose = onTooltipToggle,
             )
         }

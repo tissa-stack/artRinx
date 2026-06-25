@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -85,10 +83,10 @@ fun MediumSelectionStep(
         }
     }
 
+    // No internal scroll — the host (onboarding flow / Change Medium screen) owns the scroll so the
+    // info text + Get-Started button sit naturally at the bottom of one scroll.
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Spacer(Modifier.height(Spacing.xxl))
 
@@ -166,8 +164,8 @@ fun MediumSelectionStep(
 
         Spacer(Modifier.height(Spacing.xl))
 
-        // Tooltip is shown ABOVE the link (it sits near the bottom of the screen) so it's visible
-        // without scrolling — tail points down toward the (?) icon. Themed via InfoTooltip.
+        // ── Info link (at the bottom — the host scrolls, and the CTA sits just below this) ──────
+        // Tooltip is shown ABOVE the link (tail points down) so it stays on-screen near the bottom.
         AnimatedVisibility(
             visible = showTooltip,
             enter = expandVertically(tween(220)) + fadeIn(tween(220)),
@@ -179,14 +177,10 @@ fun MediumSelectionStep(
                 tailAtBottom = true,
             )
         }
-
-        // ── Info link ─────────────────────────────────────────────────────────
-        // Hidden for now (per request). Restore this Row + the InfoTooltip above to bring back
-        // the "Why is my medium missing?" link.
-        /*
         Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs, Alignment.CenterHorizontally),
         ) {
             Text(
                 text = "Why is my medium missing?",
@@ -200,15 +194,13 @@ fun MediumSelectionStep(
                 Icon(
                     imageVector = Icons.Filled.Info,
                     contentDescription = "Medium info",
-                    tint = if (showTooltip) BrandPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (showTooltip) BrandPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(Spacing.lg),
                 )
             }
         }
-        */
 
-        Spacer(Modifier.height(Spacing.xxxl))
+        Spacer(Modifier.height(Spacing.lg))
     }
 }
 

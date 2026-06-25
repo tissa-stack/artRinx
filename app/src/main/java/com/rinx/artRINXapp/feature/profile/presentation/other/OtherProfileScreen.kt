@@ -539,20 +539,21 @@ private fun OtherProfileHeader(
                     )
                 }
             }
-            if (profile.canMessage) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(Spacing.sm))
-                        .background(BrandPrimary)
-                        .clickable(onClick = onMessage)
-                        .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
-                ) {
-                    Text(
-                        text = "Message",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = androidx.compose.ui.graphics.Color.White,
-                    )
-                }
+            // Always offer Message — regardless of chat history OR block state. A brand-new chat is
+            // handled by the invite gate; a blocked chat opens in its blocked state where the user can
+            // unblock (if they blocked) — keeping block/unblock reachable from both profile and chat.
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(Spacing.sm))
+                    .background(BrandPrimary)
+                    .clickable(onClick = onMessage)
+                    .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+            ) {
+                Text(
+                    text = "Message",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = androidx.compose.ui.graphics.Color.White,
+                )
             }
         }
 

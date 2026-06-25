@@ -65,6 +65,9 @@ class ProfileRepositoryImpl @Inject constructor(
     @Volatile private var myArtworksCache: List<ProfileArtItem>? = null
     @Volatile private var myCurationsCache: List<ProfileCurationItem>? = null
     @Volatile private var likedArtworksCache: List<ProfileArtItem>? = null
+    // Last-known upload quota — seeds the Create screen instantly so the "x / y uploads" count doesn't
+    // flicker (reset → refetch) on every visit. Refreshed silently on each getUploadQuota call.
+    @Volatile private var uploadQuotaCache: UploadQuota? = null
     // Logged-in user's numeric id — cached from getMyProfile so "is this my profile?" is instant.
     @Volatile private var currentUserIdCache: Int? = null
     // Last-known public profiles by user id. Lets a blocked profile still render its full header
@@ -79,11 +82,13 @@ class ProfileRepositoryImpl @Inject constructor(
     override fun cachedMyCurations(): List<ProfileCurationItem>? = myCurationsCache
     override fun cachedLikedArtworks(): List<ProfileArtItem>? =
         likedArtworksCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+    override fun cachedUploadQuota(): UploadQuota? = uploadQuotaCache
     override fun clearCache() {
         profileDataCache = null
         myArtworksCache = null
         myCurationsCache = null
         likedArtworksCache = null
+        uploadQuotaCache = null
         currentUserIdCache = null
         publicProfileCache.clear()
     }
@@ -145,14 +150,14 @@ class ProfileRepositoryImpl @Inject constructor(
                     ?: session.getUserRole().orEmpty()
                 // max_uploads preferred; else derive from the 2026-06 tier matrix (10 / 99 / 99).
                 val maxUploads = dto.maxUploads ?: tierUploadCap(role, isPaid)
-                ApiResult.Success(
-                    UploadQuota(
-                        isPaid = isPaid,
-                        role = role,
-                        artworkCount = dto.artworkCount ?: 0,
-                        maxUploads = maxUploads,
-                    ),
+                val quota = UploadQuota(
+                    isPaid = isPaid,
+                    role = role,
+                    artworkCount = dto.artworkCount ?: 0,
+                    maxUploads = maxUploads,
                 )
+                uploadQuotaCache = quota // seed the Create screen instantly on re-entry (no flicker)
+                ApiResult.Success(quota)
             } else {
                 profileError(response.code())
             }
@@ -294,6 +299,10 @@ class ProfileRepositoryImpl @Inject constructor(
                 changes.city?.let { parts["city"] = it.toRequestBody(textPlain) }
                 changes.profileTypeId?.let { parts["profile_type_id"] = it.toString().toRequestBody(textPlain) }
                 changes.marketingSmsConsent?.let { parts["marketing_sms_consent"] = it.toString().toRequestBody(textPlain) }
+                // Mediums are sent as a comma-separated list (server expects CSV, not a JSON array).
+                changes.preferredMediumIds?.let {
+                    parts["preferred_medium_ids"] = it.joinToString(",").toRequestBody(textPlain)
+                }
 
                 val picturePart = newPictureUri?.let { uri ->
                     context.contentResolver.openInputStream(uri)?.use { stream ->
@@ -419,6 +428,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.unblockUser(userId)
             if (response.isSuccessful) {
                 blockedUsersStore.markUnblocked(userId)
+                blockedUserBus.signalUnblocked(userId) // let a profile in the back stack flip + re-fetch
                 ApiResult.Success(Unit)
             } else {
                 response.toApiError() // carry the server's reason (e.g. business-rule 400) to the UI
@@ -753,6 +763,24 @@ class ProfileRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getUserMediums(): ApiResult<List<Medium>> {
+        return try {
+            val response = apiService.getMyProfile()
+            if (response.isSuccessful) {
+                val mediums = response.body()?.data?.mediums.orEmpty().map {
+                    Medium(it.id, it.title, it.picture)
+                }
+                ApiResult.Success(mediums)
+            } else {
+                profileError(response.code())
+            }
+        } catch (e: IOException) {
+            ApiResult.Error.Network(e)
+        } catch (e: Exception) {
+            ApiResult.Error.Unknown(e)
+        }
+    }
+
     override suspend fun getMyArtworks(page: Int, size: Int): ApiResult<List<ProfileArtItem>> {
         return try {
             val response = apiService.getMyArtworks(page, size)
@@ -921,4 +949,4 @@ class ProfileRepositoryImpl @Inject constructor(
         body?.contains("under_minimum_age", ignoreCase = true) == true
 }
 
-private const val UNDER_MIN_AGE_MESSAGE = "You must be at least 13 years old to use ArtRINX."
+private const val UNDER_MIN_AGE_MESSAGE = "You must be at least 13 years old to use artRinx."

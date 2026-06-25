@@ -155,7 +155,7 @@ private fun SignupContent(
             }
             Image(
                 painter = painterResource(R.drawable.artrinx_logo_dark_theme),
-                contentDescription = "RiNX logo",
+                contentDescription = "artRinx logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
                     .align(Alignment.Center),

@@ -42,11 +42,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -396,6 +394,9 @@ fun ChatScreen(
                 val showHeader = prev == null ||
                     ChatDateTime.dayKey(prev.createdAtEpochMs) != ChatDateTime.dayKey(msg.createdAtEpochMs)
                 if (showHeader) DayHeader(ChatDateTime.dayHeader(msg.createdAtEpochMs), textColor)
+                // Edit is allowed only for your own messages within the 15-min window.
+                val canEditMsg = msg.isSent &&
+                    System.currentTimeMillis() - msg.createdAtEpochMs in 0 until EDIT_WINDOW_MS
                 ChatBubble(
                     message            = msg,
                     partnerAvatarUrl   = state.partnerAvatarUrl,
@@ -412,11 +413,24 @@ fun ChatScreen(
                                          state.gateConfirmed,
                     // "Read" shows only under the most recent sent message, not every read one.
                     isLastSentMessage  = msg.isSent && index == lastSentIndex,
-                    selected           = menuTarget?.id == msg.id,
+                    // Long-press opens the action menu ANCHORED to this bubble (not a bottom sheet).
+                    menuOpen           = menuTarget?.id == msg.id,
+                    canEdit            = canEditMsg,
                     onLongPress        = {
                         // Own and received messages both get a menu; skip deleted/in-flight bubbles.
                         if (!msg.isDeleted && msg.sendStatus == SendStatus.SENT) menuTarget = msg
                     },
+                    onDismissMenu      = { menuTarget = null },
+                    onCopy             = {
+                        val text = msg.content.ifBlank { msg.artworkTitle.orEmpty() }
+                        if (text.isNotBlank()) {
+                            clipboard.setText(AnnotatedString(text))
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        }
+                        menuTarget = null
+                    },
+                    onEdit             = { viewModel.beginEdit(msg); menuTarget = null },
+                    onDelete           = { deleteTarget = msg; menuTarget = null },
                     onRetry            = { if (msg.sendStatus == SendStatus.FAILED) viewModel.retryMessage(msg) },
                     onOpenArtwork      = onOpenArtwork,
                 )
@@ -567,49 +581,18 @@ fun ChatScreen(
         )
     }
 
-    // ── Long-press message menu ─────────────────────────────────────────────────
-    // Own message → Copy / Edit (within the 15-min window) / Delete. Received → Copy only.
-    menuTarget?.let { target ->
-        val canEdit = target.isSent &&
-            System.currentTimeMillis() - target.createdAtEpochMs in 0 until EDIT_WINDOW_MS
-        fun copyMessage() {
-            val text = target.content.ifBlank { target.artworkTitle.orEmpty() }
-            if (text.isNotBlank()) {
-                clipboard.setText(AnnotatedString(text))
-                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
-            }
-            menuTarget = null
-        }
-        ModalBottomSheet(
-            onDismissRequest = { menuTarget = null },
-            sheetState       = rememberModalBottomSheetState(),
-            containerColor   = MaterialTheme.colorScheme.surface,
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
-                MessageActionRow(R.drawable.ic_copy_message, "Copy", MaterialTheme.colorScheme.onBackground) {
-                    copyMessage()
-                }
-                if (canEdit) {
-                    // Inline edit: pre-fills the compose field with X / ✓ controls (handout §Edit mode).
-                    MessageActionRow(R.drawable.ic_edit_message, "Edit", MaterialTheme.colorScheme.onBackground) {
-                        viewModel.beginEdit(target); menuTarget = null
-                    }
-                }
-                if (target.isSent) {
-                    MessageActionRow(R.drawable.ic_delete_message, "Delete", DangerRed) {
-                        deleteTarget = target; menuTarget = null
-                    }
-                }
-                Spacer(Modifier.height(Spacing.md))
-            }
-        }
-    }
+    // The long-press action menu is rendered inline, anchored to each ChatBubble (see ChatBubble).
 
-    // Per-message delete confirmation (own messages only; server soft-delete).
+    // Per-message delete confirmation. Own messages soft-delete for everyone; a received message
+    // is removed from your own thread only.
     deleteTarget?.let { target ->
         ConfirmDialog(
             title        = "Delete message?",
-            message      = "This message will be deleted for everyone and can't be recovered.",
+            message      = if (target.isSent) {
+                "This message will be deleted for everyone and can't be recovered."
+            } else {
+                "This message will be removed from your chat."
+            },
             confirmLabel = "Delete",
             destructive  = true,
             onConfirm    = { viewModel.onDeleteMessage(target); deleteTarget = null },
@@ -802,25 +785,43 @@ private fun DayHeader(label: String, textColor: Color) {
 
 /** Icon + label row for the long-press message menu. [tint] colors both icon and label. */
 @Composable
-private fun MessageActionRow(iconRes: Int, label: String, tint: Color, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
-        verticalAlignment = Alignment.CenterVertically,
+private fun MessageActionsMenu(
+    expanded: Boolean,
+    canEdit: Boolean,
+    onCopy: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val onBg = MaterialTheme.colorScheme.onBackground
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        Icon(
-            painter            = painterResource(iconRes),
-            contentDescription = null,
-            tint               = tint,
-            modifier           = Modifier.size(Spacing.xl),
+        DropdownMenuItem(
+            text = { Text("Copy", color = onBg) },
+            leadingIcon = {
+                Icon(painterResource(R.drawable.ic_copy_message), null, Modifier.size(Spacing.lg), tint = onBg)
+            },
+            onClick = onCopy,
         )
-        Spacer(Modifier.width(Spacing.lg))
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = tint,
+        if (canEdit) {
+            // Inline edit: pre-fills the compose field with X / ✓ controls (handout §Edit mode).
+            DropdownMenuItem(
+                text = { Text("Edit", color = onBg) },
+                leadingIcon = {
+                    Icon(painterResource(R.drawable.ic_edit_message), null, Modifier.size(Spacing.lg), tint = onBg)
+                },
+                onClick = onEdit,
+            )
+        }
+        DropdownMenuItem(
+            text = { Text("Delete", color = DangerRed) },
+            leadingIcon = {
+                Icon(painterResource(R.drawable.ic_delete_message), null, Modifier.size(Spacing.lg), tint = DangerRed)
+            },
+            onClick = onDelete,
         )
     }
 }
@@ -842,13 +843,18 @@ private fun ChatBubble(
     avatarSize: Dp,
     showInviteSent: Boolean,
     isLastSentMessage: Boolean,
-    selected: Boolean,
+    menuOpen: Boolean,
+    canEdit: Boolean,
     onLongPress: () -> Unit,
+    onDismissMenu: () -> Unit,
+    onCopy: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
     onRetry: () -> Unit,
     onOpenArtwork: (Int) -> Unit,
 ) {
     // Highlight the whole row while it's long-press-selected (the action menu is open for it).
-    val rowHighlight = if (selected) {
+    val rowHighlight = if (menuOpen) {
         Modifier
             .background(BrandPrimary.copy(alpha = 0.12f))
             .padding(vertical = Spacing.xs)
@@ -878,6 +884,14 @@ private fun ChatBubble(
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 ) {
                     BubbleContent(message, sentTextColor, onOpenArtwork)
+                    MessageActionsMenu(
+                        expanded = menuOpen,
+                        canEdit  = canEdit,
+                        onCopy   = onCopy,
+                        onEdit   = onEdit,
+                        onDelete = onDelete,
+                        onDismiss = onDismissMenu,
+                    )
                 }
                 Icon(
                     painter            = painterResource(R.drawable.ic_message_send),
@@ -920,6 +934,14 @@ private fun ChatBubble(
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 ) {
                     BubbleContent(message, receivedTextColor, onOpenArtwork)
+                    MessageActionsMenu(
+                        expanded = menuOpen,
+                        canEdit  = canEdit,
+                        onCopy   = onCopy,
+                        onEdit   = onEdit,
+                        onDelete = onDelete,
+                        onDismiss = onDismissMenu,
+                    )
                 }
                 Icon(
                     painter            = painterResource(R.drawable.ic_message_received),

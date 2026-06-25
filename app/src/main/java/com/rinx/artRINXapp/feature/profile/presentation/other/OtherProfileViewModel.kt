@@ -107,6 +107,13 @@ class OtherProfileViewModel @Inject constructor(
                 }
             }
         }
+        // Unblocked elsewhere (e.g. from the chat screen) → re-fetch so this profile flips out of the
+        // blocked panel and its art/curations reappear.
+        viewModelScope.launch {
+            blockedUserBus.unblocked.collect { unblockedUserId ->
+                if (unblockedUserId == userId) refresh()
+            }
+        }
     }
 
     /** Pull-to-refresh: re-fetch profile + art + curations, keeping content visible (SWR). */

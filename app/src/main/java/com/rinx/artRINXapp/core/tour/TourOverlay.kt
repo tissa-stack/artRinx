@@ -122,6 +122,11 @@ fun TourOverlay(
         }
 
         // ── Tooltip card, anchored relative to the target ────────────────────────
+        // Every step anchors to a real element. Until that element reports its bounds (e.g. while
+        // Home is still loading on first launch), DON'T render the card — otherwise it strands in the
+        // screen centre and then jumps. The dim scrim + touch-blocker stay; the card appears already
+        // anchored once `targets` updates (a snapshot map → this recomposes).
+        if (targetRect != null) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -154,6 +159,7 @@ fun TourOverlay(
                 onNext = onNext,
                 onBack = onBack,
             )
+        }
         }
     }
 }

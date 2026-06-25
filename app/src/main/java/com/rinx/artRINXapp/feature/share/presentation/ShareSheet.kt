@@ -71,7 +71,7 @@ import com.rinx.artRINXapp.feature.profile.domain.model.FollowUser
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
 
 /**
- * Bottom sheet that lets the user share [target] to selected followers (in-app, recipients get a
+ * Bottom sheet that lets the user share [target] to people they follow (in-app, recipients get a
  * notification) and/or copy the link / open the system chooser. Mirrors the app's existing
  * ModalBottomSheet pattern (surface container, search pill, BrandPrimary action pill).
  */
@@ -101,10 +101,10 @@ fun ShareSheet(
         viewModel.closeSheet.collect { onDismiss() }
     }
 
-    val filtered = remember(state.followers, query) {
+    val filtered = remember(state.following, query) {
         val q = query.trim()
-        if (q.isEmpty()) state.followers
-        else state.followers.filter {
+        if (q.isEmpty()) state.following
+        else state.following.filter {
             it.name.contains(q, ignoreCase = true) || it.handle.contains(q, ignoreCase = true)
         }
     }
@@ -211,11 +211,11 @@ fun ShareSheet(
                     ) { CircularProgressIndicator(color = BrandPrimary) }
 
                     state.loadFailed -> CenteredHint(
-                        text = "Couldn't load followers. Tap to retry.",
+                        text = "Couldn't load the people you follow. Tap to retry.",
                         onClick = viewModel::retry,
                     )
 
-                    state.followers.isEmpty() -> CenteredHint(text = "You have no followers yet.")
+                    state.following.isEmpty() -> CenteredHint(text = "You're not following anyone yet.")
 
                     filtered.isEmpty() -> CenteredHint(text = "No matches for \"$query\".")
 

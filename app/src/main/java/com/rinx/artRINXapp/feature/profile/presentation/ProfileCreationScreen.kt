@@ -9,7 +9,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +22,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -206,7 +210,7 @@ private fun ProfileCreationContent(
                     painter = painterResource(
                         if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
                     ),
-                    contentDescription = "RiNX logo",
+                    contentDescription = "artRinx logo",
                     modifier = Modifier
                         .height(dimens.logoHeight)
                         .align(Alignment.Center),
@@ -214,14 +218,26 @@ private fun ProfileCreationContent(
                 )
             }
 
-            // ── Step content — fills all space between top bar and bottom bar ─
-            Box(
+            // ── One scroll for the whole step. The column is forced to at least the viewport height
+            //    and uses SpaceBetween so the content sits at the top and the button + progress dots
+            //    sit at the BOTTOM of the screen (not pinned) — and everything scrolls when the
+            //    content is taller than the viewport. ───────────────────────────────────────────
+            BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = dimens.screenPaddingHorizontal),
+                    .fillMaxWidth(),
             ) {
-                when (currentStep) {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .heightIn(min = maxHeight)
+                        .padding(horizontal = dimens.screenPaddingHorizontal),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                  // ── Content group ──
+                  Column(modifier = Modifier.fillMaxWidth()) {
+                    when (currentStep) {
                     0 -> ProfileTitleStep(
                         profileTypes = uiState.profileTypes,
                         isLoading = uiState.profileTypesLoading,
@@ -291,53 +307,54 @@ private fun ProfileCreationContent(
                         onRetry = onRetryMediums,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                }
-            }
+                  }
+                  }
 
-            // ── Bottom bar — stays above keyboard, never scrolls away ─────────
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = dimens.screenPaddingHorizontal,
-                        vertical = Spacing.lg,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                // Action button
-                Button(
-                    onClick = {
-                        when (currentStep) {
-                            0 -> onNextFromProfileTitle()
-                            1 -> onNextFromProfileInfo()
-                            2 -> onNextFromPersonalInfo()
-                            3 -> onSubmit(uiState.profilePictureUri)
+                  // ── Footer group (button + dots) — pinned to the bottom via SpaceBetween ──
+                  Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                  ) {
+                Spacer(Modifier.height(Spacing.lg))
+
+                // Action button. On the medium (last) step it's HIDDEN until 3 are selected, so
+                // "Get Started" appears just below the info text once the selection is complete.
+                // On earlier steps it's always shown (greyed until the step is valid).
+                if (currentStep != ProfileCreationViewModel.LAST_STEP || isContinueEnabled) {
+                    Button(
+                        onClick = {
+                            when (currentStep) {
+                                0 -> onNextFromProfileTitle()
+                                1 -> onNextFromProfileInfo()
+                                2 -> onNextFromPersonalInfo()
+                                3 -> onSubmit(uiState.profilePictureUri)
+                            }
+                        },
+                        enabled = !uiState.isSubmitting,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(dimens.authButtonHeight),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = buttonColor,
+                            disabledContainerColor = InactiveButton,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+                        ),
+                    ) {
+                        if (uiState.isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(Spacing.xl),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = Spacing.xs / 2,
+                            )
+                        } else {
+                            // Mediums is the last step → its CTA enters the app (and the tutorial).
+                            val label = if (currentStep == ProfileCreationViewModel.LAST_STEP) "Get Started" else "Continue"
+                            Text(text = label, style = MaterialTheme.typography.labelLarge)
                         }
-                    },
-                    enabled = !uiState.isSubmitting,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dimens.authButtonHeight),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = buttonColor,
-                        disabledContainerColor = InactiveButton,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
-                    ),
-                ) {
-                    if (uiState.isSubmitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(Spacing.xl),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = Spacing.xs / 2,
-                        )
-                    } else {
-                        // Mediums is the last step → its CTA enters the app (and the tutorial).
-                        val label = if (currentStep == ProfileCreationViewModel.LAST_STEP) "Get Started" else "Continue"
-                        Text(text = label, style = MaterialTheme.typography.labelLarge)
                     }
+                    Spacer(Modifier.height(Spacing.lg))
                 }
 
                 // Step-progress dots — filled circles, active = BrandPrimary. Shown below the button.
@@ -360,7 +377,11 @@ private fun ProfileCreationContent(
                         )
                     }
                 }
-            }
+
+                Spacer(Modifier.height(Spacing.lg))
+                  } // footer group
+                } // scroll Column
+            } // BoxWithConstraints
         }
 
         // Snackbar overlay

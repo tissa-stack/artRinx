@@ -30,13 +30,12 @@ val ResultTab.category: String
 data class SearchFilter(
     val shopArtOnly: Boolean = false,
     val mediumIds: Set<Int> = emptySet(),
-    val tags: Set<String> = emptySet(),
     val country: String? = null,
     val state: String? = null,
     val city: String? = null,
 ) {
     val hasAnySelection: Boolean
-        get() = shopArtOnly || mediumIds.isNotEmpty() || tags.isNotEmpty() ||
+        get() = shopArtOnly || mediumIds.isNotEmpty() ||
             !country.isNullOrBlank() || !state.isNullOrBlank() || !city.isNullOrBlank()
 }
 
@@ -69,4 +68,5 @@ data class UserSearchItem(
     val displayName: String,
     val profileTypeName: String,
     val profilePictureUrl: String? = null,
+    val followerCount: Int = 0,
 )

@@ -82,7 +82,7 @@ fun OnboardingScreen(
                 painter = painterResource(
                     if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
                 ),
-                contentDescription = "RiNX logo",
+                contentDescription = "artRinx logo",
                 modifier = Modifier
                     .height(dimens.logoHeight),
                 contentScale = ContentScale.Fit,
