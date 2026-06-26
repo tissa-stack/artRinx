@@ -17,7 +17,7 @@ enum class TourStep(
     val body: String,
 ) {
     WELCOME(TourTarget.HOME_NAV, NavRoutes.HOME,
-        "Welcome! Here's a quick tour of artRinx. Your homepage has three feeds to explore global art, shop, and find collected works for you!"),
+        "Welcome! Here's a quick tour of artRINX. Your homepage has three feeds to explore global art, shop, and find collected works for you!"),
     UPLOAD(TourTarget.CREATE_NAV, NavRoutes.CREATE,
         "Upload art and create collections."),
     PROFILE(TourTarget.PROFILE_NAV, NavRoutes.PROFILE,

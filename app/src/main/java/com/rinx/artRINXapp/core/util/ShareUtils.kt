@@ -23,7 +23,7 @@ fun Context.shareArtwork(
     link: String? = null,
 ) {
     val text = buildString {
-        append(title.ifBlank { "Check out this artwork on artRinx" })
+        append(title.ifBlank { "Check out this artwork on artRINX" })
         if (!artistName.isNullOrBlank()) append(" by $artistName")
         if (!description.isNullOrBlank()) append("\n\n").also { append(description) }
         if (!link.isNullOrBlank()) append("\n\n").also { append(link) }
@@ -38,7 +38,7 @@ fun Context.shareArtwork(
  */
 fun Context.shareEntity(title: String, subtitle: String?, link: String) {
     val text = buildString {
-        append(title.ifBlank { "Check this out on artRinx" })
+        append(title.ifBlank { "Check this out on artRINX" })
         if (!subtitle.isNullOrBlank()) append(" ").also { append(subtitle) }
         if (link.isNotBlank()) append("\n\n").also { append(link) }
     }
@@ -52,7 +52,7 @@ fun Context.shareCuration(
     description: String? = null,
 ) {
     val text = buildString {
-        append(title.ifBlank { "Check out this collection on artRinx" })
+        append(title.ifBlank { "Check out this collection on artRINX" })
         if (!curatorName.isNullOrBlank()) append(" by $curatorName")
         if (!description.isNullOrBlank()) append("\n\n").also { append(description) }
     }

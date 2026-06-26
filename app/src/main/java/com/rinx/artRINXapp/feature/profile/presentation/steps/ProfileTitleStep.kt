@@ -66,7 +66,7 @@ fun ProfileTitleStep(
         )
         Spacer(Modifier.height(Spacing.xs))
         Text(
-            text = "The title on your profile tells others how you use artRinx. You can change this later in profile settings.",
+            text = "The title on your profile tells others how you use artRINX. You can change this later in profile settings.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

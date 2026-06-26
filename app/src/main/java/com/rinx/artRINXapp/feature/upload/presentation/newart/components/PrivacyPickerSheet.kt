@@ -63,7 +63,7 @@ fun PrivacyPickerSheet(
             PrivacyRow(
                 icon        = { Icon(painterResource(R.drawable.ic_globe), null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(Spacing.xxl)) },
                 title       = "Public",
-                subtitle    = "Visible to everyone on artRinx",
+                subtitle    = "Visible to everyone on artRINX",
                 isSelected  = selected == PrivacyOption.PUBLIC,
                 onClick     = { onPrivacySelected(PrivacyOption.PUBLIC); onDismiss() },
             )

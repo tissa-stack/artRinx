@@ -180,13 +180,13 @@ fun AddPhoneScreen(
                 checked = uiState.sms2faConsent,
                 onCheckedChange = viewModel::onSms2faChange,
                 text = AnnotatedString(
-                    "I consent to receive 2FA notifications and verification codes via SMS from artRinx at the number provided.",
+                    "I consent to receive 2FA notifications and verification codes via SMS from artRINX at the number provided.",
                 ),
             )
             WaitlistCheckbox(
                 checked = uiState.accountNotificationSms,
                 onCheckedChange = viewModel::onAccountNotificationChange,
-                text = AnnotatedString("I consent to receive account notifications from artRinx!"),
+                text = AnnotatedString("I consent to receive account notifications from artRINX!"),
             )
 
             Spacer(Modifier.height(Spacing.md))

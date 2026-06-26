@@ -39,7 +39,7 @@ import com.rinx.artRINXapp.feature.auth.presentation.otp.components.OtpBoxRow
 
 /**
  * Shared OTP step for the Settings contact flows (change email / change phone / add phone). Vertically
- * centered: artRinx logo → "Enter the code" → "Please enter the 6-digit code sent to <contact>" (the
+ * centered: artRINX logo → "Enter the code" → "Please enter the 6-digit code sent to <contact>" (the
  * contact in brand blue) → OTP cells → "Didn't receive the code?" → a resend countdown that flips to a
  * "Resend code" link → Cancel + Verify. Reuses [OtpBoxRow] and the auth logo.
  */
@@ -71,7 +71,7 @@ fun SettingsOtpContent(
             painter = painterResource(
                 if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
             ),
-            contentDescription = "artRinx logo",
+            contentDescription = "artRINX logo",
             modifier = Modifier.height(d.logoHeight),
             contentScale = ContentScale.Fit,
         )

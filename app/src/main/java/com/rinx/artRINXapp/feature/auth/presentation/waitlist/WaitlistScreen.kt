@@ -126,7 +126,7 @@ private fun WaitlistFormContent(
                 painter = painterResource(
                     if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
                 ),
-                contentDescription = "artRinx logo",
+                contentDescription = "artRINX logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
                     .align(Alignment.Center),
@@ -148,7 +148,7 @@ private fun WaitlistFormContent(
             )
             Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
-                text = "Be among the first to experience artRinx.",
+                text = "Be among the first to experience artRINX.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -246,7 +246,7 @@ private fun WaitlistFormContent(
                 checked = uiState.smsOptIn,
                 onCheckedChange = viewModel::onSmsOptInChange,
                 text = buildAnnotatedString {
-                    append("Receive SMS notifications about artRinx updates (optional)")
+                    append("Receive SMS notifications about artRINX updates (optional)")
                 },
             )
 
@@ -381,7 +381,7 @@ private fun WaitlistSuccessContent(onBack: () -> Unit) {
                 painter = painterResource(
                     if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
                 ),
-                contentDescription = "artRinx logo",
+                contentDescription = "artRINX logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
                     .align(Alignment.Center),

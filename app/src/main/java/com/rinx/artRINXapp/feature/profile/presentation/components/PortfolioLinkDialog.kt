@@ -101,7 +101,7 @@ fun PortfolioLinkDialog(
                 Spacer(Modifier.height(Spacing.sm))
                 Text(
                     text = "Following this link will take you to a third party website, " +
-                        "artRinx is not responsible for your safety.",
+                        "artRINX is not responsible for your safety.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

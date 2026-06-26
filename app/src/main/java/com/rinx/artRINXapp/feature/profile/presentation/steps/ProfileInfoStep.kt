@@ -143,7 +143,7 @@ fun ProfileInfoStep(
         )
         Spacer(Modifier.height(Spacing.xs))
         Text(
-            text = "This information will be public on artRinx.",
+            text = "This information will be public on artRINX.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth(),

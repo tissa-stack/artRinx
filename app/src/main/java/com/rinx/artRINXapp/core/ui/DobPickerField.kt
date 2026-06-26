@@ -34,7 +34,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-/** Minimum age required to use artRinx (must be at least 18). */
+/** Minimum age required to use artRINX (must be at least 18). */
 private const val MIN_AGE_YEARS = 18
 
 /**

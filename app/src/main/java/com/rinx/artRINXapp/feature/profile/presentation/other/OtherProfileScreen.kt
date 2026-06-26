@@ -237,7 +237,15 @@ fun OtherProfileScreen(
                             isBioExpanded = uiState.isBioExpanded,
                             onExpandBio = viewModel::onBioExpandToggle,
                             onBack = onBack,
+                            messageEnabled = uiState.messageEnabled,
                             onMessage = { onMessage(profile.userId) },
+                            onMessageBlocked = {
+                                Toast.makeText(
+                                    context,
+                                    "You've reached your new-chat limit for this month.",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
                             onShare = {
                                 // A blocked profile can't be shared (server rejects with 400) — block it here.
                                 if (profile.iBlocked) {
@@ -375,7 +383,9 @@ private fun OtherProfileHeader(
     isBioExpanded: Boolean,
     onExpandBio: () -> Unit,
     onBack: () -> Unit,
+    messageEnabled: Boolean,
     onMessage: () -> Unit,
+    onMessageBlocked: () -> Unit,
     onShare: () -> Unit,
     onFollow: () -> Unit,
     onUnfollow: () -> Unit,
@@ -537,20 +547,25 @@ private fun OtherProfileHeader(
                     )
                 }
             }
-            // Always offer Message — regardless of chat history OR block state. A brand-new chat is
-            // handled by the invite gate; a blocked chat opens in its blocked state where the user can
-            // unblock (if they blocked) — keeping block/unblock reachable from both profile and chat.
+            // Offer Message regardless of chat history OR block state — a blocked chat opens in its
+            // blocked state where the user can unblock. The ONE exception is the monthly new-chat
+            // limit with no existing chat ([messageEnabled] = false): grey it out so the user doesn't
+            // tap into a chat they can't send from; tapping explains why.
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(Spacing.sm))
-                    .background(BrandPrimary)
-                    .clickable(onClick = onMessage)
+                    .background(if (messageEnabled) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClick = if (messageEnabled) onMessage else onMessageBlocked)
                     .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
             ) {
                 Text(
                     text = "Message",
                     style = MaterialTheme.typography.labelLarge,
-                    color = androidx.compose.ui.graphics.Color.White,
+                    color = if (messageEnabled) {
+                        androidx.compose.ui.graphics.Color.White
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
         }
@@ -669,7 +684,7 @@ private fun FollowControl(
             containerColor = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surface else Color.White,
         ) {
             DropdownMenuItem(
-                text = { Text("Unfollow", color = DangerRed) },
+                text = { Text("Unfollow profile", color = DangerRed) },
                 leadingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_navigation_profile),
@@ -681,19 +696,7 @@ private fun FollowControl(
                 onClick = { menuExpanded = false; onUnfollow() },
             )
             DropdownMenuItem(
-                text = { Text("Report", color = MaterialTheme.colorScheme.onBackground) },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_report),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.size(Spacing.xl),
-                    )
-                },
-                onClick = { menuExpanded = false; onReport() },
-            )
-            DropdownMenuItem(
-                text = { Text("Block", color = MaterialTheme.colorScheme.onBackground) },
+                text = { Text("Block profile", color = MaterialTheme.colorScheme.onBackground) },
                 leadingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_block),
@@ -703,6 +706,18 @@ private fun FollowControl(
                     )
                 },
                 onClick = { menuExpanded = false; onBlock() },
+            )
+            DropdownMenuItem(
+                text = { Text("Report profile", color = MaterialTheme.colorScheme.onBackground) },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_report),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                },
+                onClick = { menuExpanded = false; onReport() },
             )
         }
     }

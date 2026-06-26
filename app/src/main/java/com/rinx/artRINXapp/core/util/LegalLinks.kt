@@ -7,7 +7,7 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.withLink
 
 /**
- * Single source of truth for the public artRinx web pages we link out to from the app
+ * Single source of truth for the public artRINX web pages we link out to from the app
  * (registration screen, Ground Rules pop-up, Settings → Resources).
  */
 object LegalLinks {

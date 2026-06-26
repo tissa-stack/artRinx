@@ -255,7 +255,7 @@ object MockNotificationData {
             ChatMessage(
                 id = "m1", isSent = false, isInvitation = true,
                 timestamp = "Mon, Oct 28 at 4:43 PM",
-                content = "Hi Wade,\nHow are you doing? It's fun seeing you on artRinx! It was nice meeting you at the event the other day.\n\nDo you have any new art available to buy?",
+                content = "Hi Wade,\nHow are you doing? It's fun seeing you on artRINX! It was nice meeting you at the event the other day.\n\nDo you have any new art available to buy?",
             ),
             ChatMessage(
                 id = "m2", isSent = true, isInvitationAccepted = true,

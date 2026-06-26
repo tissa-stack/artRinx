@@ -46,7 +46,7 @@ import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileA
 
 /**
  * "Art by <artist>" — reached by tapping the credited artist on an artwork. Shows the artist's
- * profile + follow (when they have a RINX id) or a placeholder + "No artRinx profile" (when they
+ * profile + follow (when they have a RINX id) or a placeholder + "No artRINX profile" (when they
  * don't), then a waterfall grid of art credited to that name.
  */
 @Composable
@@ -194,7 +194,7 @@ private fun ArtistRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // Username (when the artist has an artRinx profile).
+            // Username (when the artist has an artRINX profile).
             val handle = state.profile?.handle?.removePrefix("@").orEmpty()
             if (state.hasProfile && handle.isNotBlank()) {
                 Text(
@@ -206,10 +206,10 @@ private fun ArtistRow(
                 )
             }
             // No follow button (parity with iOS). The status line carries it: "Following" when
-            // followed, the artist's follower count when not, or "No artRinx profile" for guests.
+            // followed, the artist's follower count when not, or "No artRINX profile" for guests.
             Text(
                 text = when {
-                    !state.hasProfile -> "No artRinx profile"
+                    !state.hasProfile -> "No artRINX profile"
                     state.isFollowing -> "Following"
                     else -> {
                         val count = state.profile?.followerCount ?: 0

@@ -474,7 +474,7 @@ private fun ColumnScope.EditProfileContent(
                 onDobSelected = viewModel::onDobChange,
             )
             Text(
-                text = "You must be at least 18 to use artRinx.",
+                text = "You must be at least 18 to use artRINX.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier

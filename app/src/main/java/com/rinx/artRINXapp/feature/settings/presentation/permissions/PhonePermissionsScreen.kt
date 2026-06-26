@@ -300,7 +300,7 @@ private fun MarketingConsentDialog(
                             text = buildAnnotatedString {
                                 append(
                                     "I consent to receive promotional marketing recurring SMS " +
-                                        "communications from artRinx at the number provided. Message " +
+                                        "communications from artRINX at the number provided. Message " +
                                         "frequency varies. Msg & data rates may apply. Reply HELP for " +
                                         "help and STOP to opt-out at any time. ",
                                 )
@@ -327,7 +327,7 @@ private fun MarketingConsentDialog(
                         Spacer(Modifier.height(Spacing.lg))
                         Text(
                             text = "You will no longer receive promotional messages via SMS from " +
-                                "artRinx. You can re-enable this at any time.",
+                                "artRINX. You can re-enable this at any time.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,

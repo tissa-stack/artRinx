@@ -89,7 +89,7 @@ fun PersonalInfoStep(
                 )
             }
             Text(
-                text = "You must be at least 18 to use artRinx.",
+                text = "You must be at least 18 to use artRINX.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),

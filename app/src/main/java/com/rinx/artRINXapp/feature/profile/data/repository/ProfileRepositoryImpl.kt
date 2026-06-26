@@ -973,4 +973,4 @@ class ProfileRepositoryImpl @Inject constructor(
         body?.contains("under_minimum_age", ignoreCase = true) == true
 }
 
-private const val UNDER_MIN_AGE_MESSAGE = "You must be at least 13 years old to use artRinx."
+private const val UNDER_MIN_AGE_MESSAGE = "You must be at least 13 years old to use artRINX."

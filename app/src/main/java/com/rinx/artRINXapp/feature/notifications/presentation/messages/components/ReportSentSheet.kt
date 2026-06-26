@@ -64,7 +64,7 @@ fun ReportSentSheet(
                 color      = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.height(Spacing.md))
             Text(
-                text      = "Thank you for working to keep artRinx a safe space. We will look into this matter further.",
+                text      = "Thank you for working to keep artRINX a safe space. We will look into this matter further.",
                 style     = MaterialTheme.typography.bodyMedium,
                 color     = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

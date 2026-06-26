@@ -15,6 +15,8 @@ import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileTab
 import com.rinx.artRINXapp.feature.profile.domain.model.PublicProfile
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
+import com.rinx.artRINXapp.feature.notifications.domain.model.ChatroomResolution
+import com.rinx.artRINXapp.feature.notifications.domain.repository.MessagesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +51,10 @@ data class OtherProfileUiState(
     val unblockedSuccess: Boolean = false,
     /** One-shot follow/unfollow success message (toasted then cleared by the screen). */
     val actionMessage: String? = null,
+    /** False only when the user can't start a NEW chat with this profile (monthly new-chat quota
+     *  exhausted AND no existing chat). Drives the Message button's disabled state. Defaults true so
+     *  messaging is never blocked before/if the chatroom check can't resolve. */
+    val messageEnabled: Boolean = true,
 )
 
 @HiltViewModel
@@ -59,6 +65,7 @@ class OtherProfileViewModel @Inject constructor(
     private val blockedArtworkBus: BlockedArtworkBus,
     private val blockedUserBus: BlockedUserBus,
     private val blockedUsersStore: BlockedUsersStore,
+    private val messagesRepository: MessagesRepository,
 ) : ViewModel() {
 
     private val userId: Int? = savedStateHandle.get<String>("userId")?.toIntOrNull()
@@ -125,6 +132,7 @@ class OtherProfileViewModel @Inject constructor(
             val profileJob = async { repository.getPublicProfile(id) }
             val artJob = async { repository.getPublicArtworks(id, 1, PAGE_SIZE) }
             val curationJob = async { repository.getPublicCurations(id, 1, PAGE_SIZE) }
+            val chatJob = async { messagesRepository.resolveChatroom(id) }
             val fetched = (profileJob.await() as? ApiResult.Success)?.data
             val locallyBlocked = blockedUsersStore.isBlocked(id)
             val profile = fetched?.let { if (locallyBlocked) it.copy(iBlocked = true) else it }
@@ -141,9 +149,23 @@ class OtherProfileViewModel @Inject constructor(
                     artHasMore = !blocked && (art?.size ?: st.artItems.size) >= PAGE_SIZE,
                     curationHasMore = !blocked && (cur?.size ?: st.curations.size) >= PAGE_SIZE,
                     isRefreshing = false,
+                    messageEnabled = canMessageNew(profile ?: st.profile, chatJob.await()),
                 )
             }
         }
+    }
+
+    /**
+     * Can the user open/start a chat with this profile? The monthly new-chat quota only limits
+     * *starting* new conversations, so an existing chat (or a still-positive quota, or having blocked
+     * them — which opens the chat to unblock) keeps Message enabled. A failed/absent resolve → true,
+     * so a flaky check never strands the user.
+     */
+    private fun canMessageNew(profile: PublicProfile?, chatRes: ApiResult<ChatroomResolution>): Boolean {
+        val res = (chatRes as? ApiResult.Success)?.data ?: return true
+        val hasChat = res.exists || res.chatroomId != null
+        val canStartNew = (res.remainingInvites ?: Int.MAX_VALUE) > 0
+        return (profile?.iBlocked == true) || hasChat || canStartNew
     }
 
     private fun load() {
@@ -157,6 +179,8 @@ class OtherProfileViewModel @Inject constructor(
             val profileJob = async { repository.getPublicProfile(id) }
             val artJob = async { repository.getPublicArtworks(id, 1, 30) }
             val curationJob = async { repository.getPublicCurations(id, 1, 30) }
+            // Resolve the chat state up-front so the Message button can reflect the new-chat limit.
+            val chatJob = async { messagesRepository.resolveChatroom(id) }
             when (val profileRes = profileJob.await()) {
                 is ApiResult.Success -> {
                     // Trust the local store too: if I blocked this user elsewhere (e.g. from an art
@@ -176,6 +200,7 @@ class OtherProfileViewModel @Inject constructor(
                             curationHasMore = cur.size >= PAGE_SIZE,
                             isLoading = false,
                             error = null,
+                            messageEnabled = canMessageNew(profile, chatJob.await()),
                         )
                     }
                 }

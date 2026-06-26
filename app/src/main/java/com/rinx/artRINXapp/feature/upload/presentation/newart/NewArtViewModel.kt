@@ -94,7 +94,7 @@ class NewArtViewModel @Inject constructor(
                             ArtistResult(
                                 handle = "",
                                 displayName = a.artistName.orEmpty(),
-                                subtitle = if (a.artistId != null) a.artistName.orEmpty() else "No artRinx profile",
+                                subtitle = if (a.artistId != null) a.artistName.orEmpty() else "No artRINX profile",
                                 userId = a.artistId,
                             )
                         } else {
@@ -239,7 +239,7 @@ class NewArtViewModel @Inject constructor(
     }
 
     /**
-     * "Add artist without artRinx profile" → attribute the artwork to the typed [name] only.
+     * "Add artist without artRINX profile" → attribute the artwork to the typed [name] only.
      * No artist id is sent (userId = null); the name is still required.
      */
     fun onArtistWithoutProfile(name: String) {
@@ -250,7 +250,7 @@ class NewArtViewModel @Inject constructor(
                 selectedArtist = ArtistResult(
                     handle = "",
                     displayName = trimmed,
-                    subtitle = "No artRinx profile",
+                    subtitle = "No artRINX profile",
                     userId = null,
                 ),
                 isArtistError = false,

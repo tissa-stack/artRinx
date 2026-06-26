@@ -136,7 +136,7 @@ private fun LoginOptionsContent(
                 painter = painterResource(
                     if (isDark) R.drawable.artrinx_logo_dark_theme else R.drawable.artrinx_logo_light_theme,
                 ),
-                contentDescription = "artRinx logo",
+                contentDescription = "artRINX logo",
                 modifier = Modifier
                     .height(dimens.logoHeight)
                     .align(Alignment.Center),

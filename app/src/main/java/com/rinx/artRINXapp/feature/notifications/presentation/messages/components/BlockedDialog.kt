@@ -75,7 +75,7 @@ fun BlockedDialog(
                 Spacer(Modifier.height(Spacing.md))
 
                 Text(
-                    text      = "At artRinx, we're committed to fostering a safe space to share art. You will no longer see content from this profile.",
+                    text      = "At artRINX, we're committed to fostering a safe space to share art. You will no longer see content from this profile.",
                     style     = MaterialTheme.typography.bodyMedium,
                     color     = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

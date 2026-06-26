@@ -125,7 +125,7 @@ fun ProfileTitleAndPlanEditScreen(
             if (state.step == 0) {
                 StepHeading(
                     title = "Profile title",
-                    subtitle = "The title on your profile tells others how you use artRinx. You can change this later in profile settings.",
+                    subtitle = "The title on your profile tells others how you use artRINX. You can change this later in profile settings.",
                 )
                 Spacer(Modifier.height(Spacing.xl))
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {

@@ -235,7 +235,7 @@ private fun ArtistRow(artist: ArtistResult, onClick: () -> Unit) {
     }
 }
 
-// ── "Add artist without artRinx profile" button ──────────────────────────────────
+// ── "Add artist without artRINX profile" button ──────────────────────────────────
 
 @Composable
 private fun AddWithoutProfileButton(name: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
@@ -249,7 +249,7 @@ private fun AddWithoutProfileButton(name: String, modifier: Modifier = Modifier,
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text       = "Add \"$name\" without artRinx profile",
+            text       = "Add \"$name\" without artRINX profile",
             style      = MaterialTheme.typography.labelLarge,
             color      = Color.White,
             fontWeight = FontWeight.SemiBold,
@@ -285,7 +285,7 @@ private fun EmptyState(query: String, modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.height(Spacing.xl))
         Text(
-            text      = "There are no profile results on artRinx for\n\"$query\"",
+            text      = "There are no profile results on artRINX for\n\"$query\"",
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
