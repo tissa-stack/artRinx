@@ -341,6 +341,8 @@ private fun SignupContent(
             Spacer(modifier = Modifier.height(dimens.screenPaddingBottom))
         }
 
+        // "Already have an account? Sign in" — hidden for now (per request).
+        /*
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -361,5 +363,6 @@ private fun SignupContent(
                     .padding(horizontal = Spacing.xs),
             )
         }
+        */
     }
 }

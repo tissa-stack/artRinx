@@ -2,10 +2,6 @@ package com.rinx.artRINXapp.feature.profile.presentation.view.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -45,7 +41,6 @@ import kotlin.math.roundToInt
 @Composable
 fun ProfileTabBar(
     activeTab: ProfileTab,
-    onTabSelected: (ProfileTab) -> Unit,
     pagerState: PagerState,
     modifier: Modifier = Modifier,
     tabs: List<ProfileTab> = ProfileTab.entries,
@@ -90,25 +85,7 @@ fun ProfileTabBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight()
-                    .draggable(
-                        enabled = swipeEnabled,
-                        orientation = Orientation.Horizontal,
-                        state = rememberDraggableState { delta ->
-                            val pageSize = pagerState.layoutInfo.pageSize.takeIf { it > 0 }
-                                ?: return@rememberDraggableState
-                            if (cellWidthPx <= 0f) return@rememberDraggableState
-                            // Positive delta = finger right → next tab (pill follows the finger).
-                            scope.launch { pagerState.scrollBy(delta * (pageSize / cellWidthPx)) }
-                        },
-                        onDragStopped = {
-                            scope.launch {
-                                val target = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                                    .roundToInt().coerceIn(0, tabCount - 1)
-                                pagerState.animateScrollToPage(target)
-                            }
-                        },
-                    ),
+                    .fillMaxHeight(),
             ) {
                 tabs.forEach { tab ->
                     val pos = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
@@ -123,7 +100,7 @@ fun ProfileTabBar(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable { onTabSelected(tab) },
+                            .clickable { scope.launch { pagerState.animateScrollToPage(tabs.indexOf(tab)) } },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(

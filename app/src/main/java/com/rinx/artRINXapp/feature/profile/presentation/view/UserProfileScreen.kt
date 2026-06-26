@@ -176,15 +176,12 @@ private fun UserProfileContent(
             val pagerState = rememberPagerState(
                 initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
             ) { tabs.size }
-            // Key on settledPage (not currentPage) so animating to a non-adjacent tab doesn't fire
-            // for intermediate pages and cancel the scroll mid-way (the "stuck" tab header).
+            // Pager is the single source of truth: swipe + tab tap drive it; the settled page mirrors
+            // into activeTab. No activeTab→pager binding (that two-way loop, plus the old tab-bar drag,
+            // is what left the header stuck between tabs).
             LaunchedEffect(pagerState.settledPage) {
                 val swiped = tabs[pagerState.settledPage]
                 if (swiped != uiState.activeTab) onTabSelected(swiped)
-            }
-            LaunchedEffect(uiState.activeTab) {
-                val idx = tabs.indexOf(uiState.activeTab).coerceAtLeast(0)
-                if (pagerState.currentPage != idx) pagerState.animateScrollToPage(idx)
             }
             // Each tab keeps its own scroll position; infinite-scroll pages the active tab.
             val artListState = rememberLazyListState()
@@ -245,7 +242,6 @@ private fun UserProfileContent(
                 tabBar = {
                     ProfileTabBar(
                         activeTab = uiState.activeTab,
-                        onTabSelected = onTabSelected,
                         pagerState = pagerState,
                         tabs = tabs,
                     )

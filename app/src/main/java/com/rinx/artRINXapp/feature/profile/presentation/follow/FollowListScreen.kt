@@ -2,10 +2,6 @@ package com.rinx.artRINXapp.feature.profile.presentation.follow
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -279,23 +275,7 @@ private fun FollowTabBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight()
-                    .draggable(
-                        orientation = Orientation.Horizontal,
-                        state = rememberDraggableState { delta ->
-                            val pageSize = pagerState.layoutInfo.pageSize.takeIf { it > 0 }
-                                ?: return@rememberDraggableState
-                            if (cellWidthPx <= 0f) return@rememberDraggableState
-                            scope.launch { pagerState.scrollBy(delta * (pageSize / cellWidthPx)) }
-                        },
-                        onDragStopped = {
-                            scope.launch {
-                                val target = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                                    .roundToInt().coerceIn(0, tabCount - 1)
-                                pagerState.animateScrollToPage(target)
-                            }
-                        },
-                    ),
+                    .fillMaxHeight(),
             ) {
                 labels.forEachIndexed { index, label ->
                     val pos = (pagerState.currentPage + pagerState.currentPageOffsetFraction)

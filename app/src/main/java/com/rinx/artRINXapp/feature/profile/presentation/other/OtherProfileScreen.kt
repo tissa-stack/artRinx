@@ -200,15 +200,12 @@ fun OtherProfileScreen(
                 val pagerState = rememberPagerState(
                     initialPage = tabs.indexOf(uiState.activeTab).coerceAtLeast(0),
                 ) { tabs.size }
-                // Key on settledPage (not currentPage) so a non-adjacent tab jump doesn't fire for
-                // intermediate pages and leave the header stuck mid-way.
+                // Pager is the single source of truth: swipe + tab tap drive it; the settled page
+                // mirrors into activeTab. No activeTab→pager binding + no tab-bar drag → the header
+                // can never rest between tabs.
                 LaunchedEffect(pagerState.settledPage) {
                     val swiped = tabs[pagerState.settledPage]
                     if (swiped != uiState.activeTab) viewModel.onTabSelected(swiped)
-                }
-                LaunchedEffect(uiState.activeTab) {
-                    val idx = tabs.indexOf(uiState.activeTab).coerceAtLeast(0)
-                    if (pagerState.currentPage != idx) pagerState.animateScrollToPage(idx)
                 }
                 val artListState = rememberLazyListState()
                 val curationListState = rememberLazyListState()
@@ -270,7 +267,6 @@ fun OtherProfileScreen(
                     tabBar = {
                         ProfileTabBar(
                             activeTab = uiState.activeTab,
-                            onTabSelected = viewModel::onTabSelected,
                             pagerState = pagerState,
                             tabs = tabs,
                         )

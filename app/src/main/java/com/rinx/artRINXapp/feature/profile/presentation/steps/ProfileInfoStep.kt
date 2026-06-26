@@ -247,14 +247,25 @@ fun ProfileInfoStep(
 
         // ── Username ──────────────────────────────────────────────────────────
         Column(modifier = Modifier.fillMaxWidth()) {
+            val usernameTooShort = username.isNotEmpty() && username.length < 5
             ProfileTextField(
                 value = username,
                 onValueChange = onUsernameChange,
                 placeholder = "Username",
                 modifier = Modifier.fillMaxWidth(),
-                hasError = usernameError || usernameCheckState is UsernameCheckState.Taken,
+                hasError = usernameError || usernameTooShort || usernameCheckState is UsernameCheckState.Taken,
             )
-            UsernameStatusRow(state = usernameCheckState, hasError = usernameError)
+            // Immediate min-length feedback before the availability check (which only runs at >= 5).
+            if (usernameTooShort) {
+                Text(
+                    text = "Username must be at least 5 characters",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = Spacing.xs, start = Spacing.sm),
+                )
+            } else {
+                UsernameStatusRow(state = usernameCheckState, hasError = usernameError)
+            }
         }
 
         Spacer(Modifier.height(Spacing.md))

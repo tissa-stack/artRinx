@@ -39,8 +39,9 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun verifyInviteCode(code: String): ApiResult<InviteVerification> {
         return try {
             val response = apiService.verifyInvite(code)
-            if (response.isSuccessful) {
-                val data = response.body()?.data
+            val body = response.body()
+            if (response.isSuccessful && body?.success != false) {
+                val data = body?.data
                 ApiResult.Success(
                     InviteVerification(
                         code = code,
@@ -48,6 +49,9 @@ class AuthRepositoryImpl @Inject constructor(
                         remainingInvites = data?.remainingInvites,
                     ),
                 )
+            } else if (response.isSuccessful) {
+                // HTTP 200 but body-level failure (success=false), e.g. invite limit exhausted.
+                ApiResult.Error.Validation(body?.message ?: DEFAULT_ERROR)
             } else {
                 val rawError = response.errorBody()?.string()
                 when (response.code()) {

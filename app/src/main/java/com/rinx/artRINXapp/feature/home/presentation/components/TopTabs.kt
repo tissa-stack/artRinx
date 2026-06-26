@@ -2,10 +2,6 @@ package com.rinx.artRINXapp.feature.home.presentation.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -52,7 +48,6 @@ import kotlin.math.roundToInt
 fun TopTabs(
     activeTab: HomeTab,
     pagerState: PagerState,
-    onTabSelected: (HomeTab) -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier,
     onTabBounds: ((HomeTab, Rect) -> Unit)? = null,
@@ -123,29 +118,7 @@ fun TopTabs(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight()
-                    .draggable(
-                        enabled = swipeEnabled,
-                        orientation = Orientation.Horizontal,
-                        state = rememberDraggableState { delta ->
-                            // Scale tab-bar pixels → pager pixels so dragging across one tab cell
-                            // advances roughly one full page.
-                            val pageSize = pagerState.layoutInfo.pageSize.takeIf { it > 0 }
-                                ?: return@rememberDraggableState
-                            if (cellWidthPx <= 0f) return@rememberDraggableState
-                            // Positive delta = finger moving right → advance to the next page so
-                            // the pill follows the finger (drag right → Shop, drag left → Discover).
-                            scope.launch { pagerState.scrollBy(delta * (pageSize / cellWidthPx)) }
-                        },
-                        onDragStopped = {
-                            scope.launch {
-                                val target = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                                    .roundToInt()
-                                    .coerceIn(0, tabCount - 1)
-                                pagerState.animateScrollToPage(target)
-                            }
-                        },
-                    ),
+                    .fillMaxHeight(),
             ) {
                 HomeTab.entries.forEach { tab ->
                     val isActive = tab == activeTab
@@ -169,7 +142,7 @@ fun TopTabs(
                                     Modifier
                                 },
                             )
-                            .clickable { onTabSelected(tab) }
+                            .clickable { scope.launch { pagerState.animateScrollToPage(tab.ordinal) } }
                             .semantics {
                                 role = Role.Tab
                                 selected = isActive

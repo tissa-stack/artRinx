@@ -37,6 +37,9 @@ data class CurationDetailUiState(
     val error: Boolean = false,
     /** True when the current user owns this curation → show Edit/Delete instead of Report. */
     val isOwn: Boolean = false,
+    /** Whether tapping an artwork card opens its detail. Disabled ONLY for my own collection opened
+     *  from my Profile tab; navigable everywhere else (other users' collections, home, search). */
+    val artworksNavigable: Boolean = true,
     val isDeleting: Boolean = false,
     // ── Report / block (moderation) ──
     val isReporting: Boolean = false,
@@ -83,11 +86,17 @@ class CurationDetailViewModel @Inject constructor(
     private fun seedFromCache(): CurationDetailUiState {
         val id = curationId ?: return CurationDetailUiState(isLoading = true)
         val cached = detailCache.peekCuration(id) ?: return CurationDetailUiState(isLoading = true)
+        // Resolve ownership synchronously (cached entry, or the cached current-user id vs author) so
+        // Edit/Delete render immediately on open instead of popping in after the network resolves.
+        val meId = profileRepository.cachedCurrentUserId()
+        val isOwn = cached.isOwn || (meId != null && meId == cached.curation.authorId)
         return CurationDetailUiState(
             curation = cached.curation,
             moreLikeThis = cached.more,
             likeCount = cached.curation.likeCount,
             isLiked = cached.curation.isLiked,
+            isOwn = isOwn,
+            artworksNavigable = !(isFromProfile && isOwn),
             isLoading = false,
         )
     }
@@ -180,7 +189,7 @@ class CurationDetailViewModel @Inject constructor(
                 // opens it with the same first images.
                 more.forEach { curationPreviewStore.put(it.id, it.artworkUrls) }
                 val isOwn = meId != null && curation.authorId == meId
-                detailCache.putCuration(id, curation, more)
+                detailCache.putCuration(id, curation, more, isOwn)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -190,6 +199,7 @@ class CurationDetailViewModel @Inject constructor(
                         likeCount = likeCount,
                         isLiked = isLiked,
                         isOwn = isOwn,
+                        artworksNavigable = !(isFromProfile && isOwn),
                     )
                 }
                 // Resolve the send mode now (before the sheet can open) to avoid an invite→message flicker.

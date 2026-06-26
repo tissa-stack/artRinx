@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.core.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,6 +63,9 @@ fun SearchableDropdownField(
                     imageVector = if (expanded) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // Tapping the up-chevron while open collapses the menu (the click is consumed here,
+                    // so the menu anchor doesn't re-toggle/reopen). Decorative when closed.
+                    modifier = if (expanded) Modifier.clickable { expanded = false } else Modifier,
                 )
             },
             singleLine = true,

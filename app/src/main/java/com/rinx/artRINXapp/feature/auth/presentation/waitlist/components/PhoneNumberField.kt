@@ -2,9 +2,11 @@ package com.rinx.artRINXapp.feature.auth.presentation.waitlist.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -37,6 +39,7 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodes
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.nationalNumberLength
 
 @Composable
 fun PhoneNumberField(
@@ -55,15 +58,22 @@ fun PhoneNumberField(
     var expanded by remember { mutableStateOf(false) }
     var sheetOpen by remember { mutableStateOf(false) }
 
+    // Per-country length validation: show an inline message when the entered number's length doesn't
+    // match the selected country's expected national-number length (unknown lengths → no check).
+    val expectedLen = selectedCountry.nationalNumberLength()
+    val showLengthError = expectedLen != null && rawPhone.isNotEmpty() && rawPhone.length != expectedLen
+
+    Column(modifier = modifier) {
     Row(
-        modifier = modifier,
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
             Surface(
                 modifier = Modifier
                     .heightIn(min = dimens.textFieldHeight)
-                    .clickable { if (searchable) sheetOpen = true else expanded = true },
+                    // Re-tapping the trigger while open collapses it (smooth toggle).
+                    .clickable { if (searchable) sheetOpen = true else expanded = !expanded },
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = RoundedCornerShape(dimens.authButtonHeight / 4),
             ) {
@@ -111,6 +121,17 @@ fun PhoneNumberField(
             keyboardType = KeyboardType.Phone,
             imeAction = ImeAction.Next,
         )
+    }
+
+        if (showLengthError) {
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                text = "Phone number must be $expectedLen digits.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = Spacing.sm),
+            )
+        }
     }
 
     if (searchable && sheetOpen) {

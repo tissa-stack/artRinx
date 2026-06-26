@@ -224,11 +224,14 @@ private fun TourCard(
             ) {
                 TourStep.ordered.forEachIndexed { i, _ ->
                     val active = i == stepIndex
+                    // Progress style: the current dot is enlarged, and every step up to and including
+                    // it is filled (shows how far through the tour the user is), later steps are dim.
+                    val reached = i <= stepIndex
                     Box(
                         modifier = Modifier
                             .size(if (active) d.indicatorDotActive else d.indicatorDotSmall)
                             .clip(CircleShape)
-                            .background(if (active) BrandPrimary else onCard.copy(alpha = 0.35f)),
+                            .background(if (reached) BrandPrimary else onCard.copy(alpha = 0.35f)),
                     )
                 }
             }

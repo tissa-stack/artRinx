@@ -57,7 +57,7 @@ fun ProfileTitleCard(
         modifier = modifier
             .fillMaxWidth()
             .border(
-                width = if (selected) 1.5.dp else 1.dp,
+                width = if (selected) 2.5.dp else 2.dp,
                 color = borderColor,
                 shape = RoundedCornerShape(Spacing.md),
             )

@@ -92,6 +92,13 @@ fun SearchableTextDropdownField(
                         imageVector = if (showSuggestions) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        // Tapping the up-chevron while the list is open collapses it (clears focus →
+                        // suggestions hide). Decorative when closed (tap the field to open).
+                        modifier = if (showSuggestions) {
+                            Modifier.clickable { focusManager.clearFocus() }
+                        } else {
+                            Modifier
+                        },
                     )
                 }
             },

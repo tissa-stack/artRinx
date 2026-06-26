@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -56,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.util.LegalLinks
+import com.rinx.artRINXapp.core.util.SocialLinks
 import com.rinx.artRINXapp.core.util.appendLegalLink
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
@@ -354,6 +357,7 @@ private fun AvatarRow(modifier: Modifier = Modifier) {
 private fun WaitlistSuccessContent(onBack: () -> Unit) {
     val dimens = LocalDimens.current
     val isDark = isSystemInDarkTheme()
+    val uriHandler = LocalUriHandler.current
 
     Column(
         modifier = Modifier
@@ -420,11 +424,31 @@ private fun WaitlistSuccessContent(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SocialIconButton(iconRes = null, label = "𝕏")
-                SocialIconButton(iconRes = R.drawable.ic_instagram, contentDescription = "Instagram")
-                SocialIconButton(iconRes = R.drawable.ic_linkedin, contentDescription = "LinkedIn")
-                SocialIconButton(iconRes = R.drawable.ic_facebook, contentDescription = "Facebook")
-                SocialIconButton(iconRes = R.drawable.ic_tiktok, contentDescription = "TikTok")
+                SocialIconButton(
+                    iconRes = null,
+                    label = "𝕏",
+                    onClick = { runCatching { uriHandler.openUri(SocialLinks.X) } },
+                )
+                SocialIconButton(
+                    iconRes = R.drawable.ic_instagram,
+                    contentDescription = "Instagram",
+                    onClick = { runCatching { uriHandler.openUri(SocialLinks.INSTAGRAM) } },
+                )
+                SocialIconButton(
+                    iconRes = R.drawable.ic_linkedin,
+                    contentDescription = "LinkedIn",
+                    onClick = { runCatching { uriHandler.openUri(SocialLinks.LINKEDIN) } },
+                )
+                SocialIconButton(
+                    iconRes = R.drawable.ic_facebook,
+                    contentDescription = "Facebook",
+                    onClick = { runCatching { uriHandler.openUri(SocialLinks.FACEBOOK) } },
+                )
+                SocialIconButton(
+                    iconRes = R.drawable.ic_tiktok,
+                    contentDescription = "TikTok",
+                    onClick = { runCatching { uriHandler.openUri(SocialLinks.TIKTOK) } },
+                )
             }
         }
     }
@@ -435,12 +459,14 @@ private fun SocialIconButton(
     iconRes: Int?,
     label: String = "",
     contentDescription: String = label,
+    onClick: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
             .size(Spacing.giant)
             .clip(RoundedCornerShape(Spacing.md))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         if (iconRes != null) {

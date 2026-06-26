@@ -3,10 +3,6 @@ package com.rinx.artRINXapp.feature.notifications.presentation
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -132,15 +128,12 @@ fun NotificationsScreen(
                 val scope = rememberCoroutineScope()
                 val density = LocalDensity.current
 
-                // Swipe/settle → ViewModel; tap → animate the pager. (Two-way sync, like Home tabs.)
+                // Pager is the single source of truth: swipe + tab tap drive it; the settled page
+                // mirrors back to the VM. No activeTab→pager binding (that two-way loop is what left a
+                // tab stuck mid-switch on fast taps).
                 LaunchedEffect(pagerState) {
                     snapshotFlow { pagerState.settledPage }.collect { page ->
                         NotifTab.entries.getOrNull(page)?.let { if (it != state.activeTab) viewModel.onTabSelected(it) }
-                    }
-                }
-                LaunchedEffect(state.activeTab) {
-                    if (pagerState.currentPage != state.activeTab.ordinal) {
-                        pagerState.animateScrollToPage(state.activeTab.ordinal)
                     }
                 }
 
@@ -171,23 +164,7 @@ fun NotificationsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fillMaxHeight()
-                            .draggable(
-                                orientation = Orientation.Horizontal,
-                                state = rememberDraggableState { delta ->
-                                    val pageSize = pagerState.layoutInfo.pageSize.takeIf { it > 0 }
-                                        ?: return@rememberDraggableState
-                                    if (cellWidthPx <= 0f) return@rememberDraggableState
-                                    scope.launch { pagerState.scrollBy(delta * (pageSize / cellWidthPx)) }
-                                },
-                                onDragStopped = {
-                                    scope.launch {
-                                        val target = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                                            .roundToInt().coerceIn(0, tabCount - 1)
-                                        pagerState.animateScrollToPage(target)
-                                    }
-                                },
-                            ),
+                            .fillMaxHeight(),
                     ) {
                         NotifTab.entries.forEach { tab ->
                             val pos = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
@@ -202,7 +179,7 @@ fun NotificationsScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .clickable { viewModel.onTabSelected(tab) },
+                                    .clickable { scope.launch { pagerState.animateScrollToPage(tab.ordinal) } },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(tab.label, style = MaterialTheme.typography.labelLarge, color = textColor)

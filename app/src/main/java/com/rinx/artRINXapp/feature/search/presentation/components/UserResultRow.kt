@@ -61,7 +61,7 @@ fun UserResultRow(
             )
             val subtitle = listOf(
                 user.username.takeIf { it.isNotBlank() }?.let { "@$it" },
-                user.profileTypeName.takeIf { it.isNotBlank() },
+                // Role/profile-type hidden for now (per request) — show handle + follower count only.
                 "${formatCount(user.followerCount)} ${if (user.followerCount == 1) "follower" else "followers"}",
             ).filterNotNull().joinToString(" · ")
             if (subtitle.isNotBlank()) {

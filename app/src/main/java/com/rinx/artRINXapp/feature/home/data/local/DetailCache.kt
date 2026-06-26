@@ -14,8 +14,9 @@ import javax.inject.Singleton
  */
 data class ArtDetailEntry(val post: ShoppablePost, val similar: List<ArtworkItem>, val isOwn: Boolean = false)
 
-/** Cached curation-detail payload: the (post-reorder) curation plus its "more like this" list. */
-data class CurationDetailEntry(val curation: CurationItem, val more: List<CurationItem>)
+/** Cached curation-detail payload: the (post-reorder) curation, its "more like this" list, and
+ *  whether the current user owns it (cached so a re-open shows Edit/Delete instantly, no delay). */
+data class CurationDetailEntry(val curation: CurationItem, val more: List<CurationItem>, val isOwn: Boolean = false)
 
 /**
  * In-memory, app-lifetime cache of the last-viewed artwork/curation details so reopening a screen
@@ -72,8 +73,8 @@ class DetailCache @Inject constructor(
         return copy(artworkUrls = keptUrls, artworkIds = keptIds)
     }
 
-    fun putCuration(id: Int, curation: CurationItem, more: List<CurationItem>) =
-        synchronized(cur) { cur[id] = CurationDetailEntry(curation, more) }
+    fun putCuration(id: Int, curation: CurationItem, more: List<CurationItem>, isOwn: Boolean = false) =
+        synchronized(cur) { cur[id] = CurationDetailEntry(curation, more, isOwn) }
 
     fun updateCurationLike(id: Int, isLiked: Boolean, likeCount: Int) = synchronized(cur) {
         cur[id]?.let { cur[id] = it.copy(curation = it.curation.copy(isLiked = isLiked, likeCount = likeCount)) }

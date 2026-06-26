@@ -263,10 +263,13 @@ private fun CurationDetailContent(
                 CurationCardStack(
                     artworks           = curation.artworkUrls,
                     modifier           = Modifier.fillMaxWidth(),
+                    // Navigable everywhere EXCEPT my own collection opened from my Profile tab.
                     onCardClick        = { index ->
-                        curation.artworkIds.getOrNull(index)
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let(onNavigateToArtDetail)
+                        if (uiState.artworksNavigable) {
+                            curation.artworkIds.getOrNull(index)
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let(onNavigateToArtDetail)
+                        }
                     },
                 )
             }

@@ -363,9 +363,11 @@ private fun ProfileCreationContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     repeat(totalSteps) { index ->
-                        val isActive = index == currentStep
+                        // Progress style: every step up to and including the current one is filled, so
+                        // going back/forward shows how far the user has progressed (not just one dot).
+                        val reached = index <= currentStep
                         val dotColor by animateColorAsState(
-                            targetValue = if (isActive) BrandPrimary
+                            targetValue = if (reached) BrandPrimary
                             else MaterialTheme.colorScheme.outline,
                             animationSpec = tween(250),
                             label = "dot_$index",

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,8 +31,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,8 +62,8 @@ fun ReportReasonSheet(
     onSubmit: () -> Unit,
 ) {
     val sheetState      = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val selectedReasons = remember { mutableStateListOf<String>() }
-    val canSubmit       = selectedReasons.isNotEmpty()
+    var selectedReason by remember { mutableStateOf<String?>(null) }
+    val canSubmit       = selectedReason != null
     val btnBg by animateColorAsState(
         targetValue = if (canSubmit) BrandPrimary else DarkCardSurface,
         label       = "reportBtn",
@@ -109,14 +111,11 @@ fun ReportReasonSheet(
             Spacer(Modifier.height(Spacing.sm))
 
             REPORT_REASONS.forEach { reason ->
-                val checked = reason in selectedReasons
+                val selected = reason == selectedReason
                 Row(
                     modifier          = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            if (checked) selectedReasons.remove(reason)
-                            else selectedReasons.add(reason)
-                        }
+                        .clickable { selectedReason = reason }
                         .padding(vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -126,7 +125,7 @@ fun ReportReasonSheet(
                         color    = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.weight(1f),
                     )
-                    ReasonCheckbox(checked = checked)
+                    ReasonRadio(selected = selected)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             }
@@ -156,28 +155,24 @@ fun ReportReasonSheet(
 }
 
 @Composable
-private fun ReasonCheckbox(checked: Boolean) {
-    val shape = RoundedCornerShape(3.dp)
+private fun ReasonRadio(selected: Boolean) {
     Box(
         modifier         = Modifier
             .size(18.dp)
-            .clip(shape)
-            .background(if (checked) BrandPrimary else Color.Transparent)
-            .then(
-                if (!checked) Modifier.border(
-                    width = 1.5.dp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    shape = shape,
-                ) else Modifier
+            .clip(CircleShape)
+            .border(
+                width = 1.5.dp,
+                color = if (selected) BrandPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                shape = CircleShape,
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) {
-            Icon(
-                imageVector        = Icons.Default.Check,
-                contentDescription = null,
-                tint               = Color.White,
-                modifier           = Modifier.size(12.dp),
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(BrandPrimary),
             )
         }
     }

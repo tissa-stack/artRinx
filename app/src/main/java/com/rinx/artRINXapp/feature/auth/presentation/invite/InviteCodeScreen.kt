@@ -112,6 +112,19 @@ fun InviteCodeScreen(
         )
     }
 
+    // Invite-code validation (e.g. "no remaining invites this month") → a clear dialog the user must
+    // dismiss with Done. Verification does NOT proceed when this shows.
+    if (uiState.errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::clearError,
+            title = { Text("Invite code") },
+            text = { Text(uiState.errorMessage ?: "") },
+            confirmButton = {
+                TextButton(onClick = viewModel::clearError) { Text("Done") }
+            },
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -181,19 +194,8 @@ fun InviteCodeScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                AnimatedVisibility(visible = uiState.errorMessage != null) {
-                    Column {
-                        Spacer(modifier = Modifier.height(Spacing.xs))
-                        Text(
-                            text = uiState.errorMessage ?: "",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = Spacing.sm),
-                        )
-                    }
-                }
+                // Errors are surfaced via the AlertDialog above (Done to dismiss); the field border
+                // still reflects the error via hasError.
 
                 Spacer(modifier = Modifier.height(Spacing.xxxl))
 

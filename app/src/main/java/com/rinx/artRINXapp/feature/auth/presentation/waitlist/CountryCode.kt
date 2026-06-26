@@ -27,5 +27,18 @@ object CountryCodes {
         CountryCode("🇸🇦", "SA", "+966", "Saudi Arabia"),
     )
 
-    val default: CountryCode = all.first()
+    // Default to the United States everywhere a phone country isn't explicitly chosen.
+    val default: CountryCode = all.first { it.code == "US" }
+}
+
+/**
+ * Expected national-number digit count (after the dial code) for countries we can validate. Returns
+ * null when the length is variable/unknown (e.g. master-catalog countries) → no strict check applied.
+ * Used to show an inline "must be N digits" message under the phone field.
+ */
+fun CountryCode.nationalNumberLength(): Int? = when (code) {
+    "US", "CA", "IN", "GB" -> 10
+    "AE", "AU", "FR", "SA" -> 9
+    "SG" -> 8
+    else -> null
 }

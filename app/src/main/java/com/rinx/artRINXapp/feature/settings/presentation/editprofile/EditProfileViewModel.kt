@@ -279,7 +279,9 @@ class EditProfileViewModel @Inject constructor(
 
     fun onUsernameChange(v: String) {
         userEdited = true
-        _state.update { it.copy(username = v, usernameError = null) }
+        // Immediate min-length feedback (mirrors the create-profile flow).
+        val error = if (v.isNotEmpty() && v.length < 5) "Username must be at least 5 characters" else null
+        _state.update { it.copy(username = v, usernameError = error) }
     }
     fun onFullNameChange(v: String) = _state.update {
         // Guard: ignore edits once the 2-change cap is reached (the field is also disabled in the UI).

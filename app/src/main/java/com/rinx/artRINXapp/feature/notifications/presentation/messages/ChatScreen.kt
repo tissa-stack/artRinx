@@ -31,6 +31,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
@@ -135,6 +138,8 @@ fun ChatScreen(
 
     val clipboard = LocalClipboardManager.current
     var menuTarget by remember { mutableStateOf<ChatMessage?>(null) }
+    // Tapping a message reveals a details line (date/time + read ticks) beneath it; tap again hides it.
+    var detailsTarget by remember { mutableStateOf<String?>(null) }
     // Per-message delete confirmation (distinct from the whole-chat `showDeleteConfirm` below).
     var deleteTarget by remember { mutableStateOf<ChatMessage?>(null) }
 
@@ -450,6 +455,8 @@ fun ChatScreen(
                     onDelete           = { deleteTarget = msg; menuTarget = null },
                     onRetry            = { if (msg.sendStatus == SendStatus.FAILED) viewModel.retryMessage(msg) },
                     onOpenArtwork      = onOpenArtwork,
+                    showDetails        = detailsTarget == msg.id,
+                    onTap              = { detailsTarget = if (detailsTarget == msg.id) null else msg.id },
                 )
                 Spacer(Modifier.height(Spacing.sm))
             }
@@ -510,6 +517,11 @@ fun ChatScreen(
             return@Column
         }
         val editing = state.editingMessageId != null
+        // Auto-focus the input (opening the keyboard) the moment an edit begins, with the text ready.
+        val editFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(state.editingMessageId) {
+            if (state.editingMessageId != null) runCatching { editFocusRequester.requestFocus() }
+        }
         // A genuine load error leaves no valid relationship data → keep the field disabled.
         val enabled = !state.error && (editing || state.canSend)
         val placeholder = when {
@@ -548,7 +560,7 @@ fun ChatScreen(
                     value         = state.inputText,
                     onValueChange = viewModel::onInputChange,
                     enabled       = enabled,
-                    modifier      = Modifier.weight(1f),
+                    modifier      = Modifier.weight(1f).focusRequester(editFocusRequester),
                     textStyle     = MaterialTheme.typography.bodyMedium.copy(color = textColor),
                     cursorBrush   = SolidColor(BrandPrimary),
                     // Grow up to 5 lines, then hold height and scroll the text inside the box.
@@ -869,6 +881,8 @@ private fun ChatBubble(
     onDelete: () -> Unit,
     onRetry: () -> Unit,
     onOpenArtwork: (Int) -> Unit,
+    showDetails: Boolean,
+    onTap: () -> Unit,
 ) {
     // Highlight the whole row while it's long-press-selected (the action menu is open for it).
     val rowHighlight = if (menuOpen) {
@@ -895,7 +909,7 @@ private fun ChatBubble(
                         ))
                         .background(bubbleSent)
                         .combinedClickable(
-                            onClick     = { if (message.sendStatus == SendStatus.FAILED) onRetry() },
+                            onClick     = { if (message.sendStatus == SendStatus.FAILED) onRetry() else onTap() },
                             onLongClick = onLongPress,
                         )
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
@@ -920,8 +934,9 @@ private fun ChatBubble(
                     message.sendStatus == SendStatus.SENDING -> StatusLabel("Sending…", statusColor)
                     message.sendStatus == SendStatus.FAILED  -> StatusLabel("Failed — tap to retry", BrandPrimary)
                     showInviteSent                           -> StatusLabel("Invite sent!", statusColor)
-                    isLastSentMessage && message.isRead      -> StatusLabel("Read", statusColor)
                 }
+                // Tap-to-reveal: date/time + read receipt (two ticks, blue when read) below the bubble.
+                if (showDetails) MessageDetailsLine(message, isSent = true, statusColor = statusColor)
             }
         }
     } else {
@@ -947,7 +962,7 @@ private fun ChatBubble(
                             bottomStart = 0.dp,
                         ))
                         .background(bubbleReceived)
-                        .combinedClickable(onClick = {}, onLongClick = onLongPress)
+                        .combinedClickable(onClick = { onTap() }, onLongClick = onLongPress)
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 ) {
                     BubbleContent(message, receivedTextColor, onOpenArtwork)
@@ -966,7 +981,31 @@ private fun ChatBubble(
                     tint               = bubbleReceived,
                     modifier           = Modifier.size(width = Spacing.lg, height = Spacing.md),
                 )
+                if (showDetails) MessageDetailsLine(message, isSent = false, statusColor = statusColor)
             }
+        }
+    }
+}
+
+/** Date/time (+ read receipt for sent messages) revealed under a message when it's tapped. */
+@Composable
+private fun MessageDetailsLine(message: ChatMessage, isSent: Boolean, statusColor: Color) {
+    Spacer(Modifier.height(Spacing.xs))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        val label = if (message.isEdited && !message.isDeleted) "edited · ${message.timestamp}" else message.timestamp
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = statusColor.copy(alpha = 0.7f),
+        )
+        if (isSent) {
+            Spacer(Modifier.width(Spacing.xs))
+            Icon(
+                imageVector        = Icons.Filled.DoneAll,
+                contentDescription = if (message.isRead) "Read" else "Sent",
+                tint               = if (message.isRead) BrandPrimary else statusColor.copy(alpha = 0.5f),
+                modifier           = Modifier.size(Spacing.md),
+            )
         }
     }
 }
@@ -1036,35 +1075,8 @@ private fun BubbleContent(
             }
         }
 
-        // Short time at the bottom-right inside the bubble (with an "edited" prefix when applicable).
-        val time = remember(message.createdAtEpochMs) { ChatDateTime.shortTime(message.createdAtEpochMs) }
-        if (time.isNotEmpty() || (message.isEdited && !message.isDeleted)) {
-            Spacer(Modifier.height(Spacing.xs))
-            Row(
-                modifier = Modifier.align(Alignment.End),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (message.isEdited && !message.isDeleted) {
-                    Text(
-                        "edited",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 9.sp,
-                        lineHeight = 11.sp,
-                        color = contentColor.copy(alpha = 0.55f),
-                    )
-                    if (time.isNotEmpty()) Spacer(Modifier.width(Spacing.xs))
-                }
-                if (time.isNotEmpty()) {
-                    Text(
-                        time,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 9.sp,
-                        lineHeight = 11.sp,
-                        color = contentColor.copy(alpha = 0.6f),
-                    )
-                }
-            }
-        }
+        // Time + edited/read are no longer shown inside the bubble — they appear on tap via
+        // MessageDetailsLine below the message.
     }
 }
 

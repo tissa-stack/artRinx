@@ -18,8 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,8 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,7 +73,7 @@ fun ReportBottomSheet(
     onUnfollowUser: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val selectedReasons = remember { mutableStateListOf<String>() }
+    var selectedReason by remember { mutableStateOf<String?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -82,14 +83,11 @@ fun ReportBottomSheet(
         // Phase is driven by the report result, not local state.
         if (!reportSent) {
             ReportForm(
-                selectedReasons = selectedReasons,
+                selectedReason = selectedReason,
                 subjectLabel = subjectLabel,
                 isReporting = isReporting,
-                onToggleReason = { reason ->
-                    if (reason in selectedReasons) selectedReasons.remove(reason)
-                    else selectedReasons.add(reason)
-                },
-                onSubmit = { onSubmitReport(selectedReasons.joinToString(", ")) },
+                onSelectReason = { selectedReason = it },
+                onSubmit = { selectedReason?.let { onSubmitReport(it) } },
             )
         } else {
             ReportSent(
@@ -109,13 +107,13 @@ fun ReportBottomSheet(
 
 @Composable
 private fun ReportForm(
-    selectedReasons: List<String>,
+    selectedReason: String?,
     subjectLabel: String,
     isReporting: Boolean,
-    onToggleReason: (String) -> Unit,
+    onSelectReason: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
-    val canReport = selectedReasons.isNotEmpty() && !isReporting
+    val canReport = selectedReason != null && !isReporting
     val buttonColor by animateColorAsState(
         targetValue = if (canReport) BrandPrimary else DarkCardSurface,
         label       = "reportButton",
@@ -154,11 +152,11 @@ private fun ReportForm(
         Spacer(Modifier.height(Spacing.sm))
 
         REPORT_REASONS.forEach { reason ->
-            val checked = reason in selectedReasons
+            val selected = reason == selectedReason
             Row(
                 modifier          = Modifier
                     .fillMaxWidth()
-                    .clickable { onToggleReason(reason) }
+                    .clickable { onSelectReason(reason) }
                     .padding(vertical = Spacing.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -168,12 +166,12 @@ private fun ReportForm(
                     color    = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f),
                 )
-                Checkbox(
-                    checked          = checked,
-                    onCheckedChange  = { onToggleReason(reason) },
-                    colors           = CheckboxDefaults.colors(
-                        checkedColor   = BrandPrimary,
-                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                RadioButton(
+                    selected = selected,
+                    onClick  = { onSelectReason(reason) },
+                    colors   = RadioButtonDefaults.colors(
+                        selectedColor   = BrandPrimary,
+                        unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     ),
                 )
             }

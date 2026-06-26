@@ -7,6 +7,11 @@ import com.google.gson.annotations.SerializedName
  * All fields optional so a legacy/empty body decodes without throwing.
  */
 data class VerifyInviteResponse(
+    // The server returns HTTP 200 even for body-level failures (e.g. "no remaining invites"), so
+    // these MUST be checked — `success=false` means the code is invalid/exhausted, not accepted.
+    @SerializedName("success") val success: Boolean? = null,
+    @SerializedName("code") val code: Int? = null,
+    @SerializedName("message") val message: String? = null,
     @SerializedName("data") val data: VerifyInviteData? = null,
 )
 

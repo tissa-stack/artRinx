@@ -284,22 +284,17 @@ fun HomeContent(
     }
     val listState = listStateFor(uiState.activeTab)
 
-    // Horizontal pager backing the three tabs — swiping moves between them, and the
-    // tab indicator / active state stay in sync with the pager position both ways.
+    // Horizontal pager backing the three tabs. The pager is the SINGLE source of truth: swiping and
+    // tapping a tab both drive it directly, and the settled page mirrors back into activeTab. There is
+    // deliberately NO activeTab→pager binding and no manual tab-bar drag — that combination is what
+    // left the header stuck between tabs. The pager can only ever rest on a whole page.
     val pagerState = rememberPagerState(initialPage = uiState.activeTab.ordinal) { HomeTab.entries.size }
 
-    // Swipe → update the selected tab. Keyed on settledPage (not currentPage) so that animating to a
-    // NON-adjacent tab (e.g. Discover → For You) doesn't fire for the pages it passes through, which
-    // would yank activeTab to an intermediate page and cancel the scroll mid-way (the "stuck" header).
+    // Settled page → selected tab (keyed on settledPage so passing through a page mid-animation doesn't
+    // yank activeTab to an intermediate tab).
     LaunchedEffect(pagerState.settledPage) {
         val swipedTab = HomeTab.entries[pagerState.settledPage]
         if (swipedTab != uiState.activeTab) onTabSelected(swipedTab)
-    }
-    // Tab tapped (activeTab changed elsewhere) → animate the pager to it.
-    LaunchedEffect(uiState.activeTab) {
-        if (pagerState.currentPage != uiState.activeTab.ordinal) {
-            pagerState.animateScrollToPage(uiState.activeTab.ordinal)
-        }
     }
 
     // Re-tapping the Home tab while already on Home scrolls the active list back to the top.
@@ -328,7 +323,6 @@ fun HomeContent(
             TopTabs(
                 activeTab = uiState.activeTab,
                 pagerState = pagerState,
-                onTabSelected = onTabSelected,
                 isDarkTheme = isDarkTheme,
                 onTabBounds = onTabBounds,
                 swipeEnabled = swipeEnabled,
