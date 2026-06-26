@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.core.tour
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,6 +31,10 @@ fun TourHost(
     }
 
     if (!state.active) return
+
+    // Device back mirrors the in-card "‹ Back": step back through cards, and at the first card it's
+    // a consumed no-op so back can't pop the tab out from under the overlay or exit mid-tour.
+    BackHandler { viewModel.back() }
 
     val route = TourStep.ordered[state.step].route
     LaunchedEffect(state.step, route) {
