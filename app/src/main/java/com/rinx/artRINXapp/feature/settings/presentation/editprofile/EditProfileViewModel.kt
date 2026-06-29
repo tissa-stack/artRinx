@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.util.capitalizeFirst
+import com.rinx.artRINXapp.core.util.capitalizeWords
 import com.rinx.artRINXapp.feature.profile.domain.model.EditableProfile
 import com.rinx.artRINXapp.feature.profile.domain.model.Medium
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
@@ -206,7 +208,7 @@ class EditProfileViewModel @Inject constructor(
         val s = _state.value
         val changes = ProfileUpdate(
             username = s.username.trim().takeIf { it != o.username },
-            fullName = s.fullName.trim().takeIf { it != o.fullName },
+            fullName = s.fullName.capitalizeWords().takeIf { it != o.fullName },
             displayName = s.displayName.trim().takeIf { it != o.displayName },
             bio = s.bio.trim().takeIf { it != o.bio },
             dob = s.dob.takeIf { it != o.dob },
@@ -279,9 +281,12 @@ class EditProfileViewModel @Inject constructor(
 
     fun onUsernameChange(v: String) {
         userEdited = true
+        // Capitalize the first letter (length-preserving) so the save-time taken-check and the saved
+        // username stay identical.
+        val normalized = v.capitalizeFirst()
         // Immediate min-length feedback (mirrors the create-profile flow).
-        val error = if (v.isNotEmpty() && v.length < 5) "Username must be at least 5 characters" else null
-        _state.update { it.copy(username = v, usernameError = error) }
+        val error = if (normalized.isNotEmpty() && normalized.length < 5) "Username must be at least 5 characters" else null
+        _state.update { it.copy(username = normalized, usernameError = error) }
     }
     fun onFullNameChange(v: String) = _state.update {
         // Guard: ignore edits once the 2-change cap is reached (the field is also disabled in the UI).

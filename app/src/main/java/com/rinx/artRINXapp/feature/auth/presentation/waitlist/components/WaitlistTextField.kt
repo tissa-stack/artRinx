@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
@@ -24,6 +25,7 @@ fun WaitlistTextField(
     maxChars: Int = Int.MAX_VALUE,
     keyboardType: KeyboardType = KeyboardType.Text,
     imeAction: ImeAction = ImeAction.Next,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
     onImeAction: () -> Unit = {},
     hasError: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
@@ -43,6 +45,7 @@ fun WaitlistTextField(
         keyboardOptions = KeyboardOptions(
             keyboardType = keyboardType,
             imeAction = imeAction,
+            capitalization = capitalization,
         ),
         keyboardActions = KeyboardActions(
             onNext = { onImeAction() },

@@ -49,7 +49,11 @@ fun ApiResult.Error.userMessage(fallback: String = "Something went wrong. Please
     is ApiResult.Error.Conflict -> message.ifBlank { fallback }
     is ApiResult.Error.NotFound -> message.ifBlank { fallback }
     is ApiResult.Error.RateLimited -> message.ifBlank { fallback }
-    is ApiResult.Error.Network -> "No connection. Please try again."
+    // Distinguish a request timeout (server slow/cold but device IS online) from a real offline failure,
+    // so a SocketTimeoutException isn't mislabeled "No connection".
+    is ApiResult.Error.Network ->
+        if (cause is java.net.SocketTimeoutException) "The server is taking longer than usual. Please try again."
+        else "No connection. Please try again."
     is ApiResult.Error.Server -> fallback
     is ApiResult.Error.Unknown -> fallback
 }

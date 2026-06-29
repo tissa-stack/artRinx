@@ -131,18 +131,22 @@ fun ProfileHeaderSection(
                         painter = painterResource(R.drawable.ic_invite_friends),
                         contentDescription = "Invite friends",
                         tint = BrandPrimary,
-                        modifier = Modifier.size(Spacing.xl),
+                        modifier = Modifier.size(Spacing.xxl),
                     )
                 }
                 IconButton(
                     onClick = onSettingsClick,
-                    modifier = Modifier.size(Spacing.huge),
+                    // Push right by the icon-centering inset so the (last) glyph lands on the content
+                    // edge — mirrors the back button's left offset, aligning it with the feedback button.
+                    modifier = Modifier
+                        .offset(x = (Spacing.huge - Spacing.xxl) / 2)
+                        .size(Spacing.huge),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_settings),
                         contentDescription = "Settings",
                         tint = BrandPrimary,
-                        modifier = Modifier.size(Spacing.xl),
+                        modifier = Modifier.size(Spacing.xxl),
                     )
                 }
             }

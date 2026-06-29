@@ -54,6 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -192,6 +193,7 @@ private fun WaitlistFormContent(
                 label = "First Name",
                 modifier = Modifier.fillMaxWidth(),
                 maxChars = 50,
+                capitalization = KeyboardCapitalization.Words,
             )
 
             Spacer(modifier = Modifier.height(Spacing.md))

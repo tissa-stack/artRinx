@@ -304,6 +304,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Username",
                 value = state.username,
                 onValueChange = viewModel::onUsernameChange,
+                capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showUsernameTooltip, viewModel::onUsernameTooltipToggle) },
             )
             Tooltip(

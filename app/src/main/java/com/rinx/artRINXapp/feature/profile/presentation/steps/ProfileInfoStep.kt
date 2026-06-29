@@ -227,6 +227,7 @@ fun ProfileInfoStep(
                 onValueChange = onUsernameChange,
                 placeholder = "Username",
                 modifier = Modifier.fillMaxWidth(),
+                capitalization = KeyboardCapitalization.Words,
                 hasError = usernameError || usernameTooShort || usernameCheckState is UsernameCheckState.Taken,
             )
             // Immediate min-length feedback before the availability check (which only runs at >= 5).

@@ -11,6 +11,8 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.tour.TourManager
+import com.rinx.artRINXapp.core.util.capitalizeFirst
+import com.rinx.artRINXapp.core.util.capitalizeWords
 import com.rinx.artRINXapp.feature.auth.domain.GooglePrefillHolder
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.profile.data.local.ProfileDraftDataSource
@@ -257,20 +259,23 @@ class ProfileCreationViewModel @Inject constructor(
     }
 
     fun onUsernameChange(value: String) {
+        // Capitalize the first letter (single-token, length-preserving) so the availability check and the
+        // saved username use the identical string.
+        val normalized = value.capitalizeFirst()
         _uiState.update {
             it.copy(
-                username = value,
+                username = normalized,
                 usernameError = false,
                 usernameCheckState = UsernameCheckState.Idle,
             )
         }
-        viewModelScope.launch { draftDataSource.saveUsername(value) }
+        viewModelScope.launch { draftDataSource.saveUsername(normalized) }
         usernameCheckJob?.cancel()
         // Spec: debounced 500ms, fired on every keystroke once the username is >= 5 chars.
-        if (value.length >= 5) {
+        if (normalized.length >= 5) {
             usernameCheckJob = viewModelScope.launch {
                 delay(500)
-                checkUsernameAvailability(value)
+                checkUsernameAvailability(normalized)
             }
         }
     }
@@ -592,7 +597,7 @@ class ProfileCreationViewModel @Inject constructor(
             val draft = ProfileDraft(
                 step = 3,
                 profileTypeId = state.selectedProfileTypeId,
-                fullName = state.fullName,
+                fullName = state.fullName.capitalizeWords(),
                 username = state.username,
                 displayName = state.displayName,
                 bio = state.bio,

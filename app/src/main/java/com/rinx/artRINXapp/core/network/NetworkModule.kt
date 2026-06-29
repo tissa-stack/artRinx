@@ -5,6 +5,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -21,6 +22,14 @@ object NetworkModule {
     private const val BASE_URL = "https://apifargate.rinx.com/"
     private const val TIMEOUT_SECONDS = 30L
     private const val UPLOAD_WRITE_TIMEOUT_SECONDS = 120L
+
+    // Hard ceiling on total wall-clock for a main-client call, INCLUDING RetryInterceptor's retries +
+    // backoff, so a flaky/cold backend can never stack the 30s per-attempt timeout into a multi-minute hang.
+    private const val CALL_TIMEOUT_SECONDS = 45L
+
+    // Raise OkHttp's default per-host cap (5) so the ~5–7 concurrent calls fired on app resume aren't
+    // queued behind each other while the backend is warming up.
+    private const val MAX_REQUESTS_PER_HOST = 10
 
     // The refresh runs inside a blocking preflight on every authed call, so keep it short — a stuck
     // /refresh must fail fast rather than freeze the UI for the full 30s.
@@ -44,12 +53,15 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         logging: HttpLoggingInterceptor,
+        retryInterceptor: RetryInterceptor,
         appVersionInterceptor: AppVersionInterceptor,
         authTokenInterceptor: AuthTokenInterceptor,
         sessionInvalidationInterceptor: SessionInvalidationInterceptor,
         tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient =
         OkHttpClient.Builder()
+            // Outermost: retry transient timeouts/connection failures on GETs before anything else runs.
+            .addInterceptor(retryInterceptor)
             .addInterceptor(appVersionInterceptor)
             .addInterceptor(authTokenInterceptor)
             // After authToken (so the token is already attached) — recovers the backend's 403
@@ -57,9 +69,11 @@ object NetworkModule {
             .addInterceptor(sessionInvalidationInterceptor)
             .authenticator(tokenAuthenticator)
             .addInterceptor(logging)
+            .dispatcher(Dispatcher().apply { maxRequestsPerHost = MAX_REQUESTS_PER_HOST })
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
 
     @Provides

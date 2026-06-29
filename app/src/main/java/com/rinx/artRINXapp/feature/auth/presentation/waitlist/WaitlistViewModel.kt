@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.phone.PhoneNumberValidator
+import com.rinx.artRINXapp.core.util.capitalizeWords
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistRequest
 import com.rinx.artRINXapp.feature.auth.domain.model.ProfileType
 import com.rinx.artRINXapp.feature.auth.domain.usecase.JoinWaitlistUseCase
@@ -104,7 +105,7 @@ class WaitlistViewModel @Inject constructor(
             val request = WaitlistRequest(
                 email = state.email.trim(),
                 phoneNumber = state.selectedCountry.dialCode + state.rawPhone.trim(),
-                firstName = state.firstName.trim(),
+                firstName = state.firstName.capitalizeWords(),
                 profileTypeId = state.profileType!!.id,
                 instagramHandle = state.instagramHandle.trim().ifBlank { null },
                 acceptedTerms = state.acceptedTerms,
