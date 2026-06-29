@@ -246,10 +246,10 @@ class MessagesRepositoryImpl @Inject constructor(
 
     // ── Date formatting ──────────────────────────────────────────────────────────
 
-    /** ISO 8601 → "Mon, Oct 28 at 4:43 PM" (device-local). Falls back to "" on parse failure. */
+    /** ISO 8601 → "Mon, Oct 28, 2026 at 4:43 PM" (device-local). Falls back to "" on parse failure. */
     private fun formatMessageStamp(iso: String?): String {
         val date = parseIso(iso) ?: return ""
-        return SimpleDateFormat("EEE, MMM d 'at' h:mm a", Locale.US).format(date)
+        return SimpleDateFormat("EEE, MMM d, yyyy 'at' h:mm a", Locale.US).format(date)
     }
 
     /** ISO 8601 → "9:34 PM" (today), "Yesterday", or "MMM d" (older) for inbox previews. */
