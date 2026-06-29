@@ -72,6 +72,8 @@ import com.rinx.artRINXapp.feature.search.presentation.components.ResultTypeTabs
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchIdleShimmer
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchResultsShimmer
+import com.rinx.artRINXapp.feature.search.presentation.components.SearchCurationsShimmer
+import com.rinx.artRINXapp.feature.search.presentation.components.SearchUsersShimmer
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchTopBar
 import com.rinx.artRINXapp.feature.search.presentation.components.TrendingTagsSection
 import com.rinx.artRINXapp.feature.search.presentation.components.UserResultRow
@@ -333,7 +335,11 @@ private fun SearchResultsContent(
 
         // ── Results body ──────────────────────────────────────────────
         when {
-            uiState.isLoading -> SearchResultsShimmer(modifier = Modifier.weight(1f))
+            uiState.isLoading -> when (uiState.selectedTab) {
+                ResultTab.ART -> SearchResultsShimmer(modifier = Modifier.weight(1f))
+                ResultTab.USERS -> SearchUsersShimmer(modifier = Modifier.weight(1f))
+                ResultTab.CURATIONS -> SearchCurationsShimmer(modifier = Modifier.weight(1f))
+            }
 
             uiState.isError -> SearchMessageView(
                 title = "Couldn't load results",

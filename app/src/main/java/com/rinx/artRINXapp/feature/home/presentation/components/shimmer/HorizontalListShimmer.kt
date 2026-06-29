@@ -8,14 +8,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 
 /**
  * Mirrors ArtworkCard / RecentlyViewedCard:
- * - Each card = artCardWidth × artCardHeight, NO corner radius (RectangleShape)
+ * - Each card = artCardWidth × artCardHeight, rounded corners (cardCornerRadius)
  * - Text is inside the card as an overlay — no text boxes below
  * - Shows 1 full card + partial second (matches 62% width cards in LazyRow)
  */
@@ -34,7 +36,7 @@ fun HorizontalListShimmer(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .width(d.artCardWidth)
                     .height(d.artCardHeight)
-                    // No clip / RectangleShape — matches actual ArtworkCard (no corner radius)
+                    .clip(RoundedCornerShape(d.cardCornerRadius))   // matches ArtworkCard's rounded corners
                     .background(brush),
             )
         }

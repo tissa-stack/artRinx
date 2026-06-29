@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -61,11 +63,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.theme.LightBackground
+import com.rinx.artRINXapp.core.theme.LightPrimaryText
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.util.buildShareText
+import com.rinx.artRINXapp.core.util.resolveShareTargets
 import com.rinx.artRINXapp.core.util.shareEntity
+import com.rinx.artRINXapp.core.util.shareTextTo
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.domain.model.FollowUser
 import com.rinx.artRINXapp.feature.share.domain.model.ShareTarget
@@ -276,25 +284,53 @@ fun ShareSheet(
                 Spacer(Modifier.height(Spacing.md))
             }
 
-            Row(
+            // Bottom share row: Copy link + every installed app that can receive the share (resolved
+            // from the device), then "More" (the system chooser — the only place per-contact direct-share
+            // targets and any unlisted apps appear). Resolved once; it's a lightweight PackageManager query.
+            val shareTargets = remember { context.resolveShareTargets() }
+            val shareText = remember(target) {
+                buildShareText(target.title, target.subtitle, target.webUrl)
+            }
+            LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                contentPadding = PaddingValues(vertical = Spacing.xs),
             ) {
-                QuickAction(
-                    iconRes = R.drawable.ic_copy,
-                    label = "Copy link",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        clipboard.setText(AnnotatedString(target.webUrl))
-                        Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
-                    },
-                )
-                QuickAction(
-                    iconRes = R.drawable.ic_send,
-                    label = "Share to…",
-                    modifier = Modifier.weight(1f),
-                    onClick = { context.shareEntity(target.title, target.subtitle, target.webUrl) },
-                )
+                item(key = "copy") {
+                    ShareCircleAction(
+                        label = "Copy link",
+                        onClick = {
+                            clipboard.setText(AnnotatedString(target.webUrl))
+                            Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+                        },
+                    ) {
+                        ShareVectorIcon(R.drawable.ic_copy_link, tint = BrandPrimary)
+                    }
+                }
+                shareTargets.forEach { appTarget ->
+                    item(key = appTarget.packageName) {
+                        ShareCircleAction(
+                            label = appTarget.label,
+                            onClick = { context.shareTextTo(appTarget, shareText) },
+                        ) {
+                            AsyncImage(
+                                model = appTarget.icon,
+                                contentDescription = appTarget.label,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(Spacing.sm),
+                            )
+                        }
+                    }
+                }
+                item(key = "more") {
+                    ShareCircleAction(
+                        label = "More",
+                        onClick = { context.shareEntity(target.title, target.subtitle, target.webUrl) },
+                    ) {
+                        ShareVectorIcon(R.drawable.ic_send, tint = LightPrimaryText)
+                    }
+                }
             }
             Spacer(Modifier.height(Spacing.sm))
         }
@@ -308,6 +344,7 @@ private fun FollowerCell(
     onToggle: () -> Unit,
 ) {
     val d = LocalDimens.current
+    val avatarSize = d.avatarSizeLg * 1.3f
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -320,7 +357,7 @@ private fun FollowerCell(
             RinxAvatar(
                 url = follower.avatarUrl,
                 contentDescription = follower.name,
-                size = d.avatarSizeLg,
+                size = avatarSize,
                 name = follower.name,
                 modifier = if (selected) {
                     Modifier.border(2.dp, BrandPrimary, CircleShape)
@@ -331,7 +368,7 @@ private fun FollowerCell(
             if (selected) {
                 Box(
                     modifier = Modifier
-                        .size(d.avatarSizeLg)
+                        .size(avatarSize)
                         .clip(CircleShape)
                         .background(BrandPrimary.copy(alpha = 0.45f)),
                     contentAlignment = Alignment.Center,
@@ -340,7 +377,7 @@ private fun FollowerCell(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
                         tint = Color.White,
-                        modifier = Modifier.size(d.avatarSizeLg * 0.5f),
+                        modifier = Modifier.size(avatarSize * 0.5f),
                     )
                 }
             }
@@ -357,40 +394,51 @@ private fun FollowerCell(
     }
 }
 
+/** One item in the bottom share row: a circular icon above a single-line label. */
 @Composable
-private fun QuickAction(
-    iconRes: Int,
+private fun ShareCircleAction(
     label: String,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    icon: @Composable () -> Unit,
 ) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .border(
-                width = 1.dp,
-                color = BrandPrimary,
-                shape = RoundedCornerShape(50),
-            )
+    val d = LocalDimens.current
+    val circleSize = d.avatarSizeLg * 1.2f
+    Column(
+        modifier = Modifier
+            .width(circleSize + Spacing.md)
+            .clip(RoundedCornerShape(Spacing.sm))
             .clickable { onClick() }
-            .padding(vertical = Spacing.md),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = Spacing.xs),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-            tint = BrandPrimary,
-            modifier = Modifier.size(Spacing.lg),
-        )
-        Spacer(Modifier.width(Spacing.sm))
+        Box(
+            modifier = Modifier
+                .size(circleSize)
+                .clip(CircleShape)
+                .background(LightBackground),
+            contentAlignment = Alignment.Center,
+        ) { icon() }
+        Spacer(Modifier.height(Spacing.xs))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = BrandPrimary,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/** A built-in vector glyph (Copy / More) centered on the shared white circle from [ShareCircleAction]. */
+@Composable
+private fun ShareVectorIcon(iconRes: Int, tint: Color) {
+    Icon(
+        painter = painterResource(iconRes),
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier.size(Spacing.xl),
+    )
 }
 
 @Composable

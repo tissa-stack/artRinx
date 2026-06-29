@@ -8,6 +8,15 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Package visibility (Android 11+): lets the share sheet enumerate apps that accept a
+         text/plain ACTION_SEND, to build the custom share-target row. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+
     <application
         android:name=".ArtRinxApplication"
         android:allowBackup="false"
