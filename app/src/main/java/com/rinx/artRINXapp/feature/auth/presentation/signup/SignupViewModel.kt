@@ -54,7 +54,9 @@ class SignupViewModel @Inject constructor(
         viewModelScope.launch {
             val countries = countryCodeProvider.load()
             _uiState.update { state ->
-                val selected = countries.firstOrNull { it.code == state.selectedCountry.code }
+                // Default the picker to the device's country (SIM/network/locale); fall back to US.
+                val deviceCode = phoneNumberValidator.deviceRegion()
+                val selected = countries.firstOrNull { it.code == deviceCode }
                     ?: countries.firstOrNull { it.code == CountryCodes.default.code }
                     ?: countries.firstOrNull()
                     ?: state.selectedCountry

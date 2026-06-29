@@ -1,7 +1,9 @@
 package com.rinx.artRINXapp.core.phone
 
 import android.content.Context
+import android.telephony.TelephonyManager
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
+import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.michaelrocks.libphonenumber.android.NumberParseException
 import io.michaelrocks.libphonenumber.android.PhoneNumberUtil
@@ -47,6 +49,20 @@ class PhoneNumberValidator @Inject constructor(
 
     @Volatile private var countryCache: List<CountryCode>? = null
     private val maxLenCache = ConcurrentHashMap<String, Int>()
+
+    /**
+     * Best guess of the device's country (ISO-3166 alpha-2, uppercase) for the default phone-code
+     * selection: SIM country → network country → device locale, falling back to [CountryCodes.default].
+     * SIM/network ISO need no runtime permission. Returns a valid 2-letter code or the US fallback.
+     */
+    fun deviceRegion(): String {
+        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        val candidate = tm?.simCountryIso?.takeIf { it.isNotBlank() }
+            ?: tm?.networkCountryIso?.takeIf { it.isNotBlank() }
+            ?: context.resources.configuration.locales.takeIf { !it.isEmpty }?.get(0)?.country
+        val region = candidate.orEmpty().uppercase()
+        return region.takeIf { it.length == 2 && it.all(Char::isLetter) } ?: CountryCodes.default.code
+    }
 
     /** Every supported region as a [CountryCode] (flag emoji + ISO2 + "+"-dial code + name), by name. */
     fun countries(): List<CountryCode> {
