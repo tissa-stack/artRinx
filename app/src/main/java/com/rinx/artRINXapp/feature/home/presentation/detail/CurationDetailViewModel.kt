@@ -35,8 +35,11 @@ data class CurationDetailUiState(
     val isLiked: Boolean = false,
     val isLoading: Boolean = true,
     val error: Boolean = false,
-    /** True when the current user owns this curation → show Edit/Delete instead of Report. */
+    /** True when the current user owns this curation. */
     val isOwn: Boolean = false,
+    /** True only for my own collection opened from my Profile tab → show Edit/Delete.
+     *  Opening my own collection from any other route (search, home, notifications…) hides them. */
+    val canManage: Boolean = false,
     /** Whether tapping an artwork card opens its detail. Disabled ONLY for my own collection opened
      *  from my Profile tab; navigable everywhere else (other users' collections, home, search). */
     val artworksNavigable: Boolean = true,
@@ -96,6 +99,7 @@ class CurationDetailViewModel @Inject constructor(
             likeCount = cached.curation.likeCount,
             isLiked = cached.curation.isLiked,
             isOwn = isOwn,
+            canManage = isFromProfile && isOwn,
             artworksNavigable = !(isFromProfile && isOwn),
             isLoading = false,
         )
@@ -199,6 +203,7 @@ class CurationDetailViewModel @Inject constructor(
                         likeCount = likeCount,
                         isLiked = isLiked,
                         isOwn = isOwn,
+                        canManage = isFromProfile && isOwn,
                         artworksNavigable = !(isFromProfile && isOwn),
                     )
                 }

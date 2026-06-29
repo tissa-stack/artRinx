@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -519,8 +520,15 @@ fun ChatScreen(
         val editing = state.editingMessageId != null
         // Auto-focus the input (opening the keyboard) the moment an edit begins, with the text ready.
         val editFocusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
         LaunchedEffect(state.editingMessageId) {
-            if (state.editingMessageId != null) runCatching { editFocusRequester.requestFocus() }
+            if (state.editingMessageId != null) {
+                // Small delay so the field is attached; requestFocus alone doesn't reliably raise
+                // the IME, so show() it explicitly to land in edit mode ready to type.
+                delay(100)
+                runCatching { editFocusRequester.requestFocus() }
+                keyboardController?.show()
+            }
         }
         // A genuine load error leaves no valid relationship data → keep the field disabled.
         val enabled = !state.error && (editing || state.canSend)

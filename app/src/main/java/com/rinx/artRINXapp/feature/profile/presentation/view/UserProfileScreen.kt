@@ -142,6 +142,9 @@ private fun UserProfileContent(
     if (showFeedback) {
         FeedbackDialog(onDismiss = { showFeedback = false })
     }
+    // Profile tab → owner chrome (invite/settings/feedback, clickable stats). Pushed screen (own
+    // profile opened from search/home/anywhere else) → hide them; it's a read-only view.
+    val showOwnerActions = onBack == null
     Scaffold(
         bottomBar = {
             BottomNavBar(
@@ -218,24 +221,28 @@ private fun UserProfileContent(
                             onFollowersClick = onOpenFollowers,
                             onFollowingClick = onOpenFollowing,
                             onBack = onBack,
+                            showOwnerActions = showOwnerActions,
                         )
                         // Feedback button — mid/bottom-right of the header, just above the tabs.
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = Spacing.lg, bottom = Spacing.md)
-                                .size(Spacing.giant)
-                                .clip(CircleShape)
-                                .background(BrandPrimary)
-                                .clickable { showFeedback = true },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_feedback),
-                                contentDescription = "Leave feedback",
-                                tint = Color.White,
-                                modifier = Modifier.size(Spacing.xl),
-                            )
+                        // Owner-only: hidden when the own profile is opened as a pushed screen.
+                        if (showOwnerActions) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = Spacing.lg, bottom = Spacing.md)
+                                    .size(Spacing.giant)
+                                    .clip(CircleShape)
+                                    .background(BrandPrimary)
+                                    .clickable { showFeedback = true },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_feedback),
+                                    contentDescription = "Leave feedback",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(Spacing.xl),
+                                )
+                            }
                         }
                     }
                 },

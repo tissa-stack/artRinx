@@ -4,6 +4,7 @@ Updated **2026-06-10** for iOS **V1.9**. Use this alongside the Figma. Where the
 
 Project context: invite-only art discovery and social platform — real-time messaging, artwork uploads, curations, shop links, events. Bundle ID `com.rinx.artRINXapp`. Backend host: `https://apifargate.rinx.com`. CDN host: `https://devartrinx.b-cdn.net`. Web companion: `https://www.artrinx.com`.
 
+
 ---
 
 ## 1. App flow state machine

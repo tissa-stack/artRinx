@@ -61,6 +61,9 @@ fun ProfileHeaderSection(
     /** When non-null (own profile opened as a pushed screen), a Back arrow renders inline at the
      *  start of the username row — same line as the name + invite/settings icons. */
     onBack: (() -> Unit)? = null,
+    /** Owner-only chrome (invite + settings buttons, clickable follower/following stats). Shown only
+     *  on the real Profile tab; hidden when the own profile is opened as a pushed screen from elsewhere. */
+    showOwnerActions: Boolean = true,
 ) {
     val d = LocalDimens.current
     var showPortfolio by remember { mutableStateOf(false) }
@@ -110,35 +113,38 @@ fun ProfileHeaderSection(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(
-                onClick = onInviteFriendsClick,
-                modifier = Modifier
-                    .size(Spacing.huge)
-                    .then(
-                        if (onInviteBounds != null) {
-                            Modifier.onGloballyPositioned { onInviteBounds(it.boundsInWindow()) }
-                        } else {
-                            Modifier
-                        },
-                    ),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_invite_friends),
-                    contentDescription = "Invite friends",
-                    tint = BrandPrimary,
-                    modifier = Modifier.size(Spacing.xl),
-                )
-            }
-            IconButton(
-                onClick = onSettingsClick,
-                modifier = Modifier.size(Spacing.huge),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_settings),
-                    contentDescription = "Settings",
-                    tint = BrandPrimary,
-                    modifier = Modifier.size(Spacing.xl),
-                )
+            // Invite + settings are owner-only chrome — only on the real Profile tab.
+            if (showOwnerActions) {
+                IconButton(
+                    onClick = onInviteFriendsClick,
+                    modifier = Modifier
+                        .size(Spacing.huge)
+                        .then(
+                            if (onInviteBounds != null) {
+                                Modifier.onGloballyPositioned { onInviteBounds(it.boundsInWindow()) }
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_invite_friends),
+                        contentDescription = "Invite friends",
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                }
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(Spacing.huge),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_settings),
+                        contentDescription = "Settings",
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                }
             }
         }
 
@@ -208,8 +214,16 @@ fun ProfileHeaderSection(
             ) {
                 ProfileStatColumn(value = profile.artCount, label = "Art")
                 ProfileStatColumn(value = profile.curationCount, label = "Collections")
-                ProfileStatColumn(value = profile.followerCount, label = "Followers", onClick = onFollowersClick)
-                ProfileStatColumn(value = profile.followingCount, label = "Following", onClick = onFollowingClick)
+                ProfileStatColumn(
+                    value = profile.followerCount,
+                    label = "Followers",
+                    onClick = if (showOwnerActions) onFollowersClick else null,
+                )
+                ProfileStatColumn(
+                    value = profile.followingCount,
+                    label = "Following",
+                    onClick = if (showOwnerActions) onFollowingClick else null,
+                )
             }
         }
 

@@ -138,8 +138,8 @@ private fun ProfileTypeCard(
             .clickable(onClick = onSelect),
         shape = RoundedCornerShape(Spacing.md),
         border = BorderStroke(
-            // Thicker, more visible border (tester found 1dp too faint); bolder when selected.
-            width = if (selected) 2.5.dp else 2.dp,
+            // Thicker, more visible border (tester found the unselected outline too faint); bolder when selected.
+            width = if (selected) 3.5.dp else 3.dp,
             color = borderColor,
         ),
         colors = CardDefaults.cardColors(

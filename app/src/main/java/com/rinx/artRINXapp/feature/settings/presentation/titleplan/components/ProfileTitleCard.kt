@@ -57,7 +57,8 @@ fun ProfileTitleCard(
         modifier = modifier
             .fillMaxWidth()
             .border(
-                width = if (selected) 2.5.dp else 2.dp,
+                // Bolder, more visible unselected outline (the default was too faint); bolder still when selected.
+                width = if (selected) 3.5.dp else 3.dp,
                 color = borderColor,
                 shape = RoundedCornerShape(Spacing.md),
             )

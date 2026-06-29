@@ -177,7 +177,9 @@ fun CurationDetailScreen(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                if (uiState.isOwn) {
+                // Edit/Delete only for my own collection opened from my Profile tab —
+                // never when the same collection is reached from search/home/notifications.
+                if (uiState.canManage) {
                     IconButton(onClick = {
                         viewModel.prepareEdit()
                         onEditCuration()

@@ -47,11 +47,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -328,19 +330,20 @@ private fun WaitlistFormContent(
 
 @Composable
 private fun AvatarRow(modifier: Modifier = Modifier) {
-    val avatarColors = listOf(
-        Color(0xFF45B1E8),
-        Color(0xFF8B5CF6),
-        Color(0xFFEC4899),
-        Color(0xFFF59E0B),
-        Color(0xFF10B981),
+    // A few sample joiners so the cluster isn't empty — each shows initials on a brand-tinted circle.
+    val avatars = listOf(
+        "AK" to Color(0xFF45B1E8),
+        "MR" to Color(0xFF8B5CF6),
+        "SJ" to Color(0xFFEC4899),
+        "TP" to Color(0xFFF59E0B),
+        "LN" to Color(0xFF10B981),
     )
     val avatarSize = Spacing.xxl
     val step = Spacing.md
-    val totalWidth = avatarSize + step * (avatarColors.size - 1)
+    val totalWidth = avatarSize + step * (avatars.size - 1)
 
     Box(modifier = modifier.size(width = totalWidth, height = avatarSize)) {
-        avatarColors.forEachIndexed { index, color ->
+        avatars.forEachIndexed { index, (initials, color) ->
             Box(
                 modifier = Modifier
                     .offset(x = step * index)
@@ -348,7 +351,15 @@ private fun AvatarRow(modifier: Modifier = Modifier) {
                     .clip(CircleShape)
                     .background(color)
                     .border(width = 2.dp, color = MaterialTheme.colorScheme.background, shape = CircleShape),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = initials,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = with(LocalDensity.current) { (avatarSize * 0.4f).toSp() },
+                )
+            }
         }
     }
 }

@@ -26,9 +26,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 
@@ -40,9 +42,14 @@ fun OtpBoxRow(
     otpLength: Int = 6,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
+    // Open the keyboard ready to type as soon as the OTP screen appears. A tiny delay lets the
+    // field attach first; requestFocus alone doesn't reliably raise the IME, so show() explicitly.
     LaunchedEffect(Unit) {
+        delay(150)
         focusRequester.requestFocus()
+        keyboardController?.show()
     }
 
     Box(
