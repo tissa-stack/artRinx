@@ -60,7 +60,6 @@ data class ProfileCreationUiState(
     // flag for the download-in-flight spinner. Cleared once the local copy is set as the avatar.
     val googlePhotoUrl: String? = null,
     val avatarPrefilling: Boolean = false,
-    val showImageSourceSheet: Boolean = false,
     val fullName: String = "",
     val username: String = "",
     val displayName: String = "",
@@ -249,15 +248,7 @@ class ProfileCreationViewModel @Inject constructor(
     // ── Profile Info ──────────────────────────────────────────────────────────
 
     fun onProfilePictureSelected(uri: Uri?) {
-        _uiState.update { it.copy(profilePictureUri = uri, showImageSourceSheet = false) }
-    }
-
-    fun onAvatarTapped() {
-        _uiState.update { it.copy(showImageSourceSheet = true) }
-    }
-
-    fun onImageSourceSheetDismiss() {
-        _uiState.update { it.copy(showImageSourceSheet = false) }
+        _uiState.update { it.copy(profilePictureUri = uri) }
     }
 
     fun onFullNameChange(value: String) {

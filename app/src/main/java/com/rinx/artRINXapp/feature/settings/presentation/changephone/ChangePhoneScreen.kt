@@ -26,9 +26,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import kotlinx.coroutines.delay
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -161,6 +165,15 @@ private fun PhoneStep(
     onSendCode: () -> Unit,
     buttonHeight: androidx.compose.ui.unit.Dp,
 ) {
+    // Open the keyboard on the "New number" field as soon as the screen appears, ready to type.
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        delay(150)
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
     if (currentPhone.isNotBlank()) {
         Text(
             text = "Current number",
@@ -188,6 +201,7 @@ private fun PhoneStep(
         onCountryChange = onCountryChange,
         countries = availableCountries,
         searchable = true,
+        numberFocusRequester = focusRequester,
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(Spacing.xl))

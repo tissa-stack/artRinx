@@ -6,6 +6,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,6 +148,9 @@ private fun OtpContent(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    // Scroll when the keyboard shrinks the available height so no content
+                    // (resend / "Change email?") is clipped or pushed off-screen.
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = dimens.screenPaddingHorizontal),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -238,7 +243,6 @@ private fun OtpContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
                 Spacer(modifier = Modifier.height(dimens.screenPaddingBottom))
             }
         }

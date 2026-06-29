@@ -68,6 +68,7 @@ import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.feature.upload.domain.model.MAX_ARTWORK_DIMENSION
 import com.rinx.artRINXapp.feature.upload.domain.model.MAX_ARTWORK_TAGS
 import com.rinx.artRINXapp.feature.upload.domain.model.PrivacyOption
 import com.rinx.artRINXapp.feature.upload.domain.model.ShopLinkVisibility
@@ -299,6 +300,7 @@ fun NewArtScreen(
                         height = state.sizeHeightCm,
                         width = state.sizeWidthCm,
                         unit = state.sizeUnit,
+                        isError = !state.isSizeValid,
                         onHeightChange = viewModel::onSizeHeightChange,
                         onWidthChange = viewModel::onSizeWidthChange,
                         onUnitChange = viewModel::onSizeUnitChange,
@@ -820,6 +822,7 @@ private fun DimensionsRow(
     height: String,
     width: String,
     unit: String,
+    isError: Boolean,
     onHeightChange: (String) -> Unit,
     onWidthChange: (String) -> Unit,
     onUnitChange: (String) -> Unit,
@@ -829,11 +832,16 @@ private fun DimensionsRow(
             .padding(horizontal = Spacing.md)
             .fillMaxWidth(),
     ) {
-        // Unit selector (cm / in) — the entered values are uploaded in the selected unit.
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            UnitPill(label = "cm", selected = unit == "cm") { onUnitChange("cm") }
-            UnitPill(label = "in", selected = unit == "in") { onUnitChange("in") }
-        }
+        // Section title — same style as the "Privacy" label.
+        Text(
+            "Dimensions",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.height(Spacing.sm))
+        // Unit selector (cm / in) — a segmented tab; entered values upload in the selected unit.
+        UnitTabs(unit = unit, onUnitChange = onUnitChange)
         Spacer(Modifier.height(Spacing.sm))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -841,63 +849,84 @@ private fun DimensionsRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DimensionField(
-                label = "Height ($unit)",
+                placeholder = "Height",
                 value = height,
                 onChange = onHeightChange,
                 modifier = Modifier.weight(1f),
             )
             DimensionField(
-                label = "Width ($unit)",
+                placeholder = "Width",
                 value = width,
                 onChange = onWidthChange,
                 modifier = Modifier.weight(1f),
             )
         }
+        if (isError) {
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "Enter a size between 1 and ${MAX_ARTWORK_DIMENSION.toInt()}",
+                style = MaterialTheme.typography.labelSmall,
+                color = ErrorDark,
+            )
+        }
     }
 }
 
-/** Small toggle pill for the dimension unit (cm / in). */
+/** Segmented tab control for the dimension unit (cm / in) — two equal-width tabs. */
 @Composable
-private fun UnitPill(label: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
+private fun UnitTabs(unit: String, onUnitChange: (String) -> Unit) {
+    val d = LocalDimens.current
+    Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (selected) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant)
+            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        UnitTab(label = "cm", selected = unit == "cm", modifier = Modifier.weight(1f)) { onUnitChange("cm") }
+        UnitTab(label = "in", selected = unit == "in", modifier = Modifier.weight(1f)) { onUnitChange("in") }
+    }
+}
+
+/** A single segment of [UnitTabs]. */
+@Composable
+private fun UnitTab(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val d = LocalDimens.current
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .background(if (selected) BrandPrimary else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+            .padding(vertical = Spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
-/** A single optional numeric dimension field (no error styling — dimensions are never required). */
+/**
+ * A single optional numeric dimension field. The label shows as a placeholder that disappears
+ * once typing begins, leaving the full field width for the value (dimensions are never required).
+ */
 @Composable
 private fun DimensionField(
-    label: String,
+    placeholder: String,
     value: String,
     onChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val d = LocalDimens.current
-    Row(
+    Box(
         modifier = modifier
             .clip(RoundedCornerShape(d.cardCornerRadius))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = Spacing.md, vertical = Spacing.lg),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.width(Spacing.md))
         BasicTextField(
             value = value,
             onValueChange = onChange,
@@ -905,18 +934,16 @@ private fun DimensionField(
             cursorBrush = SolidColor(BrandPrimary),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             decorationBox = { inner ->
-                Box {
-                    if (value.isEmpty()) {
-                        Text(
-                            "e.g. 60",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        )
-                    }
-                    inner()
+                if (value.isEmpty()) {
+                    Text(
+                        placeholder,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                inner()
             },
         )
     }

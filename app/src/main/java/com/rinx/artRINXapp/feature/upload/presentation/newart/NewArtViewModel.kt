@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.repository.SearchRepository
 import com.rinx.artRINXapp.feature.search.domain.model.UserSearchItem
@@ -199,7 +200,7 @@ class NewArtViewModel @Inject constructor(
         it.copy(price = p.filter { c -> c.isDigit() || c == '.' }.take(12), isPriceError = false)
     }
 
-    /** Optional height (cm); digits + a single decimal point only. Never required. */
+    /** Optional height; digits + a single decimal point only. Never required. */
     fun onSizeHeightChange(h: String) = _state.update {
         it.copy(sizeHeightCm = h.filter { c -> c.isDigit() || c == '.' }.take(8))
     }
@@ -321,6 +322,8 @@ class NewArtViewModel @Inject constructor(
         val tagsEmpty = s.tags.isEmpty()
         // Price is required only when a (visible) shop link has been entered.
         val priceInvalid = !s.isPriceValidForShopLink
+        // Dimensions are optional, but a provided value must be a positive number within the cap.
+        val sizeInvalid = !s.isSizeValid
         _state.update {
             it.copy(
                 isTitleError = titleEmpty,
@@ -332,7 +335,7 @@ class NewArtViewModel @Inject constructor(
             )
         }
         return !titleEmpty && !descriptionBlank && !artistNameBlank && !mediumMissing &&
-            !tagsEmpty && !priceInvalid
+            !tagsEmpty && !priceInvalid && !sizeInvalid
     }
 
     /**
@@ -413,7 +416,7 @@ class NewArtViewModel @Inject constructor(
                 is ApiResult.Success ->
                     _state.update { it.copy(creationStatus = CreationStatus.CREATED) }
                 is ApiResult.Error ->
-                    _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = "Couldn't save changes — please try again.") }
+                    _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = result.userMessage("Couldn't save changes — please try again.")) }
             }
         }
     }

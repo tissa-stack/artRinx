@@ -32,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,8 @@ fun PhoneNumberField(
     /** When true, the compact trigger opens a searchable bottom sheet instead of a plain dropdown —
      *  needed for the full ~250-country catalog. */
     searchable: Boolean = false,
+    /** When provided, attaches to the number input so callers can request focus (e.g. auto-focus). */
+    numberFocusRequester: FocusRequester? = null,
 ) {
     val dimens = LocalDimens.current
     var expanded by remember { mutableStateOf(false) }
@@ -117,7 +121,9 @@ fun PhoneNumberField(
             value = rawPhone,
             onValueChange = { onPhoneChange(it.filter { c -> c.isDigit() }.take(15)) },
             label = "Mobile Number",
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .then(numberFocusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
             keyboardType = KeyboardType.Phone,
             imeAction = ImeAction.Next,
         )

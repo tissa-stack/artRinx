@@ -1,11 +1,6 @@
 package com.rinx.artRINXapp.feature.profile.presentation.steps
 
-import android.Manifest
-import android.content.ContentValues
-import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,16 +25,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -67,13 +56,11 @@ import com.rinx.artRINXapp.feature.notifications.presentation.messages.component
 import com.rinx.artRINXapp.feature.profile.presentation.UsernameCheckState
 import com.rinx.artRINXapp.feature.profile.presentation.components.ProfileTextField
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileInfoStep(
     pictureUri: Uri?,
     googlePhotoUrl: String?,
     avatarPrefilling: Boolean,
-    showImageSourceSheet: Boolean,
     fullName: String,
     username: String,
     displayName: String,
@@ -84,9 +71,7 @@ fun ProfileInfoStep(
     displayNameError: Boolean,
     showFullNameTooltip: Boolean,
     showDisplayNameTooltip: Boolean,
-    onAvatarTapped: () -> Unit,
     onPictureSelected: (Uri?) -> Unit,
-    onImageSourceSheetDismiss: () -> Unit,
     onFullNameChange: (String) -> Unit,
     onUsernameChange: (String) -> Unit,
     onDisplayNameChange: (String) -> Unit,
@@ -96,32 +81,21 @@ fun ProfileInfoStep(
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
-    val context = LocalContext.current
 
-    var showPermissionRationale by remember { mutableStateOf(false) }
-    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
-
+    // Guard against rapid taps stacking multiple picker sheets — only launch one at a time.
+    var pickerInFlight by remember { mutableStateOf(false) }
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> onPictureSelected(uri) }
+    ) { uri -> pickerInFlight = false; onPictureSelected(uri) }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture(),
-    ) { success -> if (success) onPictureSelected(pendingCameraUri) }
-
-    val cameraPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            val cv = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "profile_${System.currentTimeMillis()}.jpg")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            }
-            val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv)
-            pendingCameraUri = uri
-            if (uri != null) cameraLauncher.launch(uri)
-        } else {
-            showPermissionRationale = true
+    // Tapping the avatar (or the edit badge) opens the system photo picker directly — gallery is the
+    // only supported source for a profile picture.
+    val openPhotoPicker = {
+        if (!pickerInFlight) {
+            pickerInFlight = true
+            galleryLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            )
         }
     }
 
@@ -159,7 +133,7 @@ fun ProfileInfoStep(
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                    .clickable(onClick = onAvatarTapped),
+                    .clickable(onClick = openPhotoPicker),
                 contentAlignment = Alignment.Center,
             ) {
                 when {
@@ -198,7 +172,7 @@ fun ProfileInfoStep(
                     .size(Spacing.xxxl)
                     .clip(CircleShape)
                     .background(BrandPrimary)
-                    .clickable(onClick = onAvatarTapped),
+                    .clickable(onClick = openPhotoPicker),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -313,76 +287,6 @@ fun ProfileInfoStep(
         )
 
         Spacer(Modifier.height(Spacing.xxxl))
-    }
-
-    // ── Image source bottom sheet ─────────────────────────────────────────────
-    if (showImageSourceSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = onImageSourceSheetDismiss,
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = dimens.screenPaddingHorizontal)
-                    .padding(bottom = dimens.screenPaddingBottom),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                Text(
-                    text = "Choose photo",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = Spacing.md),
-                )
-                SheetOption(
-                    label = "Choose from Gallery",
-                    iconRes = R.drawable.ic_gallery,
-                    onClick = {
-                        onImageSourceSheetDismiss()
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    },
-                )
-                SheetOption(
-                    label = "Take Photo",
-                    iconRes = R.drawable.ic_camera,
-                    onClick = {
-                        onImageSourceSheetDismiss()
-                        cameraPermLauncher.launch(Manifest.permission.CAMERA)
-                    },
-                )
-            }
-        }
-    }
-
-    // ── Camera permission rationale ───────────────────────────────────────────
-    if (showPermissionRationale) {
-        AlertDialog(
-            onDismissRequest = { showPermissionRationale = false },
-            title = { Text("Camera permission required") },
-            text = {
-                Text(
-                    "Please grant camera permission in Settings to take a photo.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showPermissionRationale = false
-                    context.startActivity(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        },
-                    )
-                }) { Text("Open Settings", color = BrandPrimary) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPermissionRationale = false }) { Text("Cancel") }
-            },
-        )
     }
 }
 
@@ -564,26 +468,3 @@ private fun UsernameStatusRow(state: UsernameCheckState, hasError: Boolean) {
     }
 }
 
-// ── Bottom sheet row ──────────────────────────────────────────────────────────
-@Composable
-private fun SheetOption(label: String, iconRes: Int, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = BrandPrimary,
-                modifier = Modifier.size(Spacing.xl),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
-}

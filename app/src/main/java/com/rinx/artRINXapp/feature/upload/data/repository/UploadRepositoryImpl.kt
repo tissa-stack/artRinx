@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.upload.data.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.toApiError
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.upload.data.remote.UploadApiService
 import com.rinx.artRINXapp.feature.upload.data.remote.dto.UpdateArtworkBody
@@ -196,7 +197,9 @@ class UploadRepositoryImpl @Inject constructor(
         ApiResult.Error.Unknown(e)
     }
 
-    private fun errorFor(response: Response<*>): ApiResult.Error = errorFor(response.code())
+    // Prefer the server's human-readable reason (FastAPI `detail` / `message`) over a generic
+    // "Request failed", so validation errors like an out-of-range dimension surface to the user.
+    private fun errorFor(response: Response<*>): ApiResult.Error = response.toApiError()
 
     private fun errorFor(code: Int): ApiResult.Error = when (code) {
         in 400..499 -> ApiResult.Error.Validation("Request failed ($code)")

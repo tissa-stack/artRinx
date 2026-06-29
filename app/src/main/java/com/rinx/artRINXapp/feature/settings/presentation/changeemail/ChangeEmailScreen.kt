@@ -31,10 +31,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -166,6 +171,15 @@ private fun EmailStep(
     onSendCode: () -> Unit,
     buttonHeight: androidx.compose.ui.unit.Dp,
 ) {
+    // Open the keyboard on the "New email" field as soon as the screen appears, ready to type.
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        delay(150)
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
     if (currentEmail.isNotBlank()) {
         Text(
             text = "Current email",
@@ -192,7 +206,9 @@ private fun EmailStep(
         singleLine = true,
         placeholder = { Text("you@example.com") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester),
         shape = RoundedCornerShape(Spacing.md),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = BrandPrimary,

@@ -73,11 +73,16 @@ fun CreateScreen(
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
     var dialog by remember { mutableStateOf<CreateViewModel.UploadAction?>(null) }
+    // Guards against rapid double-taps stacking multiple picker sheets: true from the moment a pick
+    // is launched until its result (or a denied permission) comes back. Reset in every outcome so a
+    // later tap — including after returning to this screen — can open the picker again.
+    var pickerInFlight by remember { mutableStateOf(false) }
 
     // ── Photo picker (PickVisualMedia handles API 33+ natively; falls back on older) ──
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
+        pickerInFlight = false
         if (uri != null) {
             // Persist read-URI permission so Coil can load it after navigation
             runCatching {
@@ -94,10 +99,14 @@ fun CreateScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        // Keep the in-flight guard set while the picker opens; clear it only when denied.
         if (granted) photoPickerLauncher.launch(PickVisualMediaRequest(ImageOnly))
+        else pickerInFlight = false
     }
 
     fun launchPicker() {
+        if (pickerInFlight) return
+        pickerInFlight = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+: Photo Picker needs no permission
             photoPickerLauncher.launch(PickVisualMediaRequest(ImageOnly))

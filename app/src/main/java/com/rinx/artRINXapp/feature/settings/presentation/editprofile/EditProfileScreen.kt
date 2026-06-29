@@ -1,11 +1,5 @@
 package com.rinx.artRINXapp.feature.settings.presentation.editprofile
 
-import android.Manifest
-import android.content.ContentValues
-import android.content.Intent
-import android.net.Uri
-import android.provider.MediaStore
-import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -43,14 +37,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -83,7 +73,6 @@ import com.rinx.artRINXapp.core.ui.SearchableTextDropdownField
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     onBack: () -> Unit,
@@ -93,36 +82,21 @@ fun EditProfileScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val dimens = LocalDimens.current
-    val context = LocalContext.current
 
-    // Profile-picture source picker: tapping the avatar opens a "Choose photo" sheet offering
-    // Gallery or Camera (mirrors the profile-creation wizard), instead of jumping straight to the
-    // gallery. Sheet/permission state is screen-local; the chosen Uri flows to onPictureSelected.
-    var showImageSourceSheet by remember { mutableStateOf(false) }
-    var showPermissionRationale by remember { mutableStateOf(false) }
-    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
-
+    // Profile-picture picker: tapping the avatar opens the system photo picker directly. Gallery is
+    // the only supported source; the chosen Uri flows to onPictureSelected.
+    // Guard against rapid taps stacking multiple picker sheets — only launch one at a time.
+    var pickerInFlight by remember { mutableStateOf(false) }
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> viewModel.onPictureSelected(uri) }
+    ) { uri -> pickerInFlight = false; viewModel.onPictureSelected(uri) }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture(),
-    ) { success -> if (success) viewModel.onPictureSelected(pendingCameraUri) }
-
-    val cameraPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            val cv = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "profile_${System.currentTimeMillis()}.jpg")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            }
-            val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv)
-            pendingCameraUri = uri
-            if (uri != null) cameraLauncher.launch(uri)
-        } else {
-            showPermissionRationale = true
+    val openPhotoPicker = {
+        if (!pickerInFlight) {
+            pickerInFlight = true
+            galleryLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            )
         }
     }
 
@@ -216,80 +190,10 @@ fun EditProfileScreen(
             else -> EditProfileContent(
                 state = state,
                 viewModel = viewModel,
-                onAvatarTapped = { showImageSourceSheet = true },
+                onAvatarTapped = openPhotoPicker,
                 onChangeMedium = onChangeMedium,
             )
         }
-    }
-
-    // ── Image source bottom sheet ──────────────────────────────────────────────
-    if (showImageSourceSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { showImageSourceSheet = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = dimens.screenPaddingHorizontal)
-                    .padding(bottom = dimens.screenPaddingBottom),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                Text(
-                    text = "Choose photo",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = Spacing.md),
-                )
-                ImageSourceOption(
-                    label = "Choose from Gallery",
-                    iconRes = R.drawable.ic_gallery,
-                    onClick = {
-                        showImageSourceSheet = false
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    },
-                )
-                ImageSourceOption(
-                    label = "Take Photo",
-                    iconRes = R.drawable.ic_camera,
-                    onClick = {
-                        showImageSourceSheet = false
-                        cameraPermLauncher.launch(Manifest.permission.CAMERA)
-                    },
-                )
-            }
-        }
-    }
-
-    // ── Camera permission rationale ─────────────────────────────────────────────
-    if (showPermissionRationale) {
-        AlertDialog(
-            onDismissRequest = { showPermissionRationale = false },
-            title = { Text("Camera permission required") },
-            text = {
-                Text(
-                    "Please grant camera permission in Settings to take a photo.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showPermissionRationale = false
-                    context.startActivity(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        },
-                    )
-                }) { Text("Open Settings", color = BrandPrimary) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPermissionRationale = false }) { Text("Cancel") }
-            },
-        )
     }
 }
 
@@ -557,29 +461,6 @@ private fun ColumnScope.EditProfileContent(
             } else {
                 Text("Save Changes", style = MaterialTheme.typography.labelLarge)
             }
-        }
-    }
-}
-
-@Composable
-private fun ImageSourceOption(label: String, iconRes: Int, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = BrandPrimary,
-                modifier = Modifier.size(Spacing.xl),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
         }
     }
 }

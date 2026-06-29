@@ -39,7 +39,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -138,21 +137,15 @@ fun NewArtPreviewScreen(
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text       = state.title.ifEmpty { "Title" },
-                            style      = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color      = MaterialTheme.colorScheme.onBackground,
-                            maxLines   = 2,
-                            overflow   = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text  = state.selectedArtist?.displayName ?: "Artist",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Text(
+                        text       = state.title.ifEmpty { "Title" },
+                        style      = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onBackground,
+                        maxLines   = 4,
+                        overflow   = TextOverflow.Ellipsis,
+                        modifier   = Modifier.weight(1f),
+                    )
                     Spacer(Modifier.width(Spacing.sm))
                     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                         Icon(painterResource(R.drawable.ic_add_to), "Save",
@@ -189,24 +182,30 @@ fun NewArtPreviewScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Artist",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             text       = state.selectedArtist?.displayName ?: "—",
-                            style      = MaterialTheme.typography.bodySmall,
+                            style      = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color      = BrandPrimary,
+                            maxLines   = 1,
+                            overflow   = TextOverflow.Ellipsis,
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Medium",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             text       = state.selectedMedium ?: "—",
-                            style      = MaterialTheme.typography.bodySmall,
+                            style      = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color      = MaterialTheme.colorScheme.onBackground,
+                            maxLines   = 1,
+                            overflow   = TextOverflow.Ellipsis,
                         )
                     }
                     Box(
@@ -239,8 +238,8 @@ fun NewArtPreviewScreen(
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("Description",
-                            style      = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
                             color      = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier   = Modifier.weight(1f))
                         Text(if (descExpanded) "less" else "more",
@@ -251,12 +250,36 @@ fun NewArtPreviewScreen(
                     Spacer(Modifier.height(Spacing.xs))
                     Text(
                         text     = state.description.ifEmpty { "No description added." },
-                        style    = MaterialTheme.typography.bodySmall,
+                        style    = MaterialTheme.typography.bodyMedium,
                         color    = MaterialTheme.colorScheme.onBackground,
-                        maxLines = if (descExpanded) Int.MAX_VALUE else 3,
+                        maxLines = if (descExpanded) Int.MAX_VALUE else 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.animateContentSize(),
                     )
+                }
+            }
+
+            // Dimensions — only when a physical size was entered (mirrors the detail screen).
+            dimensionsDisplay(state.sizeHeightCm, state.sizeWidthCm, state.sizeUnit)?.let { dimensions ->
+                item(key = "dimensions") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    ) {
+                        Text(
+                            text       = "Dimensions",
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(Spacing.xs))
+                        Text(
+                            text  = dimensions,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
                 }
             }
 
@@ -290,9 +313,8 @@ fun NewArtPreviewScreen(
                             color      = MaterialTheme.colorScheme.onBackground,
                         )
                         Text("Artist",
-                            style     = MaterialTheme.typography.bodySmall,
-                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontStyle = FontStyle.Italic)
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -309,5 +331,22 @@ fun NewArtPreviewScreen(
                 onDismiss = { viewModel.onCreationDone() },
             )
         }
+    }
+}
+
+/**
+ * Human-readable size string from the raw form input (e.g. "60 × 90 cm"), or null when neither
+ * dimension is set. Matches the detail screen's `toDimensionsDisplay` formatting.
+ */
+private fun dimensionsDisplay(height: String, width: String, unit: String): String? {
+    val h = height.trim().toDoubleOrNull()
+    val w = width.trim().toDoubleOrNull()
+    if (h == null && w == null) return null
+    val u = unit.trim().ifBlank { "cm" }
+    fun fmt(n: Double) = if (n % 1.0 == 0.0) n.toLong().toString() else n.toString()
+    return when {
+        h != null && w != null -> "${fmt(h)} × ${fmt(w)} $u"
+        h != null -> "Height: ${fmt(h)} $u"
+        else -> "Width: ${fmt(w!!)} $u"
     }
 }

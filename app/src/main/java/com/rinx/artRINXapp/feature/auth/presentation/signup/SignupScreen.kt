@@ -38,17 +38,22 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import kotlinx.coroutines.delay
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.util.LegalLinks
@@ -131,6 +136,16 @@ private fun SignupContent(
     val dimens = LocalDimens.current
     val isDark = isSystemInDarkTheme()
 
+    // Open the keyboard on the contact field as soon as the screen appears (and when the contact type
+    // toggles), so returning here from the OTP screen lands with the field ready to edit.
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(uiState.contactType) {
+        delay(150)
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -194,7 +209,9 @@ private fun SignupContent(
                     value = uiState.email,
                     onValueChange = onEmailChange,
                     label = "Enter your email",
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
                     maxChars = 100,
                     keyboardType = KeyboardType.Email,
                 )
@@ -205,6 +222,7 @@ private fun SignupContent(
                     onCountryChange = onCountryChange,
                     countries = uiState.availableCountries,
                     searchable = true,
+                    numberFocusRequester = focusRequester,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

@@ -10,6 +10,16 @@ import com.rinx.artRINXapp.R
 /** Max number of tags allowed on an artwork. */
 const val MAX_ARTWORK_TAGS = 10
 
+/** Largest accepted physical dimension (height/width), in the selected unit. Mirrors the server cap. */
+const val MAX_ARTWORK_DIMENSION = 10000.0
+
+/** True if [this] is blank (dimensions are optional) or a positive number within the server cap. */
+fun String.isValidDimensionOrBlank(): Boolean {
+    if (isBlank()) return true
+    val n = toDoubleOrNull() ?: return false
+    return n > 0.0 && n <= MAX_ARTWORK_DIMENSION
+}
+
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum class PrivacyOption { PUBLIC, PRIVATE }
@@ -111,11 +121,19 @@ data class ArtFormState(
             !(selectedArtist?.displayName).isNullOrBlank() &&
             selectedMediumId != null &&
             tags.isNotEmpty() &&
-            isPriceValidForShopLink
+            isPriceValidForShopLink &&
+            isSizeValid
 
     /** Price must be a positive number when a shop link is entered; otherwise it's not required. */
     val isPriceValidForShopLink: Boolean
         get() = !isShopLinkEntered || (price.toDoubleOrNull()?.let { it > 0.0 } == true)
+
+    /**
+     * Dimensions are optional, but when a value is entered it must be a positive number no greater
+     * than [MAX_ARTWORK_DIMENSION] (the server rejects anything larger).
+     */
+    val isSizeValid: Boolean
+        get() = sizeHeightCm.isValidDimensionOrBlank() && sizeWidthCm.isValidDimensionOrBlank()
 
     /** The shop link is a normal field available to everyone — it counts whenever non-blank. */
     val isShopLinkEntered: Boolean
