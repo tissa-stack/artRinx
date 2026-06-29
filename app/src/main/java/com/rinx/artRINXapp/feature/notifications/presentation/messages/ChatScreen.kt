@@ -82,6 +82,7 @@ import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ChatShimmer
+import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 import com.rinx.artRINXapp.core.theme.ChatBubbleReceived
 import com.rinx.artRINXapp.core.theme.ChatBubbleReceivedText
 import com.rinx.artRINXapp.core.theme.ChatBubbleSentText
@@ -399,6 +400,17 @@ fun ChatScreen(
                     modifier = Modifier.clickable { viewModel.loadConversation() },
                 )
             }
+            // Empty message area: show the friendly empty state ONLY for a totally fresh chat
+            // (FRESH_INVITE, server-confirmed). Every other empty case — an invite sent/received whose
+            // only message was deleted, or blocked — is already explained by the ChatGateBanner above the
+            // input, so we render nothing extra here and let the area stay blank.
+            state.messages.isEmpty() && state.gate == ChatGate.FRESH_INVITE && state.gateConfirmed ->
+                SearchMessageView(
+                    title    = "No messages yet",
+                    subtitle = "Send a message to start the conversation.",
+                    iconRes  = R.drawable.ic_no_chat,
+                    modifier = Modifier.fillMaxSize(),
+                )
             else -> LazyColumn(
             modifier       = Modifier.fillMaxSize(),
             state          = listState,

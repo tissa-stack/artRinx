@@ -19,11 +19,15 @@ import androidx.compose.material3.MaterialTheme
 import com.rinx.artRINXapp.core.tour.TourHost
 import com.rinx.artRINXapp.core.util.LegalLinks
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -104,6 +108,18 @@ fun AppNavGraph(
             sessionWatcher.onForcedLogout()
             navController.navigate(NavRoutes.AUTH) { popUpTo(0) { inclusive = true } }
         }
+    }
+
+    // Re-validate the session each time the app comes to the foreground (handout: proactive refresh on
+    // foreground). If our refresh token was revoked by "sign out of all devices" elsewhere, the refresh
+    // 401s and the force-logout collector above routes to auth. No-op when signed out / offline.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) sessionWatcher.onAppForegrounded()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // Push-tap / universal-link routing. Invite codes are consumed by the invite screen itself;
