@@ -27,8 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.Collections
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -290,7 +288,7 @@ fun OtherProfileScreen(
                                 // after an unblock repopulates the grids. Show a spinner, not "empty".
                                 uiState.isRefreshing -> ContentLoading()
                                 else -> EmptyView(
-                                    icon = Icons.Outlined.Collections,
+                                    iconRes = R.drawable.ic_no_collection,
                                     title = "No collections yet",
                                     subtitle = "This artist hasn't created any collections.",
                                     modifier = Modifier.padding(top = Spacing.md),
@@ -304,7 +302,7 @@ fun OtherProfileScreen(
                                 )
                                 uiState.isRefreshing -> ContentLoading()
                                 else -> EmptyView(
-                                    icon = Icons.Outlined.Image,
+                                    iconRes = R.drawable.ic_no_art,
                                     title = "No art yet",
                                     subtitle = "This artist hasn't posted any art.",
                                     modifier = Modifier.padding(top = Spacing.md),

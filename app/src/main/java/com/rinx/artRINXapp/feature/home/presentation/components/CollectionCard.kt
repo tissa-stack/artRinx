@@ -112,13 +112,7 @@ fun CollectionCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = item.curatorHandle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.55f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // Owner handle intentionally hidden for now.
             }
             Spacer(Modifier.width(Spacing.sm))
             RinxAvatar(

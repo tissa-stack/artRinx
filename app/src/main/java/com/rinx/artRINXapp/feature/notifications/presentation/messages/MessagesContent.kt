@@ -51,7 +51,6 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.SearchOff
 import com.rinx.artRINXapp.feature.notifications.domain.model.ConversationItem
@@ -199,12 +198,10 @@ fun MessagesContent(
                                 else ->
                                     // Genuinely no conversations yet.
                                     SearchMessageView(
-                                        title       = "No messages yet",
-                                        subtitle    = "When you start a conversation, it'll show up here.",
-                                        icon        = Icons.Outlined.ChatBubbleOutline,
-                                        actionLabel = "Start a chat",
-                                        onAction    = onNewMessage,
-                                        modifier    = Modifier.fillParentMaxSize(),
+                                        title    = "Send a message to start\nseeing them here.",
+                                        subtitle = "",
+                                        iconRes  = R.drawable.ic_no_chat,
+                                        modifier = Modifier.fillParentMaxSize(),
                                     )
                             }
                         }

@@ -75,6 +75,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.coil.compose)
     implementation(libs.androidx.exifinterface)
+    // Google libphonenumber (Android port) — offline country list, dial codes, and per-country
+    // phone-number length/validity (supersedes the hand-rolled nationalNumberLength map).
+    implementation(libs.libphonenumber.android)
     // Firebase Cloud Messaging (push notifications) + Analytics (handout §19/§20)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
@@ -102,6 +105,10 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Robolectric + androidx.test core: run PhoneNumberValidator (which needs an Android Context +
+    // the libphonenumber AAR assets) as a JVM unit test, no emulator required.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

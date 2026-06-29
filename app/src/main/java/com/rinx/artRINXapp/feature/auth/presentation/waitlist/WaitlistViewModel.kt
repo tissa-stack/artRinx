@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.auth.presentation.waitlist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.phone.PhoneNumberValidator
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.WaitlistRequest
 import com.rinx.artRINXapp.feature.auth.domain.model.ProfileType
 import com.rinx.artRINXapp.feature.auth.domain.usecase.JoinWaitlistUseCase
@@ -18,6 +19,7 @@ import javax.inject.Inject
 class WaitlistViewModel @Inject constructor(
     private val joinWaitlist: JoinWaitlistUseCase,
     private val countryCodeProvider: CountryCodeProvider,
+    private val phoneNumberValidator: PhoneNumberValidator,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WaitlistUiState())
@@ -40,7 +42,11 @@ class WaitlistViewModel @Inject constructor(
                     ?: countries.firstOrNull { it.code == CountryCodes.default.code }
                     ?: countries.firstOrNull()
                     ?: state.selectedCountry
-                state.copy(availableCountries = countries, selectedCountry = selected)
+                state.copy(
+                    availableCountries = countries,
+                    selectedCountry = selected,
+                    phoneMaxDigits = phoneNumberValidator.maxNationalDigits(selected),
+                )
             }
         }
     }
@@ -49,10 +55,22 @@ class WaitlistViewModel @Inject constructor(
         _uiState.update { it.copy(email = value, errorMessage = null) }
 
     fun onPhoneChange(value: String) =
-        _uiState.update { it.copy(rawPhone = value, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                rawPhone = value,
+                phoneValidation = phoneNumberValidator.validate(it.selectedCountry, value),
+                errorMessage = null,
+            )
+        }
 
     fun onCountryChange(value: CountryCode) =
-        _uiState.update { it.copy(selectedCountry = value) }
+        _uiState.update {
+            it.copy(
+                selectedCountry = value,
+                phoneValidation = phoneNumberValidator.validate(value, it.rawPhone),
+                phoneMaxDigits = phoneNumberValidator.maxNationalDigits(value),
+            )
+        }
 
     fun onFirstNameChange(value: String) =
         _uiState.update { it.copy(firstName = value, errorMessage = null) }

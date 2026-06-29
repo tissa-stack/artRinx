@@ -7,6 +7,7 @@ import com.rinx.artRINXapp.core.auth.google.GoogleAuthClient
 import com.rinx.artRINXapp.core.auth.google.GoogleSignInResult
 import com.rinx.artRINXapp.core.navigation.OtpArgs
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.phone.PhoneNumberValidator
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpRequest
 import com.rinx.artRINXapp.feature.auth.data.remote.dto.OtpVerifyResponse
 import com.rinx.artRINXapp.feature.auth.domain.GooglePrefillHolder
@@ -34,6 +35,7 @@ class LoginViewModel @Inject constructor(
     private val saveSession: SaveSessionUseCase,
     private val googlePrefillHolder: GooglePrefillHolder,
     private val countryCodeProvider: CountryCodeProvider,
+    private val phoneNumberValidator: PhoneNumberValidator,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -63,7 +65,11 @@ class LoginViewModel @Inject constructor(
                     ?: countries.firstOrNull { it.code == CountryCodes.default.code }
                     ?: countries.firstOrNull()
                     ?: state.selectedCountry
-                state.copy(availableCountries = countries, selectedCountry = selected)
+                state.copy(
+                    availableCountries = countries,
+                    selectedCountry = selected,
+                    phoneMaxDigits = phoneNumberValidator.maxNationalDigits(selected),
+                )
             }
         }
     }
@@ -72,10 +78,22 @@ class LoginViewModel @Inject constructor(
         _uiState.update { it.copy(email = value, errorMessage = null) }
 
     fun onPhoneChange(value: String) =
-        _uiState.update { it.copy(rawPhone = value, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                rawPhone = value,
+                phoneValidation = phoneNumberValidator.validate(it.selectedCountry, value),
+                errorMessage = null,
+            )
+        }
 
     fun onCountryChange(value: CountryCode) =
-        _uiState.update { it.copy(selectedCountry = value) }
+        _uiState.update {
+            it.copy(
+                selectedCountry = value,
+                phoneValidation = phoneNumberValidator.validate(value, it.rawPhone),
+                phoneMaxDigits = phoneNumberValidator.maxNationalDigits(value),
+            )
+        }
 
     fun onOtpNavigated() =
         _uiState.update { it.copy(navigateToOtp = null) }

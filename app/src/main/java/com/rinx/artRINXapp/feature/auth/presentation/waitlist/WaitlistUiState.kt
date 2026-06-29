@@ -1,15 +1,19 @@
 package com.rinx.artRINXapp.feature.auth.presentation.waitlist
 
 import android.util.Patterns
+import com.rinx.artRINXapp.core.phone.PhoneValidation
 import com.rinx.artRINXapp.feature.auth.domain.model.ProfileType
 
 data class WaitlistUiState(
     val email: String = "",
     val rawPhone: String = "",
     val selectedCountry: CountryCode = CountryCodes.default,
-    /** Dial-code options for the picker. Seeded with the bundled fallback list, replaced by the full
-     *  master catalog (GET /api/locations/master/countries) once it loads. */
+    /** Dial-code options for the picker, supplied offline by libphonenumber. */
     val availableCountries: List<CountryCode> = CountryCodes.all,
+    /** libphonenumber length/validity of [rawPhone] for [selectedCountry]. */
+    val phoneValidation: PhoneValidation = PhoneValidation.EMPTY,
+    /** Max digits typeable for [selectedCountry] (caps the phone input). */
+    val phoneMaxDigits: Int = 15,
     val firstName: String = "",
     val profileType: ProfileType? = null,
     val instagramHandle: String = "",
@@ -24,7 +28,7 @@ data class WaitlistUiState(
 val WaitlistUiState.isJoinEnabled: Boolean
     get() = email.isNotBlank()
         && Patterns.EMAIL_ADDRESS.matcher(email).matches()
-        && rawPhone.isNotBlank()
+        && phoneValidation == PhoneValidation.OK
         && firstName.isNotBlank()
         && profileType != null
         && acceptedTerms

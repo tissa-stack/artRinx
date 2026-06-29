@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
+import com.rinx.artRINXapp.core.phone.errorOrNull
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
@@ -158,6 +159,8 @@ fun AddPhoneScreen(
                 onCountryChange = viewModel::onCountryChange,
                 countries = uiState.availableCountries,
                 searchable = true,
+                errorText = uiState.phoneValidation.errorOrNull(),
+                maxDigits = uiState.phoneMaxDigits,
                 modifier = Modifier.fillMaxWidth(),
             )
 

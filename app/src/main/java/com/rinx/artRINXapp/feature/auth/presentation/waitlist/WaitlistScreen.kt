@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
+import com.rinx.artRINXapp.core.phone.errorOrNull
 import com.rinx.artRINXapp.core.util.LegalLinks
 import com.rinx.artRINXapp.core.util.SocialLinks
 import com.rinx.artRINXapp.core.util.appendLegalLink
@@ -178,6 +179,8 @@ private fun WaitlistFormContent(
                 onCountryChange = viewModel::onCountryChange,
                 countries = uiState.availableCountries,
                 searchable = true,
+                errorText = uiState.phoneValidation.errorOrNull(),
+                maxDigits = uiState.phoneMaxDigits,
                 modifier = Modifier.fillMaxWidth(),
             )
 

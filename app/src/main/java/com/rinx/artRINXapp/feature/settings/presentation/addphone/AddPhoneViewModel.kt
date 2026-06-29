@@ -3,6 +3,8 @@ package com.rinx.artRINXapp.feature.settings.presentation.addphone
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.phone.PhoneNumberValidator
+import com.rinx.artRINXapp.core.phone.PhoneValidation
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodeProvider
@@ -26,6 +28,10 @@ data class AddPhoneUiState(
     val selectedCountry: CountryCode = CountryCodes.default,
     val availableCountries: List<CountryCode> = CountryCodes.all,
     val rawPhone: String = "",
+    /** libphonenumber length/validity of [rawPhone] for [selectedCountry]. */
+    val phoneValidation: PhoneValidation = PhoneValidation.EMPTY,
+    /** Max digits typeable for [selectedCountry] (caps the phone input). */
+    val phoneMaxDigits: Int = 15,
     val otp: String = "",
     // Consents (parity with iOS Add-phone). T&C is a required gate; the two SMS consents are persisted.
     val acceptedTerms: Boolean = false,
@@ -39,10 +45,8 @@ data class AddPhoneUiState(
 ) {
     val canResend: Boolean get() = resendCooldownSeconds == 0
     val newPhoneE164: String get() = selectedCountry.dialCode + rawPhone
-    val canSendCode: Boolean get() = rawPhone.length >= MIN_PHONE_DIGITS && acceptedTerms && !isSubmitting
+    val canSendCode: Boolean get() = phoneValidation == PhoneValidation.OK && acceptedTerms && !isSubmitting
 }
-
-private const val MIN_PHONE_DIGITS = 6
 
 /**
  * Add a FIRST phone to a phone-less account. Two steps: send an OTP to the new number
@@ -54,6 +58,7 @@ class AddPhoneViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
     private val countryCodeProvider: CountryCodeProvider,
+    private val phoneNumberValidator: PhoneNumberValidator,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddPhoneUiState())
@@ -73,16 +78,34 @@ class AddPhoneViewModel @Inject constructor(
                     ?: countries.firstOrNull { it.code == CountryCodes.default.code }
                     ?: countries.firstOrNull()
                     ?: state.selectedCountry
-                state.copy(availableCountries = countries, selectedCountry = selected)
+                state.copy(
+                    availableCountries = countries,
+                    selectedCountry = selected,
+                    phoneMaxDigits = phoneNumberValidator.maxNationalDigits(selected),
+                )
             }
         }
     }
 
     fun onCountryChange(country: CountryCode) =
-        _uiState.update { it.copy(selectedCountry = country, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                selectedCountry = country,
+                phoneValidation = phoneNumberValidator.validate(country, it.rawPhone),
+                phoneMaxDigits = phoneNumberValidator.maxNationalDigits(country),
+                errorMessage = null,
+            )
+        }
 
     fun onRawPhoneChange(value: String) =
-        _uiState.update { it.copy(rawPhone = value.filter { c -> c.isDigit() }.take(15), errorMessage = null) }
+        _uiState.update {
+            val digits = value.filter { c -> c.isDigit() }.take(15)
+            it.copy(
+                rawPhone = digits,
+                phoneValidation = phoneNumberValidator.validate(it.selectedCountry, digits),
+                errorMessage = null,
+            )
+        }
 
     fun onAcceptTermsChange(v: Boolean) = _uiState.update { it.copy(acceptedTerms = v) }
     fun onSms2faChange(v: Boolean) = _uiState.update { it.copy(sms2faConsent = v) }

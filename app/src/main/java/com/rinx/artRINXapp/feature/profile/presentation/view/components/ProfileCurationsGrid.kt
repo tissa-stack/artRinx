@@ -159,13 +159,7 @@ fun ProfileCurationCard(
                     )
                 }
             }
-            Text(
-                text = item.handle,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.55f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // Owner handle intentionally hidden for now.
         }
     }
 }

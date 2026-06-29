@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,13 +36,12 @@ import com.rinx.artRINXapp.core.theme.DarkCardSurface
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.EmptyCurationPreview
-import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 
 /**
  * Width-flexible variant of the app's standard [com.rinx.artRINXapp.feature.home.presentation.components.CollectionCard],
  * for use in the 2-column search results grid. Identical layout — fanned deck of the first 3
- * artworks with the title + curator in a dark row below — but fills its column instead of using a
+ * artworks with the title in a dark row below — but fills its column instead of using a
  * fixed rail width.
  */
 @Composable
@@ -117,21 +115,8 @@ fun CurationGridCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = item.curatorHandle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.55f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // Owner handle + avatar intentionally hidden for now.
             }
-            Spacer(Modifier.width(Spacing.sm))
-            RinxAvatar(
-                url = item.curatorAvatarUrl,
-                contentDescription = item.curatorHandle,
-                size = d.avatarSize,
-                name = item.curatorName,
-            )
         }
     }
 }

@@ -48,6 +48,7 @@ import kotlinx.coroutines.delay
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.navigation.OtpArgs
+import com.rinx.artRINXapp.core.phone.errorOrNull
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
@@ -201,6 +202,8 @@ private fun LoginContent(
                     countries = uiState.availableCountries,
                     searchable = true,
                     numberFocusRequester = focusRequester,
+                    errorText = uiState.phoneValidation.errorOrNull(),
+                    maxDigits = uiState.phoneMaxDigits,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

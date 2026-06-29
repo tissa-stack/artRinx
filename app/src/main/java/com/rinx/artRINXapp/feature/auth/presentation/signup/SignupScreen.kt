@@ -59,6 +59,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.util.LegalLinks
 import com.rinx.artRINXapp.core.util.appendLegalLink
 import com.rinx.artRINXapp.core.navigation.OtpArgs
+import com.rinx.artRINXapp.core.phone.errorOrNull
 import com.rinx.artRINXapp.core.theme.ArtRinxTheme
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
@@ -223,6 +224,8 @@ private fun SignupContent(
                     countries = uiState.availableCountries,
                     searchable = true,
                     numberFocusRequester = focusRequester,
+                    errorText = uiState.phoneValidation.errorOrNull(),
+                    maxDigits = uiState.phoneMaxDigits,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

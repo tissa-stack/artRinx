@@ -3,6 +3,8 @@ package com.rinx.artRINXapp.feature.settings.presentation.changephone
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.phone.PhoneNumberValidator
+import com.rinx.artRINXapp.core.phone.PhoneValidation
 import com.rinx.artRINXapp.feature.auth.domain.repository.AuthRepository
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodeProvider
@@ -26,6 +28,10 @@ data class ChangePhoneUiState(
     /** Dial-code options; bundled fallback list, replaced by the master catalog once it loads. */
     val availableCountries: List<CountryCode> = CountryCodes.all,
     val rawPhone: String = "",
+    /** libphonenumber length/validity of [rawPhone] for [selectedCountry]. */
+    val phoneValidation: PhoneValidation = PhoneValidation.EMPTY,
+    /** Max digits typeable for [selectedCountry] (caps the phone input). */
+    val phoneMaxDigits: Int = 15,
     val otp: String = "",
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
@@ -49,6 +55,7 @@ data class ChangePhoneUiState(
 class ChangePhoneViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val countryCodeProvider: CountryCodeProvider,
+    private val phoneNumberValidator: PhoneNumberValidator,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -71,23 +78,41 @@ class ChangePhoneViewModel @Inject constructor(
                     ?: countries.firstOrNull { it.code == CountryCodes.default.code }
                     ?: countries.firstOrNull()
                     ?: state.selectedCountry
-                state.copy(availableCountries = countries, selectedCountry = selected)
+                state.copy(
+                    availableCountries = countries,
+                    selectedCountry = selected,
+                    phoneMaxDigits = phoneNumberValidator.maxNationalDigits(selected),
+                )
             }
         }
     }
 
     fun onCountryChange(country: CountryCode) =
-        _uiState.update { it.copy(selectedCountry = country, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                selectedCountry = country,
+                phoneValidation = phoneNumberValidator.validate(country, it.rawPhone),
+                phoneMaxDigits = phoneNumberValidator.maxNationalDigits(country),
+                errorMessage = null,
+            )
+        }
 
     fun onRawPhoneChange(value: String) =
-        _uiState.update { it.copy(rawPhone = value.filter { c -> c.isDigit() }.take(15), errorMessage = null) }
+        _uiState.update {
+            val digits = value.filter { c -> c.isDigit() }.take(15)
+            it.copy(
+                rawPhone = digits,
+                phoneValidation = phoneNumberValidator.validate(it.selectedCountry, digits),
+                errorMessage = null,
+            )
+        }
 
     /** Step 1 → request an OTP to the new number, then advance to the code step. */
     fun onSendCode() {
         val state = _uiState.value
         val newPhone = state.newPhoneE164
         when {
-            state.rawPhone.length < MIN_PHONE_DIGITS ->
+            state.phoneValidation != PhoneValidation.OK ->
                 return _uiState.update { it.copy(errorMessage = "Enter a valid phone number.") }
             newPhone == state.currentPhone ->
                 return _uiState.update { it.copy(errorMessage = "That's already your number.") }
@@ -182,6 +207,5 @@ class ChangePhoneViewModel @Inject constructor(
     private companion object {
         const val OTP_LENGTH = 6
         const val OTP_TTL_SECONDS = 60
-        const val MIN_PHONE_DIGITS = 6
     }
 }

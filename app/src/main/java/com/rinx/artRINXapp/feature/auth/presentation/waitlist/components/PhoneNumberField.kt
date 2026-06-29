@@ -41,7 +41,6 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCode
 import com.rinx.artRINXapp.feature.auth.presentation.waitlist.CountryCodes
-import com.rinx.artRINXapp.feature.auth.presentation.waitlist.nationalNumberLength
 
 @Composable
 fun PhoneNumberField(
@@ -57,15 +56,14 @@ fun PhoneNumberField(
     searchable: Boolean = false,
     /** When provided, attaches to the number input so callers can request focus (e.g. auto-focus). */
     numberFocusRequester: FocusRequester? = null,
+    /** Inline error shown under the field. Computed by the caller via PhoneNumberValidator; null hides it. */
+    errorText: String? = null,
+    /** Max digits the user can type — the selected country's max national length (PhoneNumberValidator). */
+    maxDigits: Int = 15,
 ) {
     val dimens = LocalDimens.current
     var expanded by remember { mutableStateOf(false) }
     var sheetOpen by remember { mutableStateOf(false) }
-
-    // Per-country length validation: show an inline message when the entered number's length doesn't
-    // match the selected country's expected national-number length (unknown lengths → no check).
-    val expectedLen = selectedCountry.nationalNumberLength()
-    val showLengthError = expectedLen != null && rawPhone.isNotEmpty() && rawPhone.length != expectedLen
 
     Column(modifier = modifier) {
     Row(
@@ -119,7 +117,7 @@ fun PhoneNumberField(
 
         WaitlistTextField(
             value = rawPhone,
-            onValueChange = { onPhoneChange(it.filter { c -> c.isDigit() }.take(15)) },
+            onValueChange = { onPhoneChange(it.filter { c -> c.isDigit() }.take(maxDigits)) },
             label = "Mobile Number",
             modifier = Modifier
                 .weight(1f)
@@ -129,10 +127,10 @@ fun PhoneNumberField(
         )
     }
 
-        if (showLengthError) {
+        if (errorText != null) {
             Spacer(Modifier.height(Spacing.xs))
             Text(
-                text = "Phone number must be $expectedLen digits.",
+                text = errorText,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = Spacing.sm),

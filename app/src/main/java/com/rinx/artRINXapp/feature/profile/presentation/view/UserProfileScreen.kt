@@ -14,9 +14,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import com.rinx.artRINXapp.core.ui.ProfileHeaderTabsPager
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -268,9 +266,9 @@ private fun UserProfileContent(
                             }
                             if (uiState.artItems.isEmpty() && uiState.uploadProgress == null) {
                                 EmptyView(
-                                    icon = Icons.Outlined.Image,
+                                    iconRes = R.drawable.ic_no_art,
                                     title = "No art yet",
-                                    subtitle = "Artworks you upload will appear here.",
+                                    subtitle = "Upload art to see it here.",
                                     modifier = Modifier.padding(top = Spacing.md),
                                 )
                             } else {
@@ -292,9 +290,9 @@ private fun UserProfileContent(
                             }
                             if (uiState.curations.isEmpty() && uiState.curationProgress == null) {
                                 EmptyView(
-                                    icon = Icons.Outlined.Collections,
+                                    iconRes = R.drawable.ic_no_collection,
                                     title = "No collections yet",
-                                    subtitle = "Collections you create will appear here.",
+                                    subtitle = "Create a collection to see it here.",
                                     modifier = Modifier.padding(top = Spacing.md),
                                 )
                             } else {
@@ -310,7 +308,7 @@ private fun UserProfileContent(
                                 EmptyView(
                                     icon = Icons.Outlined.FavoriteBorder,
                                     title = "No liked art yet",
-                                    subtitle = "Art you like will appear here.",
+                                    subtitle = "Artwork you like will appear here.",
                                     modifier = Modifier.padding(top = Spacing.md),
                                 )
                             } else {

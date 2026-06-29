@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
+import com.rinx.artRINXapp.core.phone.errorOrNull
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
@@ -130,6 +131,8 @@ fun ChangePhoneScreen(
                 rawPhone = uiState.rawPhone,
                 selectedCountry = uiState.selectedCountry,
                 availableCountries = uiState.availableCountries,
+                phoneErrorText = uiState.phoneValidation.errorOrNull(),
+                phoneMaxDigits = uiState.phoneMaxDigits,
                 isSubmitting = uiState.isSubmitting,
                 onRawPhoneChange = viewModel::onRawPhoneChange,
                 onCountryChange = viewModel::onCountryChange,
@@ -159,6 +162,8 @@ private fun PhoneStep(
     rawPhone: String,
     selectedCountry: CountryCode,
     availableCountries: List<CountryCode>,
+    phoneErrorText: String?,
+    phoneMaxDigits: Int,
     isSubmitting: Boolean,
     onRawPhoneChange: (String) -> Unit,
     onCountryChange: (CountryCode) -> Unit,
@@ -202,6 +207,8 @@ private fun PhoneStep(
         countries = availableCountries,
         searchable = true,
         numberFocusRequester = focusRequester,
+        errorText = phoneErrorText,
+        maxDigits = phoneMaxDigits,
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(Spacing.xl))
