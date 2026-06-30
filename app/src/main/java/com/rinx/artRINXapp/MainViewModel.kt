@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 internal val ONBOARDING_COMPLETE_KEY = booleanPreferencesKey("onboarding_complete")
@@ -67,6 +68,15 @@ class MainViewModel @Inject constructor(
                 return NavRoutes.AUTH
             }
         }
+
+        // 3b. Seed the blocked-user list up front — the token is valid here and nothing has navigated
+        //     yet, so this lands in a quiet moment (not the cold-start call burst of a chat/profile
+        //     open). That guarantees blockedUsersStore + publicProfileCache are warm before the user
+        //     can reach a chat/profile, so an I-blocked user (whose single-item profile the backend
+        //     won't serve) renders the "Profile Blocked" state — with name — from the very first open,
+        //     even on launch → straight into that chat. Bounded so a slow network never hangs the
+        //     splash; the inline blocked-list consult + HOME-entry seed remain backstops past the timeout.
+        withTimeoutOrNull(4000) { runCatching { profileRepository.getBlockedUsers(1, 100) } }
 
         // 4. Valid session → route by profile completion.
         return if (authRepository.isProfileCompleted()) NavRoutes.HOME

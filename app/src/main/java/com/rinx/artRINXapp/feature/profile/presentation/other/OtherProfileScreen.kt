@@ -151,6 +151,26 @@ fun OtherProfileScreen(
                     .statusBarsPadding(),
             )
 
+            // Gone for us — deleted account OR the other user blocked us (404). Neutral panel,
+            // NO Retry (a 404 won't recover by retrying and would just re-404), no block reveal.
+            // Identical to how a deleted account reads. Checked before the transient-error branch.
+            uiState.notAvailable -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    .statusBarsPadding()
+                    .padding(horizontal = Spacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = "This profile isn't available.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+
             uiState.error != null || uiState.profile == null -> Column(
                 modifier = Modifier
                     .fillMaxSize()

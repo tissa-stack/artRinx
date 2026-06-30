@@ -74,6 +74,10 @@ class ProfileRepositoryImpl @Inject constructor(
     // Last-known public profiles by user id. Lets a blocked profile still render its full header
     // (captured before the block) once the server stops serving its public info post-block.
     private val publicProfileCache = java.util.concurrent.ConcurrentHashMap<Int, PublicProfile>()
+    // One-shot guard: the first time a getPublicProfile fails with a cold blocked-store, we seed the
+    // store + profile cache from the server blocked-list so an I-blocked user resolves to the
+    // "Profile Blocked" panel (not a generic error). block/unblock keep the store live afterwards.
+    @Volatile private var blockedListConsulted = false
 
     override fun cachedCurrentUserId(): Int? = currentUserIdCache
     override fun cachedProfileData(): UserProfileData? = profileDataCache
@@ -92,6 +96,7 @@ class ProfileRepositoryImpl @Inject constructor(
         uploadQuotaCache = null
         currentUserIdCache = null
         publicProfileCache.clear()
+        blockedListConsulted = false
     }
 
     private val gson = Gson()
@@ -415,6 +420,33 @@ class ProfileRepositoryImpl @Inject constructor(
                     )
                 }
                 blockedUsersStore.seed(items.map { it.userId }) // keep the local record in sync
+                // Warm identity into the profile cache so blockedProfileFallback can render the
+                // blocked user's real name/avatar under the "Profile Blocked" panel even when the
+                // server stops serving their payload. putIfAbsent → never clobber a richer entry.
+                items.forEach { u ->
+                    publicProfileCache.putIfAbsent(
+                        u.userId,
+                        PublicProfile(
+                            userId = u.userId,
+                            handle = "",
+                            displayName = u.name,
+                            role = u.role,
+                            bio = "",
+                            website = "",
+                            avatarUrl = u.avatarUrl,
+                            artCount = 0,
+                            curationCount = 0,
+                            followerCount = 0,
+                            followingCount = 0,
+                            isFollowing = false,
+                            iBlocked = true,
+                            theyBlocked = false,
+                            canMessage = true,
+                            blockReason = null,
+                            chatroomId = null,
+                        ),
+                    )
+                }
                 ApiResult.Success(items)
             } else {
                 profileError(response.code())
@@ -431,6 +463,9 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.unblockUser(userId)
             if (response.isSuccessful) {
                 blockedUsersStore.markUnblocked(userId)
+                // Drop the cached iBlocked profile (incl. any blocked-list-warmed stub) so the next
+                // load fetches a fresh, unblocked profile — no stale "Profile Blocked" panel.
+                publicProfileCache.remove(userId)
                 blockedUserBus.signalUnblocked(userId) // let a profile in the back stack flip + re-fetch
                 ApiResult.Success(Unit)
             } else {
@@ -546,13 +581,41 @@ class ProfileRepositoryImpl @Inject constructor(
                 publicProfileCache[userId] = profile
                 ApiResult.Success(profile)
             } else {
-                blockedProfileFallback(userId) ?: profileError(response.code())
+                blockedProfileFallbackOrSeed(userId) ?: profileError(response.code())
             }
         } catch (e: IOException) {
-            blockedProfileFallback(userId) ?: ApiResult.Error.Network(e)
+            blockedProfileFallbackOrSeed(userId) ?: ApiResult.Error.Network(e)
         } catch (e: Exception) {
-            blockedProfileFallback(userId) ?: ApiResult.Error.Unknown(e)
+            blockedProfileFallbackOrSeed(userId) ?: ApiResult.Error.Unknown(e)
         }
+    }
+
+    /**
+     * Like [blockedProfileFallback], but if the in-memory blocked-store is still cold (e.g. a fresh
+     * launch where the HOME-entry seed hasn't landed), consult the server blocked-list ONCE to seed
+     * the store + warm [publicProfileCache] (name/avatar), then retry. Lets an I-blocked user's
+     * profile resolve to the "Profile Blocked" panel — with their real name — instead of a generic
+     * error, even when the backend stops serving their public payload.
+     */
+    private suspend fun blockedProfileFallbackOrSeed(userId: Int): ApiResult.Success<PublicProfile>? {
+        blockedProfileFallback(userId)?.let { return it }
+        if (!blockedListConsulted) {
+            // Seeds blockedUsersStore + warms publicProfileCache. Only mark "consulted" when it
+            // ACTUALLY succeeds — otherwise a transient failure at cold start would stick the flag
+            // and the store would never get seeded (until the user opens Blocked Accounts). Retry
+            // on the next profile open until one fetch lands.
+            if (getBlockedUsers(1, 100) is ApiResult.Success) blockedListConsulted = true
+            return blockedProfileFallback(userId)
+        }
+        return null
+    }
+
+    /**
+     * Drop a single cached public profile (e.g. after a 404 because the other user blocked us), so
+     * a stale header can't be re-served. Lists self-heal via server-side filtering on next refresh.
+     */
+    override fun evictPublicProfile(userId: Int) {
+        publicProfileCache.remove(userId)
     }
 
     /**
@@ -949,6 +1012,9 @@ class ProfileRepositoryImpl @Inject constructor(
         }
 
     private fun profileError(code: Int): ApiResult.Error = when (code) {
+        // 404 must surface as NotFound (not Validation) so callers can tell "gone / they blocked me"
+        // apart from a real 400. Bidirectional blocking relies on this distinction.
+        404 -> ApiResult.Error.NotFound("Not found")
         in 400..499 -> ApiResult.Error.Validation("Request failed ($code)")
         in 500..599 -> ApiResult.Error.Server(code)
         else -> ApiResult.Error.Unknown(RuntimeException("HTTP $code"))

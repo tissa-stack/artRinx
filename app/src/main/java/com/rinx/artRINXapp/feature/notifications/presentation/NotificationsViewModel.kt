@@ -57,6 +57,12 @@ data class NotificationsUiState(
     // blanks an already-populated tab (SWR).
     val notificationsError: String? = null,
     val conversationsError: String? = null,
+    /**
+     * One-shot message for a failed PULL-TO-REFRESH while content is already on screen (the inline error
+     * view stays hidden in that case — SWR — so we'd otherwise fail silently). Shown as a toast, then
+     * cleared via [consumeRefreshError].
+     */
+    val refreshError: String? = null,
     // ── Event popup ──────────────────────────────────────────────────────────────
     /** Non-null while the popup is open (null content + isEventLoading = fetching). */
     val isEventPopupOpen: Boolean = false,
@@ -159,7 +165,10 @@ class NotificationsViewModel @Inject constructor(
                     }
                     unreadStore.set(res.data.count { !it.isRead })
                 }
-                is ApiResult.Error -> _state.update { it.copy(isRefreshingNotifications = false) }
+                // Pull-to-refresh failure: surface a one-shot toast instead of silently stopping the spinner.
+                is ApiResult.Error -> _state.update {
+                    it.copy(isRefreshingNotifications = false, refreshError = res.userMessage())
+                }
             }
         }
     }
@@ -201,6 +210,13 @@ class NotificationsViewModel @Inject constructor(
                         isLoadingConversations = false,
                         isRefreshing = false,
                         conversationsError = res.userMessage(),
+                        // Explicit pull-to-refresh that fails while the list already has content → toast
+                        // (the inline error view only shows when the list is empty, so it'd be silent).
+                        refreshError = if (isUserRefresh && it.conversations.isNotEmpty()) {
+                            res.userMessage()
+                        } else {
+                            it.refreshError
+                        },
                     )
                 }
             }
@@ -335,4 +351,7 @@ class NotificationsViewModel @Inject constructor(
 
     /** Clear the one-shot event error after the screen has shown it as a toast. */
     fun consumeEventError() = _state.update { it.copy(eventError = null) }
+
+    /** Clear the one-shot pull-to-refresh error after the screen has shown it as a toast. */
+    fun consumeRefreshError() = _state.update { it.copy(refreshError = null) }
 }

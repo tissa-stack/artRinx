@@ -24,6 +24,9 @@ data class UserProfileUiState(
     /** True while a manual pull-to-refresh is in flight (drives the refresh spinner). */
     val isRefreshing: Boolean = false,
     val error: String? = null,
+    /** One-shot message when a manual pull-to-refresh fails while content is already shown; cleared via
+     *  [UserProfileViewModel.consumeRefreshError] after the screen toasts it. */
+    val refreshError: String? = null,
     // ── Pagination (per tab) ──
     val isLoadingMore: Boolean = false,
     val artHasMore: Boolean = false,

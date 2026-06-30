@@ -39,6 +39,9 @@ data class ChatUiState(
     val partnerName: String = "",
     val partnerRole: String = "Artist",
     val partnerAvatarUrl: String? = null,
+    /** Whether I follow the partner — drives the report sheet's unfollow option. Loaded with the chat
+     *  (from the same getPublicProfile in loadConversation) so the 3-dot menu is in sync. */
+    val isFollowing: Boolean = false,
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
     val gate: ChatGate = ChatGate.ACTIVE,
@@ -274,7 +277,7 @@ class ChatViewModel @Inject constructor(
                 // Could be a mutual block (their profile/thread 500). Check MY blocked list — works
                 // regardless — to show the correct BLOCKED_BY_ME state instead of "Couldn't load".
                 val iBlockedThem = blockedUsersStore.isBlocked(partnerUserId) ||
-                    (profileRepository.getBlockedUsers(1, 200) as? ApiResult.Success)
+                    (profileRepository.getBlockedUsers(1, 100) as? ApiResult.Success)
                         ?.data?.any { it.userId == partnerUserId } == true
                 if (iBlockedThem) {
                     iBlocked = true
@@ -313,6 +316,7 @@ class ChatViewModel @Inject constructor(
                     partnerName = pub?.displayName?.ifBlank { it.partnerName } ?: it.partnerName,
                     partnerRole = pub?.role?.ifBlank { "Artist" } ?: "Artist",
                     partnerAvatarUrl = pub?.avatarUrl,
+                    isFollowing = pub?.isFollowing ?: it.isFollowing,
                     messages = merged,
                     gate = deriveGate(merged),
                     gateConfirmed = true,

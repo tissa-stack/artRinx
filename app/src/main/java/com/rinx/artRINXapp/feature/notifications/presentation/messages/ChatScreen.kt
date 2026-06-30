@@ -147,6 +147,9 @@ fun ChatScreen(
 
     // ── Side options menu (anchored dropdown, hosted here — no separate screen) ──
     val menuState by menuViewModel.state.collectAsState()
+    // Menu/dialog display data comes from the SAME load as the chat (ChatViewModel), so the 3-dot
+    // menu is in sync — not a separate, racing fetch. menuState now only carries action results.
+    val partnerName = state.partnerName.ifBlank { "User" }
     var menuExpanded by remember { mutableStateOf(false) }
     var showReasonSheet by remember { mutableStateOf(false) }
     var showReportSent by remember { mutableStateOf(false) }
@@ -165,7 +168,7 @@ fun ChatScreen(
         // Blocked → stay in the chat; refresh so the gate flips to BLOCKED_BY_ME (footer banner +
         // "Unblock profile" menu). "View profile" now lands on the blocked-profile panel.
         if (menuState.blockedSuccess) {
-            Toast.makeText(context, "Blocked ${menuState.name}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Blocked ${partnerName}", Toast.LENGTH_SHORT).show()
             blockConfirm = false
             menuViewModel.onBlockedHandled()
             viewModel.loadConversation()
@@ -174,7 +177,7 @@ fun ChatScreen(
     LaunchedEffect(menuState.unblockedSuccess) {
         // Unblocked → close the confirm; the menu's full option set returns.
         if (menuState.unblockedSuccess) {
-            Toast.makeText(context, "Unblocked ${menuState.name}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Unblocked ${partnerName}", Toast.LENGTH_SHORT).show()
             unblockConfirm = false
             menuViewModel.onUnblockedHandled()
             // Refresh the chat so the gate flips back to ACTIVE — footer + menu return to normal.
@@ -183,7 +186,7 @@ fun ChatScreen(
     }
     LaunchedEffect(menuState.unfollowedSuccess) {
         if (menuState.unfollowedSuccess) {
-            Toast.makeText(context, "Unfollowed ${menuState.name}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Unfollowed ${partnerName}", Toast.LENGTH_SHORT).show()
             unfollowConfirm = false
             menuViewModel.onUnfollowedHandled()
         }
@@ -191,7 +194,7 @@ fun ChatScreen(
 
     if (blockConfirm) {
         BlockConfirmDialog(
-            name = menuState.name,
+            name = partnerName,
             isLoading = menuState.isActioning,
             onConfirm = { menuViewModel.blockUser() },
             onDismiss = { blockConfirm = false },
@@ -199,7 +202,7 @@ fun ChatScreen(
     }
     if (unblockConfirm) {
         ConfirmActionDialog(
-            title = "Are you sure want\nto unblock \"${menuState.name}\"?",
+            title = "Are you sure want\nto unblock \"${partnerName}\"?",
             confirmLabel = "Unblock",
             iconRes = R.drawable.ic_block,
             isLoading = menuState.isActioning,
@@ -209,7 +212,7 @@ fun ChatScreen(
     }
     if (unfollowConfirm) {
         ConfirmActionDialog(
-            title = "Are you sure want\nto unfollow \"${menuState.name}\"?",
+            title = "Are you sure want\nto unfollow \"${partnerName}\"?",
             confirmLabel = "Unfollow",
             iconRes = R.drawable.ic_navigation_profile,
             isLoading = menuState.isActioning,
@@ -220,7 +223,7 @@ fun ChatScreen(
     if (showDeleteConfirm) {
         ConfirmDialog(
             title = "Delete messages?",
-            message = "This will delete all messages with ${menuState.name}. " +
+            message = "This will delete all messages with ${partnerName}. " +
                 "They'll stay in your inbox, but the conversation can't be recovered.",
             confirmLabel = "Delete",
             onConfirm = {
@@ -243,8 +246,8 @@ fun ChatScreen(
     }
     if (showReportSent) {
         ReportSentSheet(
-            userName = menuState.name,
-            isFollowing = menuState.isFollowing,
+            userName = partnerName,
+            isFollowing = state.isFollowing,
             onDismiss = { showReportSent = false },
             onBlock = { showReportSent = false; blockConfirm = true },
             onUnfollow = { showReportSent = false; unfollowConfirm = true },
@@ -307,21 +310,31 @@ fun ChatScreen(
             IconButton(onClick = onBack) {
                 Icon(painterResource(R.drawable.ic_arrow_back), "Back", tint = iconColor)
             }
-            Text(
-                text       = if (state.partnerName.isNotBlank())
-                                 "${state.partnerName}, ${state.partnerRole}" else "Chat",
-                style      = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color      = iconColor,
-                // Tapping the name opens the partner's profile (blocked or not).
-                modifier   = Modifier
-                    .weight(1f)
-                    .clickable { onViewProfile() },
-                textAlign  = TextAlign.Center,
-            )
+            // Name + tap-to-open-profile are withheld until the chat data loads the first time:
+            // before the gate is confirmed we don't have a real name (would show "Chat") and the
+            // profile isn't resolved yet. A cached reopen (isLoading=false) shows it instantly.
+            if (!state.isLoading) {
+                Text(
+                    text       = if (state.partnerName.isNotBlank())
+                                     "${state.partnerName}, ${state.partnerRole}" else "Chat",
+                    style      = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = iconColor,
+                    // Tapping the name opens the partner's profile (blocked or not).
+                    modifier   = Modifier
+                        .weight(1f)
+                        .clickable { onViewProfile() },
+                    textAlign  = TextAlign.Center,
+                )
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
             // Hidden while the chat genuinely couldn't load — its actions would only error out.
             // (A blocked chat resolves with error=false, so its Unblock/Delete menu still shows.)
-            if (!state.error) Box {
+            // Also hidden during the first-open shimmer (isLoading): the gate isn't confirmed yet, so
+            // showing it would flash the wrong "Block profile" for an already-blocked user. A cached
+            // reopen has isLoading=false → the menu shows instantly with the last-confirmed gate.
+            if (!state.error && !state.isLoading) Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Default.MoreVert, "More", tint = iconColor)
                 }

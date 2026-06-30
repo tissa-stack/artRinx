@@ -155,6 +155,9 @@ class SearchViewModel @Inject constructor(
             }
             return
         }
+        // Enter loading immediately so the debounce window never shows a stale
+        // error or a premature "no results" view before the search actually runs.
+        _uiState.update { it.copy(isLoading = true, isError = false) }
         searchJob = viewModelScope.launch {
             delay(DEBOUNCE_MS)
             runSearch()
@@ -229,8 +232,11 @@ class SearchViewModel @Inject constructor(
 
     fun onTabSelected(tab: ResultTab) {
         if (_uiState.value.selectedTab == tab) return
-        _uiState.update { it.copy(selectedTab = tab) }
-        if (_uiState.value.query.isNotBlank()) runSearch()
+        // Reset the flags atomically with the tab change so the new tab never renders
+        // the previous tab's stale error/empty state for a frame before the search runs.
+        val willSearch = _uiState.value.query.isNotBlank()
+        _uiState.update { it.copy(selectedTab = tab, isLoading = willSearch, isError = false) }
+        if (willSearch) runSearch()
     }
 
     // ── Sort ──────────────────────────────────────────────────────────────

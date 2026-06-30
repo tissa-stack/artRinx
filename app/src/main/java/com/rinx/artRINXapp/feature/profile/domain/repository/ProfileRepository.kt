@@ -54,6 +54,8 @@ interface ProfileRepository {
 
     // ── Other user's public profile ─────────────────────────────────────────
     suspend fun getPublicProfile(userId: Int): ApiResult<PublicProfile>
+    /** Drop the cached public-profile header for [userId] (e.g. after a 404 because they blocked us). */
+    fun evictPublicProfile(userId: Int)
     suspend fun getPublicArtworks(userId: Int, page: Int, size: Int): ApiResult<List<ProfileArtItem>>
     /** Artworks credited to an artist display name (for the "Art by <name>" screen). */
     suspend fun getArtworksByName(name: String, page: Int, size: Int): ApiResult<List<ProfileArtItem>>

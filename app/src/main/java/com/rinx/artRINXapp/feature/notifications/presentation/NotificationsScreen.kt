@@ -83,6 +83,13 @@ fun NotificationsScreen(
             viewModel.consumeEventError()
         }
     }
+    // One-shot toast when a pull-to-refresh fails while content is already on screen.
+    LaunchedEffect(state.refreshError) {
+        state.refreshError?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            viewModel.consumeRefreshError()
+        }
+    }
 
     // Re-sync inbox previews / unread badges whenever the screen becomes visible (return from a
     // chat, tab switch back, app foreground). WS events alone don't cover the user's own read

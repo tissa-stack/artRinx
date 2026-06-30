@@ -65,11 +65,25 @@ class HomeViewModel @Inject constructor(
 
     init {
         load()
+        seedBlockedUsers()
         observeUploads()
         observeCurations()
         observeLikes()
         observeBlocks()
         observeUserBlocks()
+    }
+
+    /**
+     * Record who I've blocked into [BlockedUsersStore] on HOME entry (cold-start AND in-session
+     * re-login, since LocalDataCleaner wipes the store on sign-in and HomeViewModel is recreated on
+     * each HOME navigation). This makes ProfileRepository's blockedProfileFallback fire for users I
+     * blocked in a prior session, so their profile always shows the "Profile Blocked" panel instead
+     * of a generic error / the neutral "not available" state. Fire-and-forget; failures are harmless.
+     */
+    private fun seedBlockedUsers() {
+        viewModelScope.launch {
+            runCatching { profileRepository.getBlockedUsers(1, 100) }
+        }
     }
 
     /** Drop a blocked artwork from every list the moment it's blocked (no refresh wait). */

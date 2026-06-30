@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.profile.presentation.view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.BlockedUserBus
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
@@ -114,20 +115,32 @@ class UserProfileViewModel @Inject constructor(
         if (_uiState.value.isRefreshing) return
         _uiState.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
-            fetchAll()
-            _uiState.update { it.copy(isRefreshing = false) }
+            val errorMessage = fetchAll()
+            _uiState.update {
+                it.copy(
+                    isRefreshing = false,
+                    // Toast only when the refresh failed AND content is already on screen (otherwise the
+                    // full error view handles it). Background/first loads don't toast.
+                    refreshError = if (errorMessage != null && it.profile != null) errorMessage else it.refreshError,
+                )
+            }
         }
     }
 
-    private suspend fun fetchAll() {
-        coroutineScope {
+    /** Clear the one-shot refresh error after the screen has shown it as a toast. */
+    fun consumeRefreshError() = _uiState.update { it.copy(refreshError = null) }
+
+    /** Returns a user-facing error message if the primary (profile) fetch failed, else null. */
+    private suspend fun fetchAll(): String? {
+        return coroutineScope {
             // Fetch header, art, curations and liked concurrently.
             val profileDeferred = async { profileRepository.getProfileData() }
             val artworksDeferred = async { profileRepository.getMyArtworks(PAGE, SIZE) }
             val curationsDeferred = async { profileRepository.getMyCurations(PAGE, SIZE) }
             val likedDeferred = async { profileRepository.getLikedArtworks(PAGE, SIZE) }
 
-            val profile = (profileDeferred.await() as? ApiResult.Success)?.data
+            val profileResult = profileDeferred.await()
+            val profile = (profileResult as? ApiResult.Success)?.data
             val artRes = artworksDeferred.await() as? ApiResult.Success
             val curationRes = curationsDeferred.await() as? ApiResult.Success
             val likedRes = likedDeferred.await() as? ApiResult.Success
@@ -150,6 +163,8 @@ class UserProfileViewModel @Inject constructor(
                     likedHasMore = if (likedRes != null) likedItems.size >= SIZE else state.likedHasMore,
                 )
             }
+            // The header is the primary content — report its failure so a manual refresh can toast it.
+            (profileResult as? ApiResult.Error)?.userMessage()
         }
     }
 

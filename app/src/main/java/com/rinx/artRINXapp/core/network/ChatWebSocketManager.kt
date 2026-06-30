@@ -1,7 +1,6 @@
 package com.rinx.artRINXapp.core.network
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import com.rinx.artRINXapp.core.di.ApplicationScope
@@ -45,6 +44,7 @@ class ChatWebSocketManager @Inject constructor(
     private val tokenRefreshCoordinator: TokenRefreshCoordinator,
     @ApplicationContext private val context: Context,
     @ApplicationScope private val scope: CoroutineScope,
+    private val appVersionProvider: AppVersionProvider,
 ) {
     private val gson = Gson()
 
@@ -165,7 +165,8 @@ class ChatWebSocketManager @Inject constructor(
         val request = Request.Builder()
             .url(WS_URL)
             .addHeader("Authorization", "Bearer $token")
-            .addHeader("X-App-Version", appVersion())
+            .addHeader("X-App-Platform", appVersionProvider.platform)
+            .addHeader("X-App-Version", appVersionProvider.versionHeader)
             .build()
         webSocket = client.newWebSocket(request, listener)
         startWatchdog()
@@ -352,12 +353,6 @@ class ChatWebSocketManager @Inject constructor(
 
     private fun JsonObject.int(key: String): Int? =
         get(key)?.takeIf { !it.isJsonNull }?.asInt
-
-    private fun appVersion(): String = try {
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
-    } catch (_: PackageManager.NameNotFoundException) {
-        "1.0"
-    }
 
     private companion object {
         const val WS_URL = "wss://apifargate.rinx.com/ws"

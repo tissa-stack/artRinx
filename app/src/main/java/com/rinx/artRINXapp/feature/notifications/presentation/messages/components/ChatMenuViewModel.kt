@@ -16,11 +16,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ChatMenuUiState(
-    val name: String = "User",
-    val role: String = "Artist",
-    val handle: String = "user", // without leading "@"
-    val iBlocked: Boolean = false,
-    val isFollowing: Boolean = false,
     val isActioning: Boolean = false,
     val actionError: String? = null,
     /** One-shot: set true after a successful block so the screen can exit to a safe screen. */
@@ -43,23 +38,8 @@ class ChatMenuViewModel @Inject constructor(
     private val _state = MutableStateFlow(ChatMenuUiState())
     val state: StateFlow<ChatMenuUiState> = _state.asStateFlow()
 
-    init {
-        if (userId != 0) viewModelScope.launch {
-            val res = profileRepository.getPublicProfile(userId)
-            if (res is ApiResult.Success) {
-                val p = res.data
-                _state.update {
-                    it.copy(
-                        name = p.displayName.ifBlank { "User" },
-                        role = p.role.ifBlank { "Artist" },
-                        handle = p.handle.removePrefix("@").ifBlank { "user" },
-                        iBlocked = p.iBlocked,
-                        isFollowing = p.isFollowing,
-                    )
-                }
-            }
-        }
-    }
+    // No profile fetch here — display data (name, follow state) comes from ChatViewModel's single
+    // chat load, so the 3-dot menu is in sync with the chat. This VM only performs menu actions.
 
     fun blockUser() {
         if (userId == 0 || _state.value.isActioning) return
@@ -67,7 +47,7 @@ class ChatMenuViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = profileRepository.blockUser(userId)) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(isActioning = false, iBlocked = true, blockedSuccess = true)
+                    it.copy(isActioning = false, blockedSuccess = true)
                 }
                 is ApiResult.Error -> _state.update {
                     it.copy(isActioning = false, actionError = r.userMessage("Couldn't block. Please try again."))
@@ -82,7 +62,7 @@ class ChatMenuViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = profileRepository.unblockUser(userId)) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(isActioning = false, iBlocked = false, unblockedSuccess = true)
+                    it.copy(isActioning = false, unblockedSuccess = true)
                 }
                 is ApiResult.Error -> _state.update {
                     it.copy(isActioning = false, actionError = r.userMessage("Couldn't unblock. Please try again."))
@@ -107,7 +87,7 @@ class ChatMenuViewModel @Inject constructor(
         _state.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
             when (val r = profileRepository.unfollowUser(userId)) {
-                is ApiResult.Success -> _state.update { it.copy(isActioning = false, isFollowing = false, unfollowedSuccess = true) }
+                is ApiResult.Success -> _state.update { it.copy(isActioning = false, unfollowedSuccess = true) }
                 is ApiResult.Error -> _state.update {
                     it.copy(isActioning = false, actionError = r.userMessage("Couldn't unfollow. Please try again."))
                 }

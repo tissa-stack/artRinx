@@ -36,6 +36,10 @@ data class OtherProfileUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val error: String? = null,
+    /** True when this profile is gone for us — deleted account OR the other user blocked us (404).
+     *  Drives a neutral "not available" panel (no Retry, no block reveal); never set on a transient
+     *  network/server error (those keep [error] + Retry). */
+    val notAvailable: Boolean = false,
     // pagination
     val isLoadingMore: Boolean = false,
     val artHasMore: Boolean = false,
@@ -133,7 +137,24 @@ class OtherProfileViewModel @Inject constructor(
             val artJob = async { repository.getPublicArtworks(id, 1, PAGE_SIZE) }
             val curationJob = async { repository.getPublicCurations(id, 1, PAGE_SIZE) }
             val chatJob = async { messagesRepository.resolveChatroom(id) }
-            val fetched = (profileJob.await() as? ApiResult.Success)?.data
+            val profileRes = profileJob.await()
+            // They blocked us mid-session (or the account is gone): flip to the neutral panel and
+            // drop the stale header/content instead of keeping it visible.
+            if (profileRes is ApiResult.Error.NotFound) {
+                repository.evictPublicProfile(id)
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = false,
+                        notAvailable = true,
+                        error = null,
+                        profile = null,
+                        artItems = emptyList(),
+                        curations = emptyList(),
+                    )
+                }
+                return@launch
+            }
+            val fetched = (profileRes as? ApiResult.Success)?.data
             val locallyBlocked = blockedUsersStore.isBlocked(id)
             val profile = fetched?.let { if (locallyBlocked) it.copy(iBlocked = true) else it }
             val blocked = profile?.iBlocked ?: _uiState.value.profile?.iBlocked ?: false
@@ -174,7 +195,7 @@ class OtherProfileViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, error = "Profile unavailable.") }
             return
         }
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        _uiState.update { it.copy(isLoading = true, error = null, notAvailable = false) }
         viewModelScope.launch {
             val profileJob = async { repository.getPublicProfile(id) }
             val artJob = async { repository.getPublicArtworks(id, 1, 30) }
@@ -201,6 +222,21 @@ class OtherProfileViewModel @Inject constructor(
                             isLoading = false,
                             error = null,
                             messageEnabled = canMessageNew(profile, chatJob.await()),
+                        )
+                    }
+                }
+                // 404 → gone for us (deleted, or they blocked us): neutral "not available" panel,
+                // no Retry, no sign-out. Drop the cached header so a re-open can't flash it back.
+                is ApiResult.Error.NotFound -> {
+                    repository.evictPublicProfile(id)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            notAvailable = true,
+                            error = null,
+                            profile = null,
+                            artItems = emptyList(),
+                            curations = emptyList(),
                         )
                     }
                 }
@@ -274,7 +310,13 @@ class OtherProfileViewModel @Inject constructor(
         _uiState.update { it.copy(isFollowPending = true, profile = p.copy(isFollowing = true, followerCount = p.followerCount + 1)) }
         viewModelScope.launch {
             val r = repository.followUser(id)
-            if (r is ApiResult.Error) {
+            if (r is ApiResult.Error.NotFound) {
+                // They blocked us mid-session → re-fetch so the screen settles into the neutral
+                // "not available" panel (no stuck "Following" button), instead of reverting.
+                _uiState.update { it.copy(isFollowPending = false) }
+                repository.evictPublicProfile(id)
+                load()
+            } else if (r is ApiResult.Error) {
                 // revert
                 _uiState.update { s ->
                     val cur = s.profile ?: return@update s.copy(isFollowPending = false)
@@ -303,6 +345,12 @@ class OtherProfileViewModel @Inject constructor(
                         profile = cur?.copy(isFollowing = false, followerCount = (cur.followerCount - 1).coerceAtLeast(0)),
                         actionMessage = if (name != null) "Unfollowed $name" else "Unfollowed",
                     )
+                }
+                // They blocked us mid-session → re-fetch into the neutral "not available" panel.
+                is ApiResult.Error.NotFound -> {
+                    _uiState.update { it.copy(isActioning = false) }
+                    repository.evictPublicProfile(id)
+                    load()
                 }
                 is ApiResult.Error -> _uiState.update { it.copy(isActioning = false, actionError = r.userMessage("Couldn't unfollow. Please try again.")) }
             }
