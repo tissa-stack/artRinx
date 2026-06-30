@@ -23,7 +23,11 @@ data class UserProfileUiState(
     val isLoading: Boolean = true,
     /** True while a manual pull-to-refresh is in flight (drives the refresh spinner). */
     val isRefreshing: Boolean = false,
+    /** Full-screen error message shown only on a cold load failure (no profile to display). */
     val error: String? = null,
+    /** True when [error] is due to the device being offline → drives the "No internet" error state
+     *  (vs. a generic error). Real connectivity, so a no-connection message never shows while online. */
+    val isOffline: Boolean = false,
     /** One-shot message when a manual pull-to-refresh fails while content is already shown; cleared via
      *  [UserProfileViewModel.consumeRefreshError] after the screen toasts it. */
     val refreshError: String? = null,

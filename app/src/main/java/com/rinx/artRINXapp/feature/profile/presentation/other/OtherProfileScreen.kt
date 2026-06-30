@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -154,61 +155,26 @@ fun OtherProfileScreen(
             // Gone for us — deleted account OR the other user blocked us (404). Neutral panel,
             // NO Retry (a 404 won't recover by retrying and would just re-404), no block reveal.
             // Identical to how a deleted account reads. Checked before the transient-error branch.
-            uiState.notAvailable -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
-                    .statusBarsPadding()
-                    .padding(horizontal = Spacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = "This profile isn't available.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            // Has a back button so the user is never stranded when reaching it from anywhere.
+            uiState.notAvailable -> ProfileStatePanel(
+                message = "This profile isn't available.",
+                bottomPadding = innerPadding.calculateBottomPadding(),
+                onBack = onBack,
+            )
 
-            uiState.error != null || uiState.profile == null -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
-                    .statusBarsPadding()
-                    .padding(horizontal = Spacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = uiState.error ?: "Profile unavailable.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(Spacing.md))
-                TextButton(onClick = viewModel::onRetry) {
-                    Text("Retry", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
-                }
-            }
+            uiState.error != null || uiState.profile == null -> ProfileStatePanel(
+                message = uiState.error ?: "Profile unavailable.",
+                bottomPadding = innerPadding.calculateBottomPadding(),
+                onBack = onBack,
+                onRetry = viewModel::onRetry,
+            )
 
             // The other user has blocked the viewer → don't render their profile/actions/content.
-            uiState.profile?.theyBlocked == true -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
-                    .statusBarsPadding()
-                    .padding(horizontal = Spacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = uiState.profile?.blockReason ?: "This profile isn't available.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            uiState.profile?.theyBlocked == true -> ProfileStatePanel(
+                message = uiState.profile?.blockReason ?: "This profile isn't available.",
+                bottomPadding = innerPadding.calculateBottomPadding(),
+                onBack = onBack,
+            )
 
             else -> {
                 val profile = uiState.profile!!
@@ -747,6 +713,61 @@ private fun ContentLoading(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(Spacing.xxl))
+    }
+}
+
+/**
+ * Full-screen state panel for an unavailable/blocked-by-them/errored profile: a centered message
+ * (with an optional Retry) PLUS a top-left back button — so the user is never stranded when they
+ * reach this screen from anywhere (a feed/search/chat link to a user who has blocked them, a deep
+ * link, etc.). [onBack] uses the same navigation as the normal header's back arrow.
+ */
+@Composable
+private fun ProfileStatePanel(
+    message: String,
+    bottomPadding: Dp,
+    onBack: () -> Unit,
+    onRetry: (() -> Unit)? = null,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = bottomPadding)
+            .statusBarsPadding(),
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = -Spacing.sm)
+                .size(Spacing.huge),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_back),
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = Spacing.xl),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            if (onRetry != null) {
+                Spacer(Modifier.height(Spacing.md))
+                TextButton(onClick = onRetry) {
+                    Text("Retry", color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
     }
 }
 

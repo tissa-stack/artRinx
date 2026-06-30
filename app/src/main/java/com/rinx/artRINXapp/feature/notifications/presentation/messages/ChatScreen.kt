@@ -345,10 +345,11 @@ fun ChatScreen(
                     // Light theme: a clean white menu (no tonal-elevation grey). Dark keeps its surface.
                     containerColor = if (isDark) MaterialTheme.colorScheme.surface else Color.White,
                 ) {
-                    // Always four options (iOS parity). "View profile" is valid even when blocked:
-                    // BLOCKED_BY_ME → the "Profile Blocked" panel; BLOCKED_BY_THEM → the
-                    // "This profile isn't available" state. The 3rd/4th rows swap by state:
-                    //   not blocked → … Report · Block       blocked → … Unblock · Report
+                    // Always four options (iOS parity), in a FIXED order so rows never reshuffle when
+                    // the block state changes: View profile · Delete messages · Report · Block/Unblock.
+                    // Only the 4th row's label/action toggles (Block ↔ Unblock) — its position is stable.
+                    // "View profile" is valid even when blocked: BLOCKED_BY_ME → the "Profile Blocked"
+                    // panel; BLOCKED_BY_THEM → the "This profile isn't available" state.
                     val iBlockedThem = state.gate == ChatGate.BLOCKED_BY_ME
                     DropdownMenuItem(
                         text = { Text("View profile") },
@@ -361,29 +362,19 @@ fun ChatScreen(
                         colors = MenuDefaults.itemColors(textColor = DangerRed),
                         onClick = { menuExpanded = false; showDeleteConfirm = true },
                     )
-                    if (iBlockedThem) {
-                        DropdownMenuItem(
-                            text = { Text("Unblock profile") },
-                            leadingIcon = { MenuIcon(R.drawable.ic_block) },
-                            onClick = { menuExpanded = false; unblockConfirm = true },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Report profile") },
-                            leadingIcon = { MenuIcon(R.drawable.ic_report) },
-                            onClick = { menuExpanded = false; showReasonSheet = true },
-                        )
-                    } else {
-                        DropdownMenuItem(
-                            text = { Text("Report profile") },
-                            leadingIcon = { MenuIcon(R.drawable.ic_report) },
-                            onClick = { menuExpanded = false; showReasonSheet = true },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Block profile") },
-                            leadingIcon = { MenuIcon(R.drawable.ic_block) },
-                            onClick = { menuExpanded = false; blockConfirm = true },
-                        )
-                    }
+                    DropdownMenuItem(
+                        text = { Text("Report profile") },
+                        leadingIcon = { MenuIcon(R.drawable.ic_report) },
+                        onClick = { menuExpanded = false; showReasonSheet = true },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (iBlockedThem) "Unblock profile" else "Block profile") },
+                        leadingIcon = { MenuIcon(R.drawable.ic_block) },
+                        onClick = {
+                            menuExpanded = false
+                            if (iBlockedThem) unblockConfirm = true else blockConfirm = true
+                        },
+                    )
                 }
             }
         }

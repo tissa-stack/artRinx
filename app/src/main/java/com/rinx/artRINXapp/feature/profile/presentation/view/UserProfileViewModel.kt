@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.profile.presentation.view
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.ConnectivityChecker
 import com.rinx.artRINXapp.core.network.userMessage
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.BlockedUserBus
@@ -33,6 +34,7 @@ class UserProfileViewModel @Inject constructor(
     private val profileRefreshBus: ProfileRefreshBus,
     private val blockedArtworkBus: BlockedArtworkBus,
     private val blockedUserBus: BlockedUserBus,
+    private val connectivity: ConnectivityChecker,
 ) : ViewModel() {
 
     // Seed synchronously from cache so returning to the Profile tab renders instantly (SWR).
@@ -110,6 +112,12 @@ class UserProfileViewModel @Inject constructor(
         viewModelScope.launch { fetchAll() }
     }
 
+    /** Retry from the full-screen error state: show the shimmer again and re-fetch. */
+    fun onRetry() {
+        _uiState.update { it.copy(isLoading = true, error = null, isOffline = false) }
+        load()
+    }
+
     /** Manual pull-to-refresh: revalidate everything and drive the refresh spinner until done. */
     fun refresh() {
         if (_uiState.value.isRefreshing) return
@@ -152,15 +160,25 @@ class UserProfileViewModel @Inject constructor(
                 val artItems = artRes?.data ?: state.artItems
                 val curations = curationRes?.data ?: state.curations
                 val likedItems = likedRes?.data ?: state.likedItems
+                val resolvedProfile = profile ?: state.profile
+                val profileError = profileResult as? ApiResult.Error
+                // Full-screen error ONLY when there's no profile to show AND the fetch failed — cleared
+                // the moment we have a profile, so it never lingers once content loads.
+                val failed = resolvedProfile == null && profileError != null
                 state.copy(
                     isLoading = false,
-                    profile = profile ?: state.profile,
+                    profile = resolvedProfile,
                     artItems = artItems,
                     curations = curations,
                     likedItems = likedItems,
                     artHasMore = if (artRes != null) artItems.size >= SIZE else state.artHasMore,
                     curationHasMore = if (curationRes != null) curations.size >= SIZE else state.curationHasMore,
                     likedHasMore = if (likedRes != null) likedItems.size >= SIZE else state.likedHasMore,
+                    error = if (failed) profileError?.userMessage() else null,
+                    // Real device connectivity → the screen shows the "No internet" state strictly when
+                    // offline and a generic error otherwise, so a no-connection message never appears
+                    // while there IS network.
+                    isOffline = failed && !connectivity.isOnline(),
                 )
             }
             // The header is the primary content — report its failure so a manual refresh can toast it.

@@ -39,6 +39,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.navigation.NavRoutes
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.feature.home.presentation.HomeError
+import com.rinx.artRINXapp.feature.home.presentation.components.state.ErrorView
 import com.rinx.artRINXapp.core.tour.TourTarget
 import com.rinx.artRINXapp.core.tour.TourViewModel
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -117,6 +119,7 @@ fun UserProfileScreen(
         onOpenFollowing = onOpenFollowing,
         onLoadMore = viewModel::loadMore,
         onRefresh = viewModel::refresh,
+        onRetry = viewModel::onRetry,
     )
 }
 
@@ -146,6 +149,7 @@ private fun UserProfileContent(
     onOpenFollowing: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
+    onRetry: () -> Unit = {},
 ) {
     var showFeedback by remember { mutableStateOf(false) }
     if (showFeedback) {
@@ -334,6 +338,16 @@ private fun UserProfileContent(
                 }
             }
             }
+        } else if (uiState.error != null) {
+            // Cold-load failure with nothing to show → proper error state + Retry (never a blank
+            // screen). Offline → "No internet" copy; any other failure → generic. Real connectivity
+            // gates this, so a no-connection message never appears while there IS network.
+            ErrorView(
+                error = if (uiState.isOffline) HomeError.NoInternet
+                        else HomeError.Generic(uiState.error.orEmpty()),
+                onRetry = onRetry,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
       }
     }
