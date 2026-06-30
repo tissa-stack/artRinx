@@ -45,9 +45,9 @@ class ShareViewModel @Inject constructor(
     private val _closeSheet = Channel<Unit>(Channel.BUFFERED)
     val closeSheet = _closeSheet.receiveAsFlow()
 
-    init {
-        load()
-    }
+    /** Reload the share-to candidates. Driven by the sheet on every open (the VM is screen-scoped and
+     *  reused, so a one-shot init load would leave a failed/empty first open stuck on reopen). */
+    fun reload() = load()
 
     private fun load() {
         viewModelScope.launch {

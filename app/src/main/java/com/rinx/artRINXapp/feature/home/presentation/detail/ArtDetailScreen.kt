@@ -101,7 +101,9 @@ fun ArtDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showReportSheet by remember { mutableStateOf(false) }
-    var showAddToCuration by remember { mutableStateOf(false) }
+    // Single source of truth for the mutually-exclusive bottom sheets (Share + Add-to-Curation), hosted
+    // together below so opening one closes the other — they can't co-exist / dismiss-and-reopen (SCRUM-55).
+    var activeSheet by remember { mutableStateOf<ArtDetailSheet>(ArtDetailSheet.None) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     // "art" or "user" while a block confirmation dialog is up (asked before any block).
     var blockConfirm by remember { mutableStateOf<String?>(null) }
@@ -185,16 +187,24 @@ fun ArtDetailScreen(
         )
     }
 
+    // Both sheets hosted here under one state → only one is ever composed at a time.
     val artworkId = uiState.post?.id?.toIntOrNull()
-    if (showAddToCuration && artworkId != null) {
-        AddToCurationSheet(
-            source = CurationSource.Artwork(artworkId, uiState.post?.imageUrl),
-            onDismiss = { showAddToCuration = false },
-            onCreateNew = {
-                showAddToCuration = false
-                onNavigateToNewCuration()
-            },
+    when (val sheet = activeSheet) {
+        is ArtDetailSheet.AddToCuration -> if (artworkId != null) {
+            AddToCurationSheet(
+                source = CurationSource.Artwork(artworkId, uiState.post?.imageUrl),
+                onDismiss = { activeSheet = ArtDetailSheet.None },
+                onCreateNew = {
+                    activeSheet = ArtDetailSheet.None
+                    onNavigateToNewCuration()
+                },
+            )
+        }
+        is ArtDetailSheet.Share -> ShareSheet(
+            target = sheet.target,
+            onDismiss = { activeSheet = ArtDetailSheet.None },
         )
+        ArtDetailSheet.None -> Unit
     }
 
     Scaffold(
@@ -226,7 +236,8 @@ fun ArtDetailScreen(
                     uiState = uiState,
                     onLike = viewModel::onLikeToggled,
                     onNavigateToDetail = onNavigateToDetail,
-                    onAddToCuration = { showAddToCuration = true },
+                    onAddToCuration = { activeSheet = ArtDetailSheet.AddToCuration },
+                    onShare = { target -> activeSheet = ArtDetailSheet.Share(target) },
                     onOpenProfile = onOpenProfile,
                     onOpenArtistArts = onOpenArtistArts,
                     onInviteSheetOpened = viewModel::onInviteSheetOpened,
@@ -316,6 +327,7 @@ private fun ArtDetailContent(
     onLike: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onAddToCuration: () -> Unit = {},
+    onShare: (ShareTarget) -> Unit = {},
     onOpenProfile: (Int) -> Unit = {},
     onOpenArtistArts: (name: String, artistId: Int?) -> Unit = { _, _ -> },
     onInviteSheetOpened: () -> Unit = {},
@@ -343,7 +355,6 @@ private fun ArtDetailContent(
     var heroRatio by remember(post.id) { mutableStateOf(post.aspectRatio?.takeIf { it > 0f } ?: 1f) }
     var showSendSheet by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
-    var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
 
     // Horizontal infinite scroll for the "More like this" rail — fetch the next page as it nears its
     // right edge. The ViewModel guards against duplicate/end/errored loads, so firing eagerly is cheap.
@@ -354,10 +365,6 @@ private fun ArtDetailContent(
             info.totalItemsCount > 0 &&
                 (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - SIMILAR_PREFETCH
         }.distinctUntilChanged().collect { nearEnd -> if (nearEnd) onLoadMoreSimilar() }
-    }
-
-    shareTarget?.let { target ->
-        ShareSheet(target = target, onDismiss = { shareTarget = null })
     }
 
     if (showShopDialog) {
@@ -451,12 +458,14 @@ private fun ArtDetailContent(
                             modifier = Modifier
                                 .size(Spacing.xxl)
                                 .clickable {
-                                    shareTarget = ShareTarget(
-                                        kind = ShareKind.ARTWORK,
-                                        id = post.id,
-                                        title = post.title,
-                                        subtitle = "by ${post.artistName}",
-                                        imageUrl = post.imageUrl,
+                                    onShare(
+                                        ShareTarget(
+                                            kind = ShareKind.ARTWORK,
+                                            id = post.id,
+                                            title = post.title,
+                                            subtitle = "by ${post.artistName}",
+                                            imageUrl = post.imageUrl,
+                                        ),
                                     )
                                 },
                         )
@@ -715,4 +724,11 @@ private fun ArtDetailContent(
 
         item(key = "bottom-space") { Spacer(Modifier.height(Spacing.xxl)) }
     }
+}
+
+/** Which mutually-exclusive bottom sheet is open on the art-detail screen (only one at a time). */
+private sealed interface ArtDetailSheet {
+    data object None : ArtDetailSheet
+    data object AddToCuration : ArtDetailSheet
+    data class Share(val target: ShareTarget) : ArtDetailSheet
 }

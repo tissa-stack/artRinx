@@ -84,7 +84,9 @@ fun CurationDetailScreen(
     viewModel: CurationDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showAddToCuration by remember { mutableStateOf(false) }
+    // Single source of truth for the mutually-exclusive bottom sheets (Share + Add-to-Curation), hosted
+    // together below so opening one closes the other — they can't co-exist / dismiss-and-reopen (SCRUM-55).
+    var activeSheet by remember { mutableStateOf<CurationDetailSheet>(CurationDetailSheet.None) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -125,16 +127,24 @@ fun CurationDetailScreen(
         )
     }
 
+    // Both sheets hosted here under one state → only one is ever composed at a time.
     val curationId = uiState.curation?.id?.toIntOrNull()
-    if (showAddToCuration && curationId != null) {
-        AddToCurationSheet(
-            source = CurationSource.Curation(curationId),
-            onDismiss = { showAddToCuration = false },
-            onCreateNew = {
-                showAddToCuration = false
-                onNavigateToNewCuration()
-            },
+    when (val sheet = activeSheet) {
+        is CurationDetailSheet.AddToCuration -> if (curationId != null) {
+            AddToCurationSheet(
+                source = CurationSource.Curation(curationId),
+                onDismiss = { activeSheet = CurationDetailSheet.None },
+                onCreateNew = {
+                    activeSheet = CurationDetailSheet.None
+                    onNavigateToNewCuration()
+                },
+            )
+        }
+        is CurationDetailSheet.Share -> ShareSheet(
+            target = sheet.target,
+            onDismiss = { activeSheet = CurationDetailSheet.None },
         )
+        CurationDetailSheet.None -> Unit
     }
 
     Scaffold(
@@ -212,7 +222,8 @@ fun CurationDetailScreen(
                     uiState              = uiState,
                     onLike               = viewModel::onLikeToggled,
                     onNavigateToArtDetail = onNavigateToArtDetail,
-                    onAddToCuration      = { showAddToCuration = true },
+                    onAddToCuration      = { activeSheet = CurationDetailSheet.AddToCuration },
+                    onShare              = { target -> activeSheet = CurationDetailSheet.Share(target) },
                     modifier             = Modifier.weight(1f),
                 )
 
@@ -237,16 +248,12 @@ private fun CurationDetailContent(
     onLike: () -> Unit,
     onNavigateToArtDetail: (String) -> Unit = {},
     onAddToCuration: () -> Unit = {},
+    onShare: (ShareTarget) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val curation = uiState.curation ?: return
     val d = LocalDimens.current
     var descExpanded by remember { mutableStateOf(true) }
-    var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
-
-    shareTarget?.let { target ->
-        ShareSheet(target = target, onDismiss = { shareTarget = null })
-    }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
 
@@ -325,12 +332,14 @@ private fun CurationDetailContent(
                         modifier           = Modifier
                             .size(Spacing.xxl)
                             .clickable {
-                                shareTarget = ShareTarget(
-                                    kind = ShareKind.CURATION,
-                                    id = curation.id,
-                                    title = curation.title,
-                                    subtitle = "by ${curation.curatorName}",
-                                    imageUrl = curation.artworkUrls.firstOrNull(),
+                                onShare(
+                                    ShareTarget(
+                                        kind = ShareKind.CURATION,
+                                        id = curation.id,
+                                        title = curation.title,
+                                        subtitle = "by ${curation.curatorName}",
+                                        imageUrl = curation.artworkUrls.firstOrNull(),
+                                    ),
                                 )
                             },
                     )
@@ -424,4 +433,11 @@ private fun CurationDetailContent(
 
         item(key = "bottom-space") { Spacer(Modifier.height(Spacing.xxl)) }
     }
+}
+
+/** Which mutually-exclusive bottom sheet is open on the curation-detail screen (only one at a time). */
+private sealed interface CurationDetailSheet {
+    data object None : CurationDetailSheet
+    data object AddToCuration : CurationDetailSheet
+    data class Share(val target: ShareTarget) : CurationDetailSheet
 }

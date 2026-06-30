@@ -176,6 +176,15 @@ fun OtherProfileScreen(
                 onBack = onBack,
             )
 
+            // I blocked them → the SAME neutral "Profile Not Available" page as every other blocked
+            // state (SCRUM-54): no tabs/Share/Report on the profile; unblock only via Settings →
+            // Blocked Accounts. So the full header/content below renders only for non-blocked profiles.
+            uiState.profile?.iBlocked == true -> ProfileStatePanel(
+                message = "This profile isn't available.",
+                bottomPadding = innerPadding.calculateBottomPadding(),
+                onBack = onBack,
+            )
+
             else -> {
                 val profile = uiState.profile!!
                 val tabs = listOf(ProfileTab.ART, ProfileTab.CURATIONS)
@@ -258,12 +267,9 @@ fun OtherProfileScreen(
                 ) { page ->
                     val tab = tabs[page]
                     item(key = "content_${tab.name}") {
+                        // A blocked profile never reaches here (it renders the "Profile Not Available"
+                        // panel above), so only non-blocked content is shown.
                         when {
-                            // Blocked → both tabs show the "Profile Blocked" panel instead of content.
-                            profile.iBlocked -> ProfileBlockedPanel(
-                                name = profile.displayName,
-                                modifier = Modifier.padding(top = Spacing.xxxl),
-                            )
                             tab == ProfileTab.CURATIONS -> when {
                                 uiState.curations.isNotEmpty() -> ProfileCurationsGrid(
                                     items = uiState.curations,
@@ -737,9 +743,11 @@ private fun ProfileStatePanel(
     ) {
         IconButton(
             onClick = onBack,
+            // Padded in from the screen edges (no negative offset — that one belongs to the header's
+            // padded Row; here the Box has no surrounding padding, so it would hug the corner).
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = -Spacing.sm)
+                .padding(start = Spacing.xs, top = Spacing.xs)
                 .size(Spacing.huge),
         ) {
             Icon(
@@ -771,38 +779,6 @@ private fun ProfileStatePanel(
     }
 }
 
-/** Replaces both content tabs once you've blocked this profile (iOS parity). */
-@Composable
-private fun ProfileBlockedPanel(name: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.xxl, vertical = Spacing.xxl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_block),
-            contentDescription = null,
-            tint = DangerRed,
-            modifier = Modifier.size(Spacing.giant),
-        )
-        Spacer(Modifier.height(Spacing.md))
-        Text(
-            text = "Profile Blocked",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(Spacing.xs))
-        Text(
-            text = "You have blocked ${name.ifBlank { "this user" }}. Their content is no longer visible to you.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
 
 @Composable
 private fun StatColumn(value: Int, label: String) {

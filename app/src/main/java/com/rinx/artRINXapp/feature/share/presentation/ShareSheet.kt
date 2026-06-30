@@ -102,6 +102,9 @@ fun ShareSheet(
     // Fixed, status-bar-safe height so the sheet doesn't jump as content/keyboard changes.
     val sheetHeight = (LocalConfiguration.current.screenHeightDp * 0.8f).dp
 
+    // Reload recipients every time the sheet opens (the VM is screen-scoped and reused across opens,
+    // so a one-shot init load would leave a failed/empty first open stuck — Share would come back empty).
+    LaunchedEffect(Unit) { viewModel.reload() }
     LaunchedEffect(Unit) {
         viewModel.message.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
