@@ -71,7 +71,12 @@ class ArtByArtistViewModel @Inject constructor(
                     profile = prof,
                     isFollowing = prof?.isFollowing ?: false,
                     // Full-screen error only on a first-load failure with nothing to show.
-                    error = (artsRes as? ApiResult.Error)?.takeIf { arts.isEmpty() }?.toHomeError(),
+                    // A 404 from by-name means "no (public) works credited to this artist" — an EMPTY
+                    // result, not a failure (e.g. the only work is private). Show the empty state, not
+                    // a Retry error (retrying would just re-404).
+                    error = (artsRes as? ApiResult.Error)
+                        ?.takeIf { it !is ApiResult.Error.NotFound && arts.isEmpty() }
+                        ?.toHomeError(),
                 )
             }
         }
@@ -96,6 +101,16 @@ class ArtByArtistViewModel @Inject constructor(
                         artsPaging = st.artsPaging.copy(
                             page = next,
                             hasMore = res.data.size >= SIZE,
+                            isLoadingMore = false,
+                            loadMoreError = null,
+                        ),
+                    )
+                }
+                // A 404 on a later page = no more results (end of list), not a footer error.
+                is ApiResult.Error.NotFound -> _state.update { st ->
+                    st.copy(
+                        artsPaging = st.artsPaging.copy(
+                            hasMore = false,
                             isLoadingMore = false,
                             loadMoreError = null,
                         ),

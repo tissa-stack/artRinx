@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -139,7 +137,7 @@ fun ArtByArtistScreen(
                 if (state.arts.isEmpty()) {
                     item(key = "empty") {
                         EmptyView(
-                            icon = Icons.Outlined.Image,
+                            iconRes = R.drawable.ic_no_art,
                             title = "No art yet",
                             subtitle = "Nothing credited to this artist yet.",
                             modifier = Modifier.fillMaxWidth().padding(top = Spacing.xl),
