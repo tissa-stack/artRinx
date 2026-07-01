@@ -61,11 +61,12 @@ import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
 import androidx.compose.foundation.clickable
 
-private const val MAX_CHARS = 1000
+private const val MAX_CHARS = TextLimits.MESSAGE
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

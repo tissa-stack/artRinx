@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
+import com.rinx.artRINXapp.core.ui.TextLimits
 
 @Composable
 fun InviteCodeTextField(
@@ -29,7 +30,7 @@ fun InviteCodeTextField(
         value = value,
         // Invite codes are case-insensitive but displayed/submitted upper-case — force every
         // keystroke (and pasted text) to upper case here so casing is handled entirely in the field.
-        onValueChange = { onValueChange(it.uppercase()) },
+        onValueChange = { onValueChange(it.uppercase().take(TextLimits.INVITE_CODE)) },
         modifier = modifier.heightIn(min = dimens.textFieldHeight),
         label = {
             Text(

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.userMessage
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import com.rinx.artRINXapp.feature.search.domain.repository.SearchRepository
 import com.rinx.artRINXapp.feature.search.domain.model.UserSearchItem
@@ -183,16 +184,16 @@ class NewArtViewModel @Inject constructor(
     fun onImageSet(uri: Uri) = _state.update { it.copy(imageUri = uri) }
 
     fun onTitleChange(t: String) = _state.update {
-        it.copy(title = t.take(40), isTitleError = false)
+        it.copy(title = t.take(TextLimits.ARTWORK_TITLE), isTitleError = false)
     }
 
     fun onDescriptionChange(d: String) = _state.update {
-        it.copy(description = d.take(255), isDescriptionError = false)
+        it.copy(description = d.take(TextLimits.ARTWORK_DESCRIPTION), isDescriptionError = false)
     }
 
     fun onShopLinkChange(url: String) = _state.update {
         // Clearing the shop link removes the price requirement, so drop any stale price error.
-        it.copy(shopLink = url, isPriceError = false)
+        it.copy(shopLink = url.take(TextLimits.SHOP_LINK), isPriceError = false)
     }
 
     /** Price input; digits + a single decimal point only. Sent only when a shop link is present. */
@@ -215,7 +216,10 @@ class NewArtViewModel @Inject constructor(
 
     // ── Artist ────────────────────────────────────────────────────────────────
 
-    fun onArtistSearchQueryChange(q: String) {
+    fun onArtistSearchQueryChange(rawQuery: String) {
+        // Cap here: the typed query doubles as the guest-artist name (via onArtistWithoutProfile),
+        // which is submitted as `artist_name` — so this keeps that field within the backend limit.
+        val q = rawQuery.take(TextLimits.ARTIST_NAME)
         _state.update { it.copy(artistSearchQuery = q) }
         artistSearchJob?.cancel()
         val query = q.trim()
@@ -279,7 +283,7 @@ class NewArtViewModel @Inject constructor(
 
     // ── Tags ──────────────────────────────────────────────────────────────────
 
-    fun onTagInputChange(t: String) = _state.update { it.copy(currentTagInput = t) }
+    fun onTagInputChange(t: String) = _state.update { it.copy(currentTagInput = t.take(TextLimits.TAG)) }
 
     fun onAddTag() {
         val tag = _state.value.currentTagInput.trim().lowercase()

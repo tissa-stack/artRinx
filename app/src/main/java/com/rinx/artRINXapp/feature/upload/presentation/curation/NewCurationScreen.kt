@@ -63,6 +63,7 @@ import com.rinx.artRINXapp.core.theme.DangerRed
 import com.rinx.artRINXapp.core.theme.ErrorDark
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationCardStack
 import com.rinx.artRINXapp.feature.home.presentation.components.EmptyCurationStack
 import com.rinx.artRINXapp.feature.profile.presentation.other.components.ConfirmActionDialog
@@ -197,7 +198,7 @@ fun NewCurationScreen(
                         onChange    = viewModel::onTitleChange,
                         placeholder = "Title",
                         singleLine  = true,
-                        charLimit   = 40,
+                        charLimit   = TextLimits.CURATION_TITLE,
                         showCounter = state.title.isNotEmpty(),
                         required    = true,
                     )
@@ -211,7 +212,7 @@ fun NewCurationScreen(
                         onChange      = viewModel::onDescriptionChange,
                         placeholder   = "Description",
                         singleLine    = false,
-                        charLimit     = 255,
+                        charLimit     = TextLimits.CURATION_DESCRIPTION,
                         showCounter   = state.description.isNotEmpty(),
                         contentHeight = Spacing.giant * 2 + Spacing.lg,
                         required      = true,

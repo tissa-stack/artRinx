@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.core.util.capitalizeFirst
 import com.rinx.artRINXapp.core.util.capitalizeWords
 import com.rinx.artRINXapp.feature.profile.domain.model.EditableProfile
@@ -282,8 +283,8 @@ class EditProfileViewModel @Inject constructor(
     fun onUsernameChange(v: String) {
         userEdited = true
         // Capitalize the first letter (length-preserving) so the save-time taken-check and the saved
-        // username stay identical.
-        val normalized = v.capitalizeFirst()
+        // username stay identical. Cap at the backend max so an over-long value can't 422.
+        val normalized = v.take(TextLimits.USERNAME).capitalizeFirst()
         // Immediate min-length feedback (mirrors the create-profile flow).
         val error = if (normalized.isNotEmpty() && normalized.length < 5) "Username must be at least 5 characters" else null
         _state.update { it.copy(username = normalized, usernameError = error) }
@@ -340,7 +341,8 @@ class EditProfileViewModel @Inject constructor(
     }
 
     /** Typing in Country: filter the catalog and invalidate any prior selection + dependents. */
-    fun onCountryQuery(v: String) {
+    fun onCountryQuery(raw: String) {
+        val v = raw.take(TextLimits.LOCATION)
         userEdited = true
         states = emptyList()
         _state.update {
@@ -389,7 +391,8 @@ class EditProfileViewModel @Inject constructor(
     }
 
     /** Typing in State: filter loaded states and invalidate any prior selection + city. */
-    fun onStateQuery(v: String) {
+    fun onStateQuery(raw: String) {
+        val v = raw.take(TextLimits.LOCATION)
         userEdited = true
         _state.update {
             it.copy(
@@ -423,7 +426,8 @@ class EditProfileViewModel @Inject constructor(
     }
 
     /** Typing in City: debounced prefix search against the catalog (needs both ids). */
-    fun onCityQuery(v: String) {
+    fun onCityQuery(raw: String) {
+        val v = raw.take(TextLimits.LOCATION)
         userEdited = true
         _state.update { it.copy(city = v) }
         val iso2 = _state.value.selectedCountryIso2

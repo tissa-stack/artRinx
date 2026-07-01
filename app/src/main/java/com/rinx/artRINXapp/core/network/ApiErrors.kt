@@ -33,10 +33,38 @@ private fun parseServerMessage(body: String?): String? {
         (obj["message"] as? String)?.takeIf { it.isNotBlank() }?.let { return it }
         when (val detail = obj["detail"]) {
             is String -> detail.takeIf { it.isNotBlank() }
-            is List<*> -> (detail.filterIsInstance<Map<*, *>>().firstOrNull()?.get("msg") as? String)?.takeIf { it.isNotBlank() }
+            // FastAPI/Pydantic validation: a list of field errors. Build friendly, field-aware copy
+            // from the first item (loc + type + ctx) instead of dumping the raw "String should have…".
+            is List<*> -> detail.filterIsInstance<Map<*, *>>().firstOrNull()?.let { friendlyFieldError(it) }
             else -> null
         }
     }.getOrNull()
+}
+
+/**
+ * Turns one Pydantic error item into user-facing copy, e.g.
+ * `{"type":"string_too_long","loc":["query","username"],"ctx":{"max_length":50}}` →
+ * "Username must be at most 50 characters." Falls back to the raw `msg`, then null.
+ */
+private fun friendlyFieldError(item: Map<*, *>): String? {
+    val loc = (item["loc"] as? List<*>)?.mapNotNull { it as? String }.orEmpty()
+    // The field is the last loc segment that isn't a request-location container.
+    val field = loc.lastOrNull { it !in setOf("body", "query", "path", "header") }
+        ?.replace('_', ' ')
+        ?.replaceFirstChar { it.uppercase() }
+    val label = field ?: "This field"
+    val type = item["type"] as? String
+    val ctx = item["ctx"] as? Map<*, *>
+    val max = (ctx?.get("max_length") as? Number)?.toInt()
+    val min = (ctx?.get("min_length") as? Number)?.toInt()
+    val msg = (item["msg"] as? String)?.takeIf { it.isNotBlank() }
+    return when {
+        type == "string_too_long" && max != null -> "$label must be at most $max characters."
+        type == "string_too_short" && min != null -> "$label must be at least $min characters."
+        type in setOf("missing", "value_error.missing") -> "$label is required."
+        field != null && msg != null -> "$label: $msg"
+        else -> msg
+    }
 }
 
 /**

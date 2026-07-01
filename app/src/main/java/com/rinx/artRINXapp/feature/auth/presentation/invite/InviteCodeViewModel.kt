@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.navigation.DeepLinkRouter
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.auth.domain.model.InviteCodeType
 import com.rinx.artRINXapp.feature.auth.domain.usecase.VerifyInviteCodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,7 @@ class InviteCodeViewModel @Inject constructor(
     }
 
     fun onCodeChange(code: String) {
-        _uiState.update { it.copy(inviteCode = code, errorMessage = null) }
+        _uiState.update { it.copy(inviteCode = code.take(TextLimits.INVITE_CODE), errorMessage = null) }
     }
 
     fun clearError() {

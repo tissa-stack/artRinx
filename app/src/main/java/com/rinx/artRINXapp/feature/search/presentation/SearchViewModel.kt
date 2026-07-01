@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.search.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.core.util.BlockedArtworkBus
 import com.rinx.artRINXapp.core.util.BlockedUserBus
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -141,7 +142,8 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    fun onQueryChange(query: String) {
+    fun onQueryChange(rawQuery: String) {
+        val query = rawQuery.take(TextLimits.SEARCH_QUERY)
         _uiState.update {
             it.copy(
                 query = query,
@@ -316,7 +318,7 @@ class SearchViewModel @Inject constructor(
 
     /** City text changed — updates the committed value and debounced-queries matching cities (`q`). */
     fun onCityChanged(city: String?) {
-        val text = city?.ifBlank { null }
+        val text = city?.take(TextLimits.LOCATION)?.ifBlank { null }
         val f = _uiState.value.filter
         _uiState.update { it.copy(filter = it.filter.copy(city = text)) }
         // Cities require both country and state; never query without them.

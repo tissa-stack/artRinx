@@ -52,6 +52,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
 import com.rinx.artRINXapp.feature.profile.presentation.UsernameCheckState
 import com.rinx.artRINXapp.feature.profile.presentation.components.ProfileTextField
@@ -193,7 +194,7 @@ fun ProfileInfoStep(
                 onValueChange = onFullNameChange,
                 placeholder = "Enter your full name",
                 modifier = Modifier.fillMaxWidth(),
-                maxChars = 50,
+                maxChars = TextLimits.FULL_NAME,
                 hasError = fullNameError,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = {
@@ -228,19 +229,31 @@ fun ProfileInfoStep(
                 onValueChange = onUsernameChange,
                 placeholder = "Username",
                 modifier = Modifier.fillMaxWidth(),
+                maxChars = TextLimits.USERNAME,
                 capitalization = KeyboardCapitalization.Words,
                 hasError = usernameError || usernameTooShort || usernameCheckState is UsernameCheckState.Taken,
             )
-            // Immediate min-length feedback before the availability check (which only runs at >= 5).
-            if (usernameTooShort) {
+            // Status/hint on the left, character counter on the right.
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.weight(1f)) {
+                    // Immediate min-length feedback before the availability check (which only runs at >= 5).
+                    if (usernameTooShort) {
+                        Text(
+                            text = "Username must be at least 5 characters",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = Spacing.xs, start = Spacing.sm),
+                        )
+                    } else {
+                        UsernameStatusRow(state = usernameCheckState, hasError = usernameError)
+                    }
+                }
                 Text(
-                    text = "Username must be at least 5 characters",
+                    text = "${username.length}/${TextLimits.USERNAME}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = Spacing.xs, start = Spacing.sm),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Spacing.xs, end = Spacing.sm),
                 )
-            } else {
-                UsernameStatusRow(state = usernameCheckState, hasError = usernameError)
             }
         }
 
@@ -253,7 +266,7 @@ fun ProfileInfoStep(
                 onValueChange = onDisplayNameChange,
                 placeholder = "Display name",
                 modifier = Modifier.fillMaxWidth(),
-                maxChars = 50,
+                maxChars = TextLimits.DISPLAY_NAME,
                 hasError = displayNameError,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = {
@@ -286,7 +299,7 @@ fun ProfileInfoStep(
             onValueChange = onBioChange,
             placeholder = "Bio",
             modifier = Modifier.fillMaxWidth(),
-            maxChars = 200,
+            maxChars = TextLimits.BIO,
         )
 
         Spacer(Modifier.height(Spacing.xxxl))

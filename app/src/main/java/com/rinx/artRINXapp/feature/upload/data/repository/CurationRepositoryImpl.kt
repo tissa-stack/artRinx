@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.upload.data.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.serverMessageOrNull
 import com.rinx.artRINXapp.core.util.ProfileRefreshBus
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
 import com.rinx.artRINXapp.feature.upload.data.remote.CurationApiService
@@ -174,9 +175,14 @@ class CurationRepositoryImpl @Inject constructor(
         ApiResult.Error.Unknown(e)
     }
 
-    private fun errorFor(response: Response<*>): ApiResult.Error = when (response.code()) {
-        in 400..499 -> ApiResult.Error.Validation("Request failed (${response.code()})")
-        in 500..599 -> ApiResult.Error.Server(response.code())
-        else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
+    private fun errorFor(response: Response<*>): ApiResult.Error {
+        val body = runCatching { response.errorBody()?.string() }.getOrNull()
+        return when (response.code()) {
+            in 400..499 -> ApiResult.Error.Validation(
+                serverMessageOrNull(body) ?: "Request failed (${response.code()})",
+            )
+            in 500..599 -> ApiResult.Error.Server(response.code())
+            else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
+        }
     }
 }

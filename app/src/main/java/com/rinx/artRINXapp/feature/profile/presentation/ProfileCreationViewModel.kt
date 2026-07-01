@@ -11,6 +11,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.tour.TourManager
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.core.util.capitalizeFirst
 import com.rinx.artRINXapp.core.util.capitalizeWords
 import com.rinx.artRINXapp.feature.auth.domain.GooglePrefillHolder
@@ -268,8 +269,9 @@ class ProfileCreationViewModel @Inject constructor(
 
     fun onUsernameChange(value: String) {
         // Capitalize the first letter (single-token, length-preserving) so the availability check and the
-        // saved username use the identical string.
-        val normalized = value.capitalizeFirst()
+        // saved username use the identical string. Cap at the backend max so the username-check request
+        // can't 422 on an over-long value.
+        val normalized = value.take(TextLimits.USERNAME).capitalizeFirst()
         _uiState.update {
             it.copy(
                 username = normalized,
@@ -424,7 +426,8 @@ class ProfileCreationViewModel @Inject constructor(
     }
 
     /** Typing in Country: filter the catalog and invalidate any prior selection + dependents. */
-    fun onCountryQuery(value: String) {
+    fun onCountryQuery(rawValue: String) {
+        val value = rawValue.take(TextLimits.LOCATION)
         states = emptyList()
         _uiState.update {
             it.copy(
@@ -480,7 +483,8 @@ class ProfileCreationViewModel @Inject constructor(
     }
 
     /** Typing in State: filter loaded states and invalidate any prior selection + city. */
-    fun onStateQuery(value: String) {
+    fun onStateQuery(rawValue: String) {
+        val value = rawValue.take(TextLimits.LOCATION)
         _uiState.update {
             it.copy(
                 state = value,
@@ -523,7 +527,8 @@ class ProfileCreationViewModel @Inject constructor(
     }
 
     /** Typing in City: debounced prefix search against the catalog (needs both ids). */
-    fun onCityQuery(value: String) {
+    fun onCityQuery(rawValue: String) {
+        val value = rawValue.take(TextLimits.LOCATION)
         _uiState.update { it.copy(city = value, cityError = false) }
         viewModelScope.launch { draftDataSource.saveCity(value) }
         val iso2 = _uiState.value.selectedCountryIso2

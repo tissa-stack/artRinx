@@ -3,6 +3,8 @@ package com.rinx.artRINXapp.feature.upload.presentation.curation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.userMessage
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.upload.domain.CurationManager
 import com.rinx.artRINXapp.feature.upload.domain.CurationSeedStore
 import com.rinx.artRINXapp.feature.upload.domain.EditTargetStore
@@ -126,8 +128,8 @@ class NewCurationViewModel @Inject constructor(
     private fun NewCurationState.applySelection(items: List<UserArtItem>): List<UserArtItem> =
         items.map { item -> item.copy(isSelected = selectedArts.any { it.id == item.id }) }
 
-    fun onTitleChange(t: String) = _state.update { it.copy(title = t.take(40)) }
-    fun onDescriptionChange(d: String) = _state.update { it.copy(description = d.take(255)) }
+    fun onTitleChange(t: String) = _state.update { it.copy(title = t.take(TextLimits.CURATION_TITLE)) }
+    fun onDescriptionChange(d: String) = _state.update { it.copy(description = d.take(TextLimits.CURATION_DESCRIPTION)) }
 
     // ── Art selection ─────────────────────────────────────────────────────────
 
@@ -246,7 +248,7 @@ class NewCurationViewModel @Inject constructor(
                 is ApiResult.Success ->
                     _state.update { it.copy(creationStatus = CreationStatus.CREATED) }
                 is ApiResult.Error ->
-                    _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = "Couldn't save changes — please try again.") }
+                    _state.update { it.copy(creationStatus = CreationStatus.FAILED, creationError = result.userMessage("Couldn't save changes — please try again.")) }
             }
         }
     }

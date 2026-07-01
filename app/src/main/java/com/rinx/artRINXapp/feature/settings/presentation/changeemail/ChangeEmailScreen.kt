@@ -50,6 +50,7 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.settings.presentation.components.SettingsOtpContent
 
 @Composable
@@ -202,7 +203,7 @@ private fun EmailStep(
     Spacer(Modifier.height(Spacing.xs))
     OutlinedTextField(
         value = newEmail,
-        onValueChange = onNewEmailChange,
+        onValueChange = { onNewEmailChange(it.take(TextLimits.EMAIL)) },
         singleLine = true,
         placeholder = { Text("you@example.com") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
@@ -226,7 +227,7 @@ private fun EmailStep(
     Spacer(Modifier.height(Spacing.xs))
     OutlinedTextField(
         value = confirmEmail,
-        onValueChange = onConfirmEmailChange,
+        onValueChange = { onConfirmEmailChange(it.take(TextLimits.EMAIL)) },
         singleLine = true,
         placeholder = { Text("you@example.com") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),

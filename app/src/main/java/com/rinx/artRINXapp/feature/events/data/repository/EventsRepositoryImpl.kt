@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.events.data.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.network.serverMessageOrNull
 import com.rinx.artRINXapp.feature.events.data.remote.EventsApiService
 import com.rinx.artRINXapp.feature.events.data.remote.dto.EventDto
 import com.rinx.artRINXapp.feature.events.domain.EventFormatting
@@ -48,10 +49,15 @@ class EventsRepositoryImpl @Inject constructor(
         ApiResult.Error.Unknown(e)
     }
 
-    private fun errorFor(response: Response<*>): ApiResult.Error = when (response.code()) {
-        404 -> ApiResult.Error.NotFound("Event not found")
-        in 400..499 -> ApiResult.Error.Validation("Request failed (${response.code()})")
-        in 500..599 -> ApiResult.Error.Server(response.code())
-        else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
+    private fun errorFor(response: Response<*>): ApiResult.Error {
+        val body = runCatching { response.errorBody()?.string() }.getOrNull()
+        return when (response.code()) {
+            404 -> ApiResult.Error.NotFound("Event not found")
+            in 400..499 -> ApiResult.Error.Validation(
+                serverMessageOrNull(body) ?: "Request failed (${response.code()})",
+            )
+            in 500..599 -> ApiResult.Error.Server(response.code())
+            else -> ApiResult.Error.Unknown(RuntimeException("HTTP ${response.code()}"))
+        }
     }
 }

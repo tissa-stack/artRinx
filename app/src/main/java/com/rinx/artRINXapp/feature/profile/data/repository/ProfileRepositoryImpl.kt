@@ -32,6 +32,7 @@ import com.rinx.artRINXapp.feature.profile.domain.model.ProfileType
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileUpdate
 import com.rinx.artRINXapp.feature.profile.domain.model.UploadQuota
 import com.rinx.artRINXapp.feature.profile.domain.model.UserProfileData
+import com.rinx.artRINXapp.core.network.serverMessageOrNull
 import com.rinx.artRINXapp.core.network.toApiError
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
@@ -1020,19 +1021,10 @@ class ProfileRepositoryImpl @Inject constructor(
         else -> ApiResult.Error.Unknown(RuntimeException("HTTP $code"))
     }
 
-    private fun parseValidationError(body: String?): String {
-        if (body == null) return "Validation failed"
-        return try {
-            val obj = gson.fromJson(body, Map::class.java)
-            (obj["detail"] as? List<*>)
-                ?.filterIsInstance<Map<*, *>>()
-                ?.firstOrNull()
-                ?.get("msg") as? String
-                ?: "Validation failed"
-        } catch (_: Exception) {
-            "Validation failed"
-        }
-    }
+    // Delegate to the shared parser so 422s surface friendly, field-aware copy
+    // (e.g. "Username must be at most 50 characters.") instead of a generic string.
+    private fun parseValidationError(body: String?): String =
+        serverMessageOrNull(body) ?: "Validation failed"
 
     /** The server flags an under-13 DOB with `detail.code = under_minimum_age` on a 400. */
     private fun isUnderMinimumAge(body: String?): Boolean =

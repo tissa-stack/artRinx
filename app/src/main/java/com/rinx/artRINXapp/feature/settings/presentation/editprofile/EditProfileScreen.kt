@@ -70,6 +70,7 @@ import com.rinx.artRINXapp.core.theme.ShopLinkGradientStart
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.DobPickerField
 import com.rinx.artRINXapp.core.ui.SearchableTextDropdownField
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.profile.presentation.steps.InfoTooltip
 
@@ -304,6 +305,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Username",
                 value = state.username,
                 onValueChange = viewModel::onUsernameChange,
+                maxChars = TextLimits.USERNAME,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showUsernameTooltip, viewModel::onUsernameTooltipToggle) },
             )
@@ -329,7 +331,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Full name",
                 value = state.fullName,
                 onValueChange = viewModel::onFullNameChange,
-                maxChars = 50,
+                maxChars = TextLimits.FULL_NAME,
                 enabled = state.canEditFullName,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showFullNameTooltip, viewModel::onFullNameTooltipToggle) },
@@ -350,7 +352,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Bio",
                 value = state.bio,
                 onValueChange = viewModel::onBioChange,
-                maxChars = 200,
+                maxChars = TextLimits.BIO,
             )
             Spacer(Modifier.height(Spacing.md))
 
@@ -363,7 +365,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Display name",
                 value = state.displayName,
                 onValueChange = viewModel::onDisplayNameChange,
-                maxChars = 50,
+                maxChars = TextLimits.DISPLAY_NAME,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showDisplayNameTooltip, viewModel::onDisplayNameTooltipToggle) },
             )

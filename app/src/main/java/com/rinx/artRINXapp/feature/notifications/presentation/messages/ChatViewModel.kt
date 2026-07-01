@@ -7,6 +7,7 @@ import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.ChatEvent
 import com.rinx.artRINXapp.core.network.ChatWebSocketManager
 import com.rinx.artRINXapp.core.network.WsConnectionState
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.notifications.domain.OutgoingMessageStore
 import com.rinx.artRINXapp.feature.notifications.domain.SendOutcome
 import com.rinx.artRINXapp.feature.notifications.domain.model.ChatGate
@@ -449,7 +450,8 @@ class ChatViewModel @Inject constructor(
 
     fun onInputChange(text: String) {
         // Strip URLs in real time (the backend rejects them); other text + whitespace pass through.
-        val cleaned = text.replace(URL_REGEX, "")
+        // Cap length so an over-long message can't 422 on send.
+        val cleaned = text.replace(URL_REGEX, "").take(TextLimits.MESSAGE)
         _state.update { it.copy(inputText = cleaned) }
         // Outbound typing signal (not while inline-editing an existing message).
         if (cleaned.isNotEmpty() && _state.value.editingMessageId == null) onLocalTypingActivity()

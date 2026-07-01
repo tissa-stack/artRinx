@@ -155,7 +155,7 @@ class UploadRepositoryImpl @Inject constructor(
             profileRefreshBus.signal()
             ApiResult.Success(Unit)
         } else {
-            errorFor(response.code())
+            errorFor(response)
         }
     }
 

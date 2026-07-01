@@ -3,6 +3,7 @@ package com.rinx.artRINXapp.feature.profile.presentation.feedback
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.profile.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -33,7 +34,7 @@ class FeedbackViewModel @Inject constructor(
     private val _closed = Channel<Unit>(Channel.BUFFERED)
     val closed = _closed.receiveAsFlow()
 
-    fun onTextChange(value: String) = _uiState.update { it.copy(text = value) }
+    fun onTextChange(value: String) = _uiState.update { it.copy(text = value.take(TextLimits.FEEDBACK)) }
 
     fun submit() {
         val review = _uiState.value.text.trim()
