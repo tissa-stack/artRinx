@@ -14,14 +14,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
@@ -50,6 +53,15 @@ fun PersonalInfoStep(
     countryOptions: List<String>,
     stateOptions: List<String>,
     cityOptions: List<String>,
+    countryLoading: Boolean,
+    countryLoadError: String?,
+    onRetryCountries: () -> Unit,
+    stateLoading: Boolean,
+    stateLoadError: String?,
+    onRetryStates: () -> Unit,
+    cityLoading: Boolean,
+    cityLoadError: String?,
+    onRetryCities: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -112,6 +124,7 @@ fun PersonalInfoStep(
             hasError = countryError,
             errorText = "Please select from the list",
         )
+        LoadStatusRow(loading = countryLoading, error = countryLoadError, onRetry = onRetryCountries)
         Spacer(Modifier.height(Spacing.md))
         SearchableFieldWithError(
             value = state,
@@ -122,6 +135,7 @@ fun PersonalInfoStep(
             hasError = stateError,
             errorText = "Please select from the list",
         )
+        LoadStatusRow(loading = stateLoading, error = stateLoadError, onRetry = onRetryStates)
         Spacer(Modifier.height(Spacing.md))
         SearchableFieldWithError(
             value = city,
@@ -131,6 +145,7 @@ fun PersonalInfoStep(
             label = "City (optional)",
             hasError = cityError,
         )
+        LoadStatusRow(loading = cityLoading, error = cityLoadError, onRetry = onRetryCities)
 
         Spacer(Modifier.height(Spacing.xl))
 
@@ -168,6 +183,47 @@ fun PersonalInfoStep(
         }
 
         Spacer(Modifier.height(Spacing.xxxl))
+    }
+}
+
+/**
+ * Inline load status shown beneath a location field: a spinner while the catalog is loading, or an
+ * error message + Retry once a fetch fails (mirrors the mediums step's error+retry). Renders nothing
+ * in the normal (loaded) state so the field looks untouched.
+ */
+@Composable
+private fun LoadStatusRow(loading: Boolean, error: String?, onRetry: () -> Unit) {
+    when {
+        loading -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(Spacing.md),
+                strokeWidth = 1.5.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Loading…",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        error != null -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
+        ) {
+            Text(
+                text = error,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            TextButton(onClick = onRetry) {
+                Text("Retry", color = BrandPrimary, style = MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 

@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -123,14 +122,21 @@ fun AddArtToCurationScreen(
 
         // ── 3-column art grid (or empty state) ────────────────────────────
         if (state.displayedArts.isEmpty()) {
-            val isLiked = state.activeArtTab == ArtTab.LIKED
-            EmptyView(
-                icon = if (isLiked) Icons.Outlined.FavoriteBorder else Icons.Outlined.Image,
-                title = if (isLiked) "No liked art yet" else "No uploads yet",
-                subtitle = if (isLiked) "Art you like will appear here."
-                           else "Artworks you upload will appear here.",
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (state.activeArtTab == ArtTab.LIKED) {
+                EmptyView(
+                    icon = Icons.Outlined.FavoriteBorder,
+                    title = "No liked art yet",
+                    subtitle = "Art you like will appear here.",
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                EmptyView(
+                    iconRes = R.drawable.ic_no_art,
+                    title = "No uploads yet",
+                    subtitle = "Artworks you upload will appear here.",
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             return@Column
         }
         LazyVerticalGrid(

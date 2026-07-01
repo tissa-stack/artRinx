@@ -2,14 +2,11 @@ package com.rinx.artRINXapp.feature.notifications.presentation.notifications
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 import androidx.compose.material.icons.Icons
@@ -22,7 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ListShimmer
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationKind
@@ -76,11 +73,11 @@ fun NotificationsContent(
                 onAction    = onRetry,
                 modifier    = Modifier.align(Alignment.Center),
             )
-            notifications.isEmpty() -> Text(
-                text     = "No notifications yet",
-                style    = MaterialTheme.typography.bodyMedium,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center).padding(Spacing.xl),
+            notifications.isEmpty() -> SearchMessageView(
+                title    = "No notifications yet",
+                subtitle = "",
+                iconRes  = R.drawable.ic_empty_notifications,
+                modifier = Modifier.align(Alignment.Center),
             )
             else -> PullToRefreshBox(
                 isRefreshing = isRefreshing,

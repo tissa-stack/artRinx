@@ -71,6 +71,15 @@ fun ProfileCreationScreen(
         }
     }
 
+    // Lazy auto-recovery for the location step: if the user reaches Personal Info (step 2) and the
+    // country catalog never loaded (e.g. the initial fetch failed offline), re-attempt it. Fires once
+    // per entry to the step; the inline Retry button remains the explicit fallback.
+    LaunchedEffect(uiState.currentStep) {
+        if (uiState.currentStep == 2 && uiState.countryOptions.isEmpty() && !uiState.countryOptionsLoading) {
+            viewModel.retryLoadCountries()
+        }
+    }
+
     // Follow system theme — no forced dark mode
     ArtRinxTheme {
         ProfileCreationContent(
@@ -91,6 +100,9 @@ fun ProfileCreationScreen(
             onStateSelected = viewModel::onStateSelected,
             onCityQuery = viewModel::onCityQuery,
             onCitySelected = viewModel::onCitySelected,
+            onRetryCountries = viewModel::retryLoadCountries,
+            onRetryStates = viewModel::retryLoadStates,
+            onRetryCities = viewModel::retryLoadCities,
             onPersonalInfoTooltipToggle = viewModel::onPersonalInfoTooltipToggle,
             onMediumToggle = viewModel::onMediumToggle,
             onMediumsTooltipToggle = viewModel::onMediumsTooltipToggle,
@@ -124,6 +136,9 @@ private fun ProfileCreationContent(
     onStateSelected: (String) -> Unit,
     onCityQuery: (String) -> Unit,
     onCitySelected: (String) -> Unit,
+    onRetryCountries: () -> Unit,
+    onRetryStates: () -> Unit,
+    onRetryCities: () -> Unit,
     onPersonalInfoTooltipToggle: () -> Unit,
     onMediumToggle: (Int) -> Unit,
     onMediumsTooltipToggle: () -> Unit,
@@ -287,6 +302,15 @@ private fun ProfileCreationContent(
                         countryOptions = uiState.countryOptions,
                         stateOptions = uiState.stateOptions,
                         cityOptions = uiState.cityOptions,
+                        countryLoading = uiState.countryOptionsLoading,
+                        countryLoadError = uiState.countryOptionsError,
+                        onRetryCountries = onRetryCountries,
+                        stateLoading = uiState.stateOptionsLoading,
+                        stateLoadError = uiState.stateOptionsError,
+                        onRetryStates = onRetryStates,
+                        cityLoading = uiState.cityOptionsLoading,
+                        cityLoadError = uiState.cityOptionsError,
+                        onRetryCities = onRetryCities,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     3 -> MediumSelectionStep(

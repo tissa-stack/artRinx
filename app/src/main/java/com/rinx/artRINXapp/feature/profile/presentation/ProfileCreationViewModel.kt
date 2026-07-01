@@ -93,6 +93,14 @@ data class ProfileCreationUiState(
     // True once the selected country's master state list comes back empty (the country has no
     // subdivisions). State & City then become optional free-text fields instead of required picks.
     val selectedCountryHasNoStates: Boolean = false,
+    // Loading/error for each catalog load, so a failed fetch shows a spinner / error+retry instead
+    // of a silently empty dropdown (mirrors the mediums/profile-types pattern).
+    val countryOptionsLoading: Boolean = false,
+    val countryOptionsError: String? = null,
+    val stateOptionsLoading: Boolean = false,
+    val stateOptionsError: String? = null,
+    val cityOptionsLoading: Boolean = false,
+    val cityOptionsError: String? = null,
 
     // Step 3 – Mediums
     val mediums: List<Medium> = emptyList(),
@@ -323,32 +331,96 @@ class ProfileCreationViewModel @Inject constructor(
     /** Loads the master country catalog, then best-effort restores the cascade from saved names. */
     private fun loadCountriesThenRestore(savedCountry: String, savedState: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(countryOptionsLoading = true, countryOptionsError = null) }
             val result = masterLocationRepository.getCountries()
-            if (result !is ApiResult.Success) return@launch
+            if (result !is ApiResult.Success) {
+                _uiState.update {
+                    it.copy(
+                        countryOptionsLoading = false,
+                        countryOptionsError = "Failed to load countries. Tap to retry.",
+                    )
+                }
+                return@launch
+            }
             countries = result.data
-            _uiState.update { it.copy(countryOptions = result.data.map { c -> c.name }) }
-
-            val country = countries.firstOrNull { it.name.equals(savedCountry.trim(), ignoreCase = true) } ?: return@launch
-            val statesResult = masterLocationRepository.getStates(country.iso2)
-            if (statesResult !is ApiResult.Success) return@launch
-            states = statesResult.data
             _uiState.update {
                 it.copy(
-                    selectedCountryIso2 = country.iso2,
-                    stateOptions = statesResult.data.map { s -> s.name },
-                    selectedCountryHasNoStates = statesResult.data.isEmpty(),
+                    countryOptions = result.data.map { c -> c.name },
+                    countryOptionsLoading = false,
                 )
             }
+
+            // Best-effort cascade restore from the saved draft (state/city loads surface their own
+            // loading/error via the shared helpers).
+            val country = countries.firstOrNull { it.name.equals(savedCountry.trim(), ignoreCase = true) } ?: return@launch
+            _uiState.update { it.copy(selectedCountryIso2 = country.iso2) }
+            if (!loadStatesFor(country.iso2)) return@launch
 
             val state = states.firstOrNull { it.name.equals(savedState.trim(), ignoreCase = true) } ?: return@launch
-            val citiesResult = masterLocationRepository.getCities(country.iso2, state.stateCode, null)
+            _uiState.update { it.copy(selectedStateCode = state.stateCode) }
+            loadCitiesFor(country.iso2, state.stateCode, null)
+        }
+    }
+
+    /**
+     * Loads the master state list for a country into [states] + stateOptions, tracking
+     * loading/error. Returns true on success so callers can gate the cascade. An empty list is a
+     * success (the country simply has no subdivisions).
+     */
+    private suspend fun loadStatesFor(iso2: String): Boolean {
+        _uiState.update { it.copy(stateOptionsLoading = true, stateOptionsError = null) }
+        val result = masterLocationRepository.getStates(iso2)
+        if (result !is ApiResult.Success) {
             _uiState.update {
                 it.copy(
-                    selectedStateCode = state.stateCode,
-                    cityOptions = (citiesResult as? ApiResult.Success)?.data.orEmpty(),
+                    stateOptionsLoading = false,
+                    stateOptionsError = "Failed to load states. Tap to retry.",
                 )
             }
+            return false
         }
+        states = result.data
+        _uiState.update {
+            it.copy(
+                stateOptions = result.data.map { s -> s.name },
+                selectedCountryHasNoStates = result.data.isEmpty(),
+                stateOptionsLoading = false,
+            )
+        }
+        return true
+    }
+
+    /** Loads the city list for a state (optionally filtered by [query]) into cityOptions. */
+    private suspend fun loadCitiesFor(iso2: String, stateCode: String, query: String?) {
+        _uiState.update { it.copy(cityOptionsLoading = true, cityOptionsError = null) }
+        val result = masterLocationRepository.getCities(iso2, stateCode, query)
+        if (result !is ApiResult.Success) {
+            _uiState.update {
+                it.copy(
+                    cityOptionsLoading = false,
+                    cityOptionsError = "Failed to load cities. Tap to retry.",
+                )
+            }
+            return
+        }
+        _uiState.update { it.copy(cityOptions = result.data, cityOptionsLoading = false) }
+    }
+
+    fun retryLoadCountries() =
+        loadCountriesThenRestore(_uiState.value.country, _uiState.value.state)
+
+    fun retryLoadStates() {
+        val iso2 = _uiState.value.selectedCountryIso2 ?: return
+        locationJob?.cancel()
+        locationJob = viewModelScope.launch { loadStatesFor(iso2) }
+    }
+
+    fun retryLoadCities() {
+        val s = _uiState.value
+        val iso2 = s.selectedCountryIso2 ?: return
+        val code = s.selectedStateCode ?: return
+        locationJob?.cancel()
+        locationJob = viewModelScope.launch { loadCitiesFor(iso2, code, s.city) }
     }
 
     /** Typing in Country: filter the catalog and invalidate any prior selection + dependents. */
@@ -363,9 +435,11 @@ class ProfileCreationViewModel @Inject constructor(
                 state = "",
                 stateError = false,
                 stateOptions = emptyList(),
+                stateOptionsError = null,
                 city = "",
                 cityError = false,
                 cityOptions = emptyList(),
+                cityOptionsError = null,
                 countryOptions = countries.filterByName(value),
             )
         }
@@ -390,9 +464,11 @@ class ProfileCreationViewModel @Inject constructor(
                 state = "",
                 stateError = false,
                 stateOptions = emptyList(),
+                stateOptionsError = null,
                 city = "",
                 cityError = false,
                 cityOptions = emptyList(),
+                cityOptionsError = null,
             )
         }
         viewModelScope.launch {
@@ -400,19 +476,7 @@ class ProfileCreationViewModel @Inject constructor(
             draftDataSource.saveState("")
             draftDataSource.saveCity("")
         }
-        locationJob = viewModelScope.launch {
-            val result = masterLocationRepository.getStates(country.iso2)
-            if (result is ApiResult.Success) {
-                states = result.data
-                _uiState.update {
-                    it.copy(
-                        stateOptions = result.data.map { s -> s.name },
-                        // No subdivisions for this country → State/City become optional free text.
-                        selectedCountryHasNoStates = result.data.isEmpty(),
-                    )
-                }
-            }
-        }
+        locationJob = viewModelScope.launch { loadStatesFor(country.iso2) }
     }
 
     /** Typing in State: filter loaded states and invalidate any prior selection + city. */
@@ -425,6 +489,7 @@ class ProfileCreationViewModel @Inject constructor(
                 city = "",
                 cityError = false,
                 cityOptions = emptyList(),
+                cityOptionsError = null,
                 stateOptions = states.map { s -> s.name }.filterByQuery(value),
             )
         }
@@ -447,16 +512,14 @@ class ProfileCreationViewModel @Inject constructor(
                 city = "",
                 cityError = false,
                 cityOptions = emptyList(),
+                cityOptionsError = null,
             )
         }
         viewModelScope.launch {
             draftDataSource.saveState(state.name)
             draftDataSource.saveCity("")
         }
-        locationJob = viewModelScope.launch {
-            val result = masterLocationRepository.getCities(iso2, state.stateCode, null)
-            if (result is ApiResult.Success) _uiState.update { it.copy(cityOptions = result.data) }
-        }
+        locationJob = viewModelScope.launch { loadCitiesFor(iso2, state.stateCode, null) }
     }
 
     /** Typing in City: debounced prefix search against the catalog (needs both ids). */
@@ -469,8 +532,7 @@ class ProfileCreationViewModel @Inject constructor(
         locationJob?.cancel()
         locationJob = viewModelScope.launch {
             delay(CITY_DEBOUNCE_MS)
-            val result = masterLocationRepository.getCities(iso2, code, value)
-            if (result is ApiResult.Success) _uiState.update { it.copy(cityOptions = result.data) }
+            loadCitiesFor(iso2, code, value)
         }
     }
 
