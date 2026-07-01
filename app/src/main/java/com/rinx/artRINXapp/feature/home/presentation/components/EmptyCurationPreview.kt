@@ -70,8 +70,9 @@ fun EmptyCurationPreview(modifier: Modifier = Modifier) {
                 contentAlignment = Alignment.Center,
             ) {
                 if (isFront) {
+                    // Plain art glyph (no plus) — this is a preview/placeholder, not an action.
                     Icon(
-                        painter = painterResource(R.drawable.ic_add_photo),
+                        painter = painterResource(R.drawable.ic_photo),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(Spacing.giant),

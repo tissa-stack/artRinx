@@ -30,17 +30,19 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 
 /**
- * The "create a collection" empty placeholder — a clean, balanced stack of three rounded cards with
- * an add-photo glyph + "Add art" label on the centred front card. Used on the New/Edit Collection
- * editor and on an empty collection's DETAIL screen, so an art-less collection reads the same
- * everywhere it's opened. (The small list/grid previews use the fanned [EmptyCurationPreview].)
+ * The "create a collection" empty placeholder — a clean, balanced stack of three rounded cards.
+ * When [showAddArt] is true the centred front card carries an add-photo glyph + "Add art" label;
+ * this is the actionable prompt and is used ONLY in the New/Edit Collection editor (create a new
+ * curation, or edit an empty one). Everywhere else — viewing an empty collection's DETAIL or grid
+ * card — it stays false so the plain card stack reads as "empty" without an action prompt.
+ * (The small list/grid previews use the fanned [EmptyCurationPreview].)
  *
  * Theme-aware: cards use solid surface fills with a 1dp outline border (so edges stay crisp on a
  * white background in light theme and on near-black in dark theme); the back cards blend subtly
  * toward [onSurface] so they recede; only the front card casts a shadow (no muddy overlapping halo).
  */
 @Composable
-fun EmptyCurationStack(modifier: Modifier = Modifier) {
+fun EmptyCurationStack(modifier: Modifier = Modifier, showAddArt: Boolean = false) {
     val d = LocalDimens.current
     val cardHeight = d.uploadImageHeight * 0.80f
     val cardWidth = d.uploadImageHeight * 0.68f
@@ -90,22 +92,33 @@ fun EmptyCurationStack(modifier: Modifier = Modifier) {
                 .border(1.dp, outline, shape),
             contentAlignment = Alignment.Center,
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
+            if (showAddArt) {
+                // Editor (create / edit): actionable plus glyph + "Add art" prompt.
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_add_photo),
+                        contentDescription = "Add art",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(Spacing.giant),
+                    )
+                    Spacer(Modifier.height(Spacing.sm))
+                    Text(
+                        text = "Add art",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            } else {
+                // Viewing an empty curation: plain photo glyph (no plus, no label).
                 Icon(
-                    painter = painterResource(R.drawable.ic_add_photo),
-                    contentDescription = "Add art",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    painter = painterResource(R.drawable.ic_photo),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(Spacing.giant),
-                )
-                Spacer(Modifier.height(Spacing.sm))
-                Text(
-                    text = "Add art",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
                 )
             }
         }

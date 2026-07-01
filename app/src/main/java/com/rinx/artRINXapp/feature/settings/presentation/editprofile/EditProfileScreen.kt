@@ -329,6 +329,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Full name",
                 value = state.fullName,
                 onValueChange = viewModel::onFullNameChange,
+                maxChars = 50,
                 enabled = state.canEditFullName,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showFullNameTooltip, viewModel::onFullNameTooltipToggle) },
@@ -362,6 +363,7 @@ private fun ColumnScope.EditProfileContent(
                 label = "Display name",
                 value = state.displayName,
                 onValueChange = viewModel::onDisplayNameChange,
+                maxChars = 50,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showDisplayNameTooltip, viewModel::onDisplayNameTooltipToggle) },
             )

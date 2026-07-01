@@ -193,6 +193,7 @@ fun ProfileInfoStep(
                 onValueChange = onFullNameChange,
                 placeholder = "Enter your full name",
                 modifier = Modifier.fillMaxWidth(),
+                maxChars = 50,
                 hasError = fullNameError,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = {
@@ -252,6 +253,7 @@ fun ProfileInfoStep(
                 onValueChange = onDisplayNameChange,
                 placeholder = "Display name",
                 modifier = Modifier.fillMaxWidth(),
+                maxChars = 50,
                 hasError = displayNameError,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = {

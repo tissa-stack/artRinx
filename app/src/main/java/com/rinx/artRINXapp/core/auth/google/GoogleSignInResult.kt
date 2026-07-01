@@ -25,6 +25,9 @@ sealed interface GoogleSignInResult {
     /** Credential Manager provider (Play services) missing, outdated, or unconfigured. */
     data object PlayServicesUnavailable : GoogleSignInResult
 
+    /** The sign-in attempt failed because the device is offline / GMS hit a network error. */
+    data object NetworkError : GoogleSignInResult
+
     /** Any other failure (parse error, empty token, unexpected credential type, etc.). */
     data class Failure(val cause: Throwable) : GoogleSignInResult
 }

@@ -1,5 +1,6 @@
 package com.rinx.artRINXapp.feature.onboarding.presentation.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -56,20 +57,29 @@ fun OnboardingControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             for (index in groupStart until groupEnd) {
+                // Fill every pill up to and including the current page so the row reads as a
+                // cumulative progress bar; going back un-fills them (animated) instead of just
+                // moving a single highlighted pill.
+                val isFilled = index <= currentPage
                 val pillWidth by animateDpAsState(
                     targetValue = if (index == currentPage) dimens.pillActiveWidth else dimens.pillInactiveWidth,
                     animationSpec = tween(durationMillis = 250),
                     label = "pill_width_$index",
+                )
+                val pillColor by animateColorAsState(
+                    targetValue = if (isFilled)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.outline,
+                    animationSpec = tween(durationMillis = 250),
+                    label = "pill_color_$index",
                 )
                 Box(
                     modifier = Modifier
                         .height(dimens.pillHeight)
                         .width(pillWidth)
                         .background(
-                            color = if (index == currentPage)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.outline,
+                            color = pillColor,
                             shape = RoundedCornerShape(dimens.pillCornerRadius),
                         ),
                 )

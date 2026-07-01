@@ -200,7 +200,7 @@ fun MessagesContent(
                                     SearchMessageView(
                                         title    = "Send a message to start\nseeing them here.",
                                         subtitle = "",
-                                        iconRes  = R.drawable.ic_no_chat,
+                                        iconRes  = R.drawable.ic_empty,
                                         modifier = Modifier.fillParentMaxSize(),
                                     )
                             }

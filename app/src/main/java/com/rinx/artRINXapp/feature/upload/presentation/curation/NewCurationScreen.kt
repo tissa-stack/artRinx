@@ -171,7 +171,8 @@ fun NewCurationScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         if (state.selectedArts.isEmpty()) {
-                            EmptyCurationStack()
+                            // Editor (create / edit): show the actionable plus + "Add art" prompt.
+                            EmptyCurationStack(showAddArt = true)
                         } else {
                             CurationCardStack(
                                 artworks = state.selectedArts.mapNotNull { it.imageUrl ?: it.imageRes },

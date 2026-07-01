@@ -161,6 +161,8 @@ class LoginViewModel @Inject constructor(
                     _uiState.update { it.copy(isGoogleLoading = false, errorMessage = "No Google account found on this device.") }
                 GoogleSignInResult.PlayServicesUnavailable ->
                     _uiState.update { it.copy(isGoogleLoading = false, errorMessage = "Google sign-in isn't available on this device.") }
+                GoogleSignInResult.NetworkError ->
+                    _uiState.update { it.copy(isGoogleLoading = false, errorMessage = "No internet connection. Please try again.") }
                 is GoogleSignInResult.Failure ->
                     _uiState.update { it.copy(isGoogleLoading = false, errorMessage = "Couldn't sign in with Google. Please try again.") }
             }

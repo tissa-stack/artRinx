@@ -8,12 +8,14 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.GetCredentialProviderConfigurationException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.rinx.artRINXapp.BuildConfig
+import com.rinx.artRINXapp.core.network.ConnectivityChecker
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,7 +27,9 @@ import javax.inject.Singleton
  * Google" button needs. The web (server) client id is the ID-token audience the backend validates.
  */
 @Singleton
-class GoogleAuthClient @Inject constructor() {
+class GoogleAuthClient @Inject constructor(
+    private val connectivity: ConnectivityChecker,
+) {
 
     /** Launch the Google account chooser and return the ID token + account details, or a typed failure. */
     suspend fun getResult(context: Context): GoogleSignInResult {
@@ -70,10 +74,22 @@ class GoogleAuthClient @Inject constructor() {
             GoogleSignInResult.PlayServicesUnavailable
         } catch (e: GoogleIdTokenParsingException) {
             GoogleSignInResult.Failure(e)
+        } catch (e: GetCredentialException) {
+            if (isNetworkFailure(e)) GoogleSignInResult.NetworkError else GoogleSignInResult.Failure(e)
         } catch (e: Exception) {
-            GoogleSignInResult.Failure(e)
+            if (isNetworkFailure(e)) GoogleSignInResult.NetworkError else GoogleSignInResult.Failure(e)
         }
     }
+
+    /**
+     * A Credential Manager failure is a network problem when the device is offline, or when GMS
+     * surfaced its own `NETWORK_ERROR` (see logcat `getToken() -> NETWORK_ERROR`) even though the OS
+     * still reports a (captive/degraded) connection. Both signals keep this independent of unstable
+     * GMS internal enums.
+     */
+    private fun isNetworkFailure(e: Throwable): Boolean =
+        !connectivity.isOnline() ||
+            e.message?.contains("NETWORK_ERROR", ignoreCase = true) == true
 
     /**
      * Clear the saved credential selection so the next sign-in re-prompts account choice. Best-effort:
