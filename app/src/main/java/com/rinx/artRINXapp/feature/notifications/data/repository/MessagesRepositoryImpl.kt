@@ -102,7 +102,10 @@ class MessagesRepositoryImpl @Inject constructor(
         if (response.isSuccessful && dto?.message != null) {
             ApiResult.Success(
                 SendResult(
-                    message = dto.message.toChatMessage(currentUserId),
+                    // The send response echoes our own message; it's outgoing by construction, so pin
+                    // isSent=true rather than depending on senderId==currentUserId (which mis-attributes
+                    // it as received if our id is momentarily unknown, e.g. an offline compose + retry).
+                    message = dto.message.toChatMessage(currentUserId).copy(isSent = true),
                     chatroomId = dto.chatroomId,
                     invitationStatus = dto.invitationStatus ?: false,
                     isActive = dto.isActive ?: true,
@@ -123,7 +126,8 @@ class MessagesRepositoryImpl @Inject constructor(
         val response = apiService.editMessage(messageId, EditMessageRequest(text))
         val dto = response.body()?.data
         if (response.isSuccessful && dto != null) {
-            ApiResult.Success(dto.toChatMessage(currentUserId))
+            // An edit only ever applies to our own message → outgoing by construction (pin isSent=true).
+            ApiResult.Success(dto.toChatMessage(currentUserId).copy(isSent = true))
         } else {
             // 400 with "Edit window expired" → surface the server message so the UI can toast it.
             val raw = response.errorBody()?.string()

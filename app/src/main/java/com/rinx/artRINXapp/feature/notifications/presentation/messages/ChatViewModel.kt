@@ -121,6 +121,10 @@ class ChatViewModel @Inject constructor(
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
 
     private fun seedFromCache(): ChatUiState {
+        // Know who "me" is as early as possible (app-session cache) so outgoing sends/retries and the
+        // WS direction check stay correct even when the chat is opened offline (getMyProfile would fail
+        // and otherwise leave currentUserId = 0, mis-attributing our own sent message as received).
+        profileRepository.cachedCurrentUserId()?.let { currentUserId = it }
         val snap = chatCache.get(partnerUserId) ?: return ChatUiState(isLoading = true)
         // Restore the gate inputs so deriveGate + sending behave correctly before the silent refresh.
         invitationStatus = snap.invitationStatus
@@ -251,6 +255,9 @@ class ChatViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            // Belt-and-suspenders for a refresh on a fresh VM: seed our id from the app-session cache
+            // before the live fetch, so a send/retry issued during an offline load still knows who "me" is.
+            if (currentUserId == 0) profileRepository.cachedCurrentUserId()?.let { currentUserId = it }
             val meResult = profileRepository.getMyProfile()
             val me = (meResult as? ApiResult.Success)?.data
             if (me == null) {
