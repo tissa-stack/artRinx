@@ -14,10 +14,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class RetryInterceptorTest {
 
-    private val interceptor = RetryInterceptor()
+    // Online by default; individual tests override for the offline case.
+    private val connectivity = mockk<ConnectivityChecker> { every { isOnline() } returns true }
+    private val interceptor = RetryInterceptor(connectivity)
 
     private fun okResponse(req: Request): Response = Response.Builder()
         .request(req)
@@ -49,6 +52,32 @@ class RetryInterceptorTest {
 
         assertThrows(SocketTimeoutException::class.java) { interceptor.intercept(chain) }
         verify(exactly = 2) { chain.proceed(any()) } // original + 1 retry, then give up
+    }
+
+    @Test
+    fun `GET retries UnknownHostException while online (wake-from-sleep DNS window)`() {
+        every { connectivity.isOnline() } returns true
+        val req = Request.Builder().url("https://example.com/x").get().build()
+        val chain = mockk<Interceptor.Chain>()
+        every { chain.request() } returns req
+        every { chain.proceed(any()) } throws UnknownHostException("dns") andThen okResponse(req)
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(200, response.code)
+        verify(atLeast = 2) { chain.proceed(any()) } // original + retry recovered
+    }
+
+    @Test
+    fun `GET surfaces UnknownHostException immediately when offline`() {
+        every { connectivity.isOnline() } returns false
+        val req = Request.Builder().url("https://example.com/x").get().build()
+        val chain = mockk<Interceptor.Chain>()
+        every { chain.request() } returns req
+        every { chain.proceed(any()) } throws UnknownHostException("dns")
+
+        assertThrows(UnknownHostException::class.java) { interceptor.intercept(chain) }
+        verify(exactly = 1) { chain.proceed(any()) } // no retry when genuinely offline
     }
 
     @Test

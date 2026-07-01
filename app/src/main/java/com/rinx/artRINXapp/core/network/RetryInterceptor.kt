@@ -5,6 +5,7 @@ import okhttp3.Response
 import java.io.IOException
 import java.net.SocketException
 import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +21,9 @@ import javax.inject.Singleton
  * Installed on the main client only (not the refresh/upload/ws clients).
  */
 @Singleton
-class RetryInterceptor @Inject constructor() : Interceptor {
+class RetryInterceptor @Inject constructor(
+    private val connectivity: ConnectivityChecker,
+) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
@@ -37,7 +40,12 @@ class RetryInterceptor @Inject constructor() : Interceptor {
                 val maxRetries = when (e) {
                     is SocketTimeoutException -> TIMEOUT_RETRIES
                     is SocketException -> CONNECTION_RETRIES // covers ConnectException too
-                    else -> 0 // e.g. UnknownHostException (offline/DNS) — surface immediately
+                    // DNS not yet resolvable right after the device wakes from sleep throws
+                    // UnknownHostException even though a connection is (re)establishing. Retry a few
+                    // times ONLY when the OS reports a network — genuine offline (isOnline() false)
+                    // still surfaces immediately, preserving the fast offline UX.
+                    is UnknownHostException -> if (connectivity.isOnline()) CONNECTION_RETRIES else 0
+                    else -> 0
                 }
                 if (attempt >= maxRetries) throw e
                 attempt++

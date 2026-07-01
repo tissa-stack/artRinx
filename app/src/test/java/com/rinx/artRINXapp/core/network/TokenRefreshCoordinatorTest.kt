@@ -50,12 +50,16 @@ class TokenRefreshCoordinatorTest {
     )
 
     @Test
-    fun `successful refresh saves the new session and returns true`() = runTest {
+    fun `successful refresh saves only the tokens and returns true`() = runTest {
         every { session.getRefreshToken() } returns "rt"
         coEvery { refreshApi.refresh(any()) } returns Response.success(envelope())
 
         assertTrue(coordinator.refresh())
-        coVerify(exactly = 1) { session.saveSession(any()) }
+        // Refresh rotates ONLY the tokens; it must NOT rewrite the identity/profile flags, or a
+        // minimal /refresh envelope would flip profile_completed and bounce the user to the wizard.
+        coVerify(exactly = 1) { session.saveTokens(any()) }
+        coVerify(exactly = 0) { session.saveSession(any()) }
+        coVerify(exactly = 0) { session.saveProfileCompleted(any()) }
         verify(exactly = 0) { bus.signalSessionExpired() }
     }
 

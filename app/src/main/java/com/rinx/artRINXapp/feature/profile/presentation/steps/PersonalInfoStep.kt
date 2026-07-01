@@ -113,14 +113,15 @@ fun PersonalInfoStep(
         // Country → State → City type-to-search cascade (master catalog APIs). All three stay
         // visible at all times so any prefilled values are always shown; the State/City option
         // lists populate once a country/state is picked (cities need both ids).
-        // Country/State/City are all optional. The pickers are catalog-backed: a blank field is
-        // skipped, but a typed value must resolve to a real pick (errorText guides the user).
+        // Country is mandatory; State/City are required only when the country/state has them.
+        // Dropdown-selection only — a typed value must resolve to a real catalog pick (errorText
+        // guides the user); no clear-X icon.
         SearchableFieldWithError(
             value = country,
             options = countryOptions,
             onQueryChange = onCountryQuery,
             onOptionSelected = onCountrySelected,
-            label = "Country (optional)",
+            label = "Country",
             hasError = countryError,
             errorText = "Please select from the list",
         )
@@ -131,7 +132,7 @@ fun PersonalInfoStep(
             options = stateOptions,
             onQueryChange = onStateQuery,
             onOptionSelected = onStateSelected,
-            label = "State (optional)",
+            label = "State",
             hasError = stateError,
             errorText = "Please select from the list",
         )
@@ -142,8 +143,9 @@ fun PersonalInfoStep(
             options = cityOptions,
             onQueryChange = onCityQuery,
             onOptionSelected = onCitySelected,
-            label = "City (optional)",
+            label = "City",
             hasError = cityError,
+            errorText = "Please select from the list",
         )
         LoadStatusRow(loading = cityLoading, error = cityLoadError, onRetry = onRetryCities)
 
@@ -245,6 +247,8 @@ private fun SearchableFieldWithError(
             onQueryChange = onQueryChange,
             onOptionSelected = onOptionSelected,
             modifier = Modifier.fillMaxWidth(),
+            showClearIcon = false,
+            dropdownOnly = true,
         )
         if (hasError) {
             Text(

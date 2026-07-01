@@ -66,6 +66,23 @@ class SessionDataSource @Inject constructor(
             .apply()
     }
 
+    /**
+     * Rotate ONLY the token pair + expiries. Deliberately does NOT touch profile_completed / role /
+     * email / phone — those are owned by the login/verify path, profile creation
+     * ([saveProfileCompleted]) and the contact-change flows ([saveEmail]/[savePhone]). Used by the
+     * token-refresh and token-adoption paths so a minimal `/refresh` envelope (which may omit or
+     * false-default `user.profile_exists`, or omit `user` entirely) can never corrupt the persisted
+     * identity/profile flags and bounce a signed-in user back to the profile-setup wizard.
+     */
+    suspend fun saveTokens(response: OtpVerifyResponse) = withContext(Dispatchers.IO) {
+        prefs.edit()
+            .putString(KEY_ACCESS_TOKEN, response.accessToken)
+            .putString(KEY_REFRESH_TOKEN, response.refreshToken)
+            .putLong(KEY_ACCESS_EXPIRY, System.currentTimeMillis() + response.accessExpiresIn * 1000L)
+            .putLong(KEY_REFRESH_EXPIRY, System.currentTimeMillis() + response.refreshExpiresIn * 1000L)
+            .apply()
+    }
+
     fun getAccessToken(): String? = prefs.getString(KEY_ACCESS_TOKEN, null)
 
     fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)

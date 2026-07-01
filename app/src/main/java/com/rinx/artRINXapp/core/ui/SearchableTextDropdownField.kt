@@ -58,29 +58,53 @@ fun SearchableTextDropdownField(
     onOptionSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    // When false, the trailing area always shows the dropdown chevron (no clear-X). Used by the
+    // profile location pickers, which are dropdown-selection-only. Defaults true (e.g. search filters).
+    showClearIcon: Boolean = true,
+    // Dropdown-selection ONLY: typing is purely a search over [options]; the committed value is set
+    // solely by tapping a suggestion. Stray typed text is reverted to [value] on blur (no manual
+    // entry), and an empty search shows a "No results found" row. Off by default (free-text search).
+    dropdownOnly: Boolean = false,
 ) {
     val dimens = LocalDimens.current
     val focusManager = LocalFocusManager.current
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     var isFocused by remember { mutableStateOf(false) }
 
-    val showSuggestions = isFocused && enabled && options.isNotEmpty()
+    // Dropdown-only owns a transient search query; the field displays it while the committed [value]
+    // is set only via selection. Non-dropdown mode is fully [value]-driven (unchanged).
+    var query by remember { mutableStateOf(value) }
+    // Skips the blur-revert for the one blur that a suggestion tap triggers (selection already updated
+    // the committed value; reverting to the stale [value] of this frame would drop it).
+    var justSelected by remember { mutableStateOf(false) }
+    // Re-sync when the committed value changes externally (selection, cascade reset, draft restore).
+    LaunchedEffect(value) { if (query != value) query = value }
+    val text = if (dropdownOnly) query else value
+
+    val hasOptions = options.isNotEmpty()
+    // Show the dropdown while focused. In dropdown-only mode also show it (as a "No results" row) when
+    // the user has typed something that matched nothing, so they get feedback instead of a blank.
+    val showDropdown = isFocused && enabled && (hasOptions || (dropdownOnly && text.isNotBlank()))
 
     // When the suggestions appear, scroll the field + list above the keyboard in the parent scroll.
-    LaunchedEffect(showSuggestions) {
-        if (showSuggestions) bringIntoViewRequester.bringIntoView()
+    LaunchedEffect(showDropdown) {
+        if (showDropdown) bringIntoViewRequester.bringIntoView()
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
-            value = value,
-            onValueChange = onQueryChange,
+            value = text,
+            onValueChange = {
+                if (dropdownOnly) query = it
+                onQueryChange(it)
+            },
             enabled = enabled,
             label = { Text(text = label, style = MaterialTheme.typography.labelMedium) },
             trailingIcon = {
                 // Show a clear (X) once there's text to wipe the search; fall back to the
-                // open/closed dropdown chevron when the field is empty.
-                if (value.isNotEmpty() && enabled) {
+                // open/closed dropdown chevron when the field is empty (or when the clear-X is
+                // disabled, e.g. dropdown-only location pickers).
+                if (showClearIcon && text.isNotEmpty() && enabled) {
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = "Clear",
@@ -89,12 +113,12 @@ fun SearchableTextDropdownField(
                     )
                 } else {
                     Icon(
-                        imageVector = if (showSuggestions) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
+                        imageVector = if (showDropdown) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         // Tapping the up-chevron while the list is open collapses it (clears focus →
                         // suggestions hide). Decorative when closed (tap the field to open).
-                        modifier = if (showSuggestions) {
+                        modifier = if (showDropdown) {
                             Modifier.clickable { focusManager.clearFocus() }
                         } else {
                             Modifier
@@ -109,43 +133,72 @@ fun SearchableTextDropdownField(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = dimens.textFieldHeight)
-                .onFocusChanged { isFocused = it.isFocused },
+                .onFocusChanged { focusState ->
+                    val lostFocus = isFocused && !focusState.isFocused
+                    isFocused = focusState.isFocused
+                    // Dropdown-only: discard a half-typed search on blur so no manual value sticks.
+                    if (lostFocus && dropdownOnly) {
+                        if (justSelected) justSelected = false else query = value
+                    }
+                },
         )
 
-        AnimatedVisibility(visible = showSuggestions) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = Spacing.xs)
-                    // Bound the height so a long result set scrolls within the surface instead of
-                    // exploding the form (and to satisfy LazyColumn-in-verticalScroll constraints).
-                    .heightIn(max = dimens.textFieldHeight * 4)
-                    .clip(RoundedCornerShape(Spacing.md))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = Spacing.xs / 4, // hairline ≈ 1dp, derived from a spacing token
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(Spacing.md),
-                    )
-                    .bringIntoViewRequester(bringIntoViewRequester),
-            ) {
-                // No value key: option strings (e.g. cities) can legitimately repeat (two distinct
-                // cities named "Amaravati"), and keying by the string crashes LazyColumn on the
-                // duplicate. Positional keys are correct here — the list is transient and stateless.
-                items(items = options) { option ->
-                    Text(
-                        text = option,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onOptionSelected(option)
-                                focusManager.clearFocus()
-                            }
-                            .padding(horizontal = Spacing.md, vertical = Spacing.md),
-                    )
+        AnimatedVisibility(visible = showDropdown) {
+            if (hasOptions) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Spacing.xs)
+                        // Bound the height so a long result set scrolls within the surface instead of
+                        // exploding the form (and to satisfy LazyColumn-in-verticalScroll constraints).
+                        .heightIn(max = dimens.textFieldHeight * 4)
+                        .clip(RoundedCornerShape(Spacing.md))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(
+                            width = Spacing.xs / 4, // hairline ≈ 1dp, derived from a spacing token
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(Spacing.md),
+                        )
+                        .bringIntoViewRequester(bringIntoViewRequester),
+                ) {
+                    // No value key: option strings (e.g. cities) can legitimately repeat (two distinct
+                    // cities named "Amaravati"), and keying by the string crashes LazyColumn on the
+                    // duplicate. Positional keys are correct here — the list is transient and stateless.
+                    items(items = options) { option ->
+                        Text(
+                            text = option,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    justSelected = true
+                                    if (dropdownOnly) query = option
+                                    onOptionSelected(option)
+                                    focusManager.clearFocus()
+                                }
+                                .padding(horizontal = Spacing.md, vertical = Spacing.md),
+                        )
+                    }
                 }
+            } else {
+                // Dropdown-only search with no matches → explicit "not found" feedback.
+                Text(
+                    text = "No results found",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Spacing.xs)
+                        .clip(RoundedCornerShape(Spacing.md))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(
+                            width = Spacing.xs / 4,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(Spacing.md),
+                        )
+                        .padding(horizontal = Spacing.md, vertical = Spacing.md),
+                )
             }
         }
     }

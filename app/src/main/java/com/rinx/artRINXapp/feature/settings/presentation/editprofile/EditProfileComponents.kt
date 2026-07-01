@@ -37,14 +37,18 @@ fun LabeledTextField(
     modifier: Modifier = Modifier,
     maxChars: Int = Int.MAX_VALUE,
     enabled: Boolean = true,
+    // Display-only: the field is shown exactly like a normal (enabled) field but is completely
+    // inert — not editable AND not clickable/focusable (e.g. username). Implemented as a disabled
+    // field with disabled colors overridden to match the normal look, so it doesn't grey out.
+    displayOnly: Boolean = false,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
     trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     val dimens = LocalDimens.current
     OutlinedTextField(
         value = value,
-        onValueChange = { if (it.length <= maxChars) onValueChange(it) },
-        enabled = enabled,
+        onValueChange = { if (!displayOnly && it.length <= maxChars) onValueChange(it) },
+        enabled = enabled && !displayOnly,
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = dimens.textFieldHeight),
@@ -56,7 +60,7 @@ fun LabeledTextField(
         singleLine = true,
         shape = RoundedCornerShape(dimens.authButtonHeight / 4),
         textStyle = MaterialTheme.typography.bodyMedium,
-        colors = fieldColors(),
+        colors = if (displayOnly) displayOnlyColors() else fieldColors(),
     )
 }
 
@@ -123,6 +127,18 @@ fun LabeledDropdownField(
         }
     }
 }
+
+// Disabled colors deliberately match the normal (unfocused) look so a display-only field reads as a
+// regular field rather than a greyed-out one, while `enabled = false` keeps it non-interactive.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun displayOnlyColors() = OutlinedTextFieldDefaults.colors(
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+    disabledBorderColor = Color.Transparent,
+    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+)
 
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(

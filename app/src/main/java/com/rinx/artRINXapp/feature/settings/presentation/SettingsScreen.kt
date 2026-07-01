@@ -184,10 +184,10 @@ fun SettingsScreen(
             SettingsRow(imageVector = Icons.Outlined.PhoneAndroid, label = "Phone Permissions", onClick = onPhonePermissions)
 
             SectionHeader("Resources")
-            SettingsRow(imageVector = Icons.Outlined.Info, label = "App tutorial", onClick = onAppTutorial)
+            SettingsRow(imageVector = Icons.Outlined.Info, label = "Tutorials", onClick = onAppTutorial)
+            SettingsRow(painter = R.drawable.ic_about_us, label = "About us", onClick = onAboutUs)
             SettingsRow(painter = R.drawable.ic_terms_and_conditions, label = "Terms and conditions", onClick = onTermsAndConditions)
             SettingsRow(painter = R.drawable.ic_guidelines, label = "Community Guidelines", onClick = onCommunityGuidelines)
-            SettingsRow(painter = R.drawable.ic_about_us, label = "About us", onClick = onAboutUs)
             SettingsRow(painter = R.drawable.ic_privacy_policy, label = "Privacy policy", onClick = onPrivacyPolicy)
 
             Spacer(Modifier.height(Spacing.xxl))

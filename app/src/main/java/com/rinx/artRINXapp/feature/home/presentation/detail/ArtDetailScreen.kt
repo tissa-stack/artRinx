@@ -73,6 +73,7 @@ import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.ShopArtButton
 import com.rinx.artRINXapp.feature.home.presentation.components.LikeButton
+import com.rinx.artRINXapp.core.ui.ErrorSnackbarHost
 import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.SectionHeader
 import com.rinx.artRINXapp.feature.home.presentation.components.SendMessageBottomSheet
@@ -132,11 +133,11 @@ fun ArtDetailScreen(
         }
     }
 
+    // A report/action failure closes the report sheet and surfaces the reason in the red error
+    // banner (Scaffold snackbarHost). Only flip the local flag here — do NOT call
+    // onReportSheetClosed(), which would null actionError before the banner reads it.
     LaunchedEffect(uiState.actionError) {
-        uiState.actionError?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-            viewModel.onActionErrorShown()
-        }
+        if (uiState.actionError != null) showReportSheet = false
     }
 
     if (showReportSheet) {
@@ -221,6 +222,9 @@ fun ArtDetailScreen(
                     }
                 },
             )
+        },
+        snackbarHost = {
+            ErrorSnackbarHost(message = uiState.actionError, onShown = viewModel::onActionErrorShown)
         },
         contentWindowInsets = WindowInsets(0),
     ) { innerPadding ->

@@ -52,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -65,10 +64,9 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
-import com.rinx.artRINXapp.core.theme.ShopLinkGradientEnd
-import com.rinx.artRINXapp.core.theme.ShopLinkGradientStart
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.DobPickerField
+import com.rinx.artRINXapp.core.ui.ErrorSnackbarHost
 import com.rinx.artRINXapp.core.ui.SearchableTextDropdownField
 import com.rinx.artRINXapp.core.ui.TextLimits
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
@@ -130,7 +128,8 @@ fun EditProfileScreen(
         )
     }
 
-    Column(
+    Box(modifier = Modifier.fillMaxSize()) {
+      Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
@@ -195,6 +194,16 @@ fun EditProfileScreen(
                 onChangeMedium = onChangeMedium,
             )
         }
+      }
+      // Red banner (e.g. the premium profile-link upgrade prompt) — matches the report toast.
+      ErrorSnackbarHost(
+          message = state.upgradeMessage,
+          onShown = viewModel::onUpgradeMessageShown,
+          modifier = Modifier
+              .align(Alignment.BottomCenter)
+              .navigationBarsPadding()
+              .imePadding(),
+      )
     }
 }
 
@@ -300,19 +309,14 @@ private fun ColumnScope.EditProfileContent(
 
             Spacer(Modifier.height(Spacing.xl))
 
-            // Username (+ tooltip)
+            // Username (read-only) — usernames can't be changed from edit profile.
             LabeledTextField(
                 label = "Username",
                 value = state.username,
                 onValueChange = viewModel::onUsernameChange,
                 maxChars = TextLimits.USERNAME,
+                displayOnly = true,
                 capitalization = KeyboardCapitalization.Words,
-                trailingIcon = { HelpIcon(state.showUsernameTooltip, viewModel::onUsernameTooltipToggle) },
-            )
-            Tooltip(
-                visible = state.showUsernameTooltip,
-                text = "Username can only be changed every 90 days.",
-                onClose = viewModel::onUsernameTooltipToggle,
             )
             if (state.usernameError != null) {
                 Text(
@@ -326,13 +330,14 @@ private fun ColumnScope.EditProfileContent(
             }
             Spacer(Modifier.height(Spacing.md))
 
-            // Full name (+ tooltip) — locked once the 2-edit cap is reached (handout §9)
+            // Full name (+ tooltip) — once the 2-edit cap is reached (handout §9) it becomes
+            // display-only (not editable) but keeps normal colors, like the username field.
             LabeledTextField(
                 label = "Full name",
                 value = state.fullName,
                 onValueChange = viewModel::onFullNameChange,
                 maxChars = TextLimits.FULL_NAME,
-                enabled = state.canEditFullName,
+                displayOnly = !state.canEditFullName,
                 capitalization = KeyboardCapitalization.Words,
                 trailingIcon = { HelpIcon(state.showFullNameTooltip, viewModel::onFullNameTooltipToggle) },
             )
@@ -356,8 +361,19 @@ private fun ColumnScope.EditProfileContent(
             )
             Spacer(Modifier.height(Spacing.md))
 
-            // Shop link — premium-locked gradient card
-            ShopLinkCard()
+            // Profile link (premium-locked) — shown as a normal field; entering one and saving
+            // surfaces the upgrade banner instead of persisting it. The info tooltip explains it.
+            LabeledTextField(
+                label = "Profile link",
+                value = state.profileLink,
+                onValueChange = viewModel::onProfileLinkChange,
+                trailingIcon = { HelpIcon(state.showProfileLinkTooltip, viewModel::onProfileLinkTooltipToggle) },
+            )
+            Tooltip(
+                visible = state.showProfileLinkTooltip,
+                text = "Upgrade to add profile link.",
+                onClose = viewModel::onProfileLinkTooltipToggle,
+            )
             Spacer(Modifier.height(Spacing.md))
 
             // Display name (+ tooltip)
@@ -392,28 +408,32 @@ private fun ColumnScope.EditProfileContent(
             )
             Spacer(Modifier.height(Spacing.md))
 
-            // Country → State → City type-to-search cascade (master catalog APIs). All three stay
-            // visible so prefilled values are always shown; State & City are optional free text.
-            SearchableTextDropdownField(
-                label = "Country (optional)",
+            // Country → State → City type-to-search cascade (master catalog APIs). Dropdown-selection
+            // only (no clear-X, no free text). Country is mandatory; State/City are required only when
+            // the selected country/state has them.
+            LocationDropdownField(
+                label = "Country",
                 value = state.country,
                 options = state.countryOptions,
+                hasError = state.countryError,
                 onQueryChange = viewModel::onCountryQuery,
                 onOptionSelected = viewModel::onCountrySelected,
             )
             Spacer(Modifier.height(Spacing.md))
-            SearchableTextDropdownField(
-                label = "State (optional)",
+            LocationDropdownField(
+                label = "State",
                 value = state.state,
                 options = state.stateOptions,
+                hasError = state.stateError,
                 onQueryChange = viewModel::onStateQuery,
                 onOptionSelected = viewModel::onStateSelected,
             )
             Spacer(Modifier.height(Spacing.md))
-            SearchableTextDropdownField(
-                label = "City (optional)",
+            LocationDropdownField(
+                label = "City",
                 value = state.city,
                 options = state.cityOptions,
+                hasError = state.cityError,
                 onQueryChange = viewModel::onCityQuery,
                 onOptionSelected = viewModel::onCitySelected,
             )
@@ -485,6 +505,37 @@ private fun HelpIcon(active: Boolean, onClick: () -> Unit) {
     }
 }
 
+/** Dropdown-only location picker (no clear-X) with an inline "must pick from the list" error. */
+@Composable
+private fun LocationDropdownField(
+    label: String,
+    value: String,
+    options: List<String>,
+    hasError: Boolean,
+    onQueryChange: (String) -> Unit,
+    onOptionSelected: (String) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SearchableTextDropdownField(
+            label = label,
+            value = value,
+            options = options,
+            onQueryChange = onQueryChange,
+            onOptionSelected = onOptionSelected,
+            showClearIcon = false,
+            dropdownOnly = true,
+        )
+        if (hasError) {
+            Text(
+                text = "Please select from the list",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = Spacing.md, top = Spacing.xs),
+            )
+        }
+    }
+}
+
 @Composable
 private fun Tooltip(visible: Boolean, text: String, onClose: () -> Unit) {
     AnimatedVisibility(
@@ -512,7 +563,8 @@ private fun NavFieldRow(label: String, onClick: () -> Unit) {
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyLarge,
+            // Match the other field VALUE text (LabeledTextField uses bodyMedium).
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
@@ -522,47 +574,5 @@ private fun NavFieldRow(label: String, onClick: () -> Unit) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Spacing.xl),
         )
-    }
-}
-
-@Composable
-private fun ShopLinkCard() {
-    val dimens = LocalDimens.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(dimens.textFieldHeight)
-            .clip(RoundedCornerShape(dimens.authButtonHeight / 4))
-            .background(Brush.horizontalGradient(listOf(ShopLinkGradientStart, ShopLinkGradientEnd)))
-            .padding(horizontal = Spacing.lg),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "Shop link",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-            // "Premium" badge
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = Spacing.md, vertical = Spacing.xs),
-            ) {
-                Text(
-                    text = "Premium",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
     }
 }

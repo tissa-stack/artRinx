@@ -91,9 +91,13 @@ data class ProfileCreationUiState(
     val cityOptions: List<String> = emptyList(),
     val selectedCountryIso2: String? = null,
     val selectedStateCode: String? = null,
+    // Dropdown-only: the committed city must be a catalog pick (set on select, cleared on any
+    // upstream change). Country is mandatory; State/City required only when options exist.
+    val selectedCity: String? = null,
     // True once the selected country's master state list comes back empty (the country has no
-    // subdivisions). State & City then become optional free-text fields instead of required picks.
+    // subdivisions) — State & City then stay blank/optional. Same idea for cities of a state.
     val selectedCountryHasNoStates: Boolean = false,
+    val selectedStateHasNoCities: Boolean = false,
     // Loading/error for each catalog load, so a failed fetch shows a spinner / error+retry instead
     // of a silently empty dropdown (mirrors the mediums/profile-types pattern).
     val countryOptionsLoading: Boolean = false,
@@ -176,7 +180,7 @@ class ProfileCreationViewModel @Inject constructor(
             if (!google?.photoUrl.isNullOrBlank() && draft.googlePhotoUrl.isNullOrBlank()) {
                 draftDataSource.saveGooglePhotoUrl(google!!.photoUrl!!)
             }
-            loadCountriesThenRestore(draft.country, draft.state)
+            loadCountriesThenRestore(draft.country, draft.state, draft.city)
             // Download + set the avatar from whichever url we have (fresh holder OR persisted draft).
             photoUrl?.takeIf { it.isNotBlank() }?.let { maybePrefillPhoto(it) }
         }
@@ -331,7 +335,7 @@ class ProfileCreationViewModel @Inject constructor(
     }
 
     /** Loads the master country catalog, then best-effort restores the cascade from saved names. */
-    private fun loadCountriesThenRestore(savedCountry: String, savedState: String) {
+    private fun loadCountriesThenRestore(savedCountry: String, savedState: String, savedCity: String = "") {
         viewModelScope.launch {
             _uiState.update { it.copy(countryOptionsLoading = true, countryOptionsError = null) }
             val result = masterLocationRepository.getCountries()
@@ -361,6 +365,9 @@ class ProfileCreationViewModel @Inject constructor(
             val state = states.firstOrNull { it.name.equals(savedState.trim(), ignoreCase = true) } ?: return@launch
             _uiState.update { it.copy(selectedStateCode = state.stateCode) }
             loadCitiesFor(country.iso2, state.stateCode, null)
+            // Re-mark the saved city as a valid pick so validation passes on a returning draft.
+            val cityMatch = _uiState.value.cityOptions.firstOrNull { it.equals(savedCity.trim(), ignoreCase = true) }
+            if (cityMatch != null) _uiState.update { it.copy(selectedCity = cityMatch, city = cityMatch) }
         }
     }
 
@@ -405,11 +412,19 @@ class ProfileCreationViewModel @Inject constructor(
             }
             return
         }
-        _uiState.update { it.copy(cityOptions = result.data, cityOptionsLoading = false) }
+        _uiState.update {
+            it.copy(
+                cityOptions = result.data,
+                cityOptionsLoading = false,
+                // Only the unfiltered (state-select/restore) load tells us the state has no cities;
+                // an empty *search* result must not flip this.
+                selectedStateHasNoCities = if (query == null) result.data.isEmpty() else it.selectedStateHasNoCities,
+            )
+        }
     }
 
     fun retryLoadCountries() =
-        loadCountriesThenRestore(_uiState.value.country, _uiState.value.state)
+        loadCountriesThenRestore(_uiState.value.country, _uiState.value.state, _uiState.value.city)
 
     fun retryLoadStates() {
         val iso2 = _uiState.value.selectedCountryIso2 ?: return
@@ -425,32 +440,11 @@ class ProfileCreationViewModel @Inject constructor(
         locationJob = viewModelScope.launch { loadCitiesFor(iso2, code, s.city) }
     }
 
-    /** Typing in Country: filter the catalog and invalidate any prior selection + dependents. */
+    /** Typing in Country: SEARCH ONLY — just filter the catalog. The committed country (and the
+     * cascade reset) is set solely in [onCountrySelected]; a search never mutates the selection. */
     fun onCountryQuery(rawValue: String) {
         val value = rawValue.take(TextLimits.LOCATION)
-        states = emptyList()
-        _uiState.update {
-            it.copy(
-                country = value,
-                countryError = false,
-                selectedCountryIso2 = null,
-                selectedCountryHasNoStates = false,
-                state = "",
-                stateError = false,
-                stateOptions = emptyList(),
-                stateOptionsError = null,
-                city = "",
-                cityError = false,
-                cityOptions = emptyList(),
-                cityOptionsError = null,
-                countryOptions = countries.filterByName(value),
-            )
-        }
-        viewModelScope.launch {
-            draftDataSource.saveCountry(value)
-            draftDataSource.saveState("")
-            draftDataSource.saveCity("")
-        }
+        _uiState.update { it.copy(countryOptions = countries.filterByName(value)) }
     }
 
     /** Picked a real country → resolve its iso2 and load its states. */
@@ -464,12 +458,14 @@ class ProfileCreationViewModel @Inject constructor(
                 countryError = false,
                 selectedCountryIso2 = country.iso2,
                 selectedCountryHasNoStates = false,
+                selectedStateHasNoCities = false,
                 state = "",
                 stateError = false,
                 stateOptions = emptyList(),
                 stateOptionsError = null,
                 city = "",
                 cityError = false,
+                selectedCity = null,
                 cityOptions = emptyList(),
                 cityOptionsError = null,
             )
@@ -482,25 +478,11 @@ class ProfileCreationViewModel @Inject constructor(
         locationJob = viewModelScope.launch { loadStatesFor(country.iso2) }
     }
 
-    /** Typing in State: filter loaded states and invalidate any prior selection + city. */
+    /** Typing in State: SEARCH ONLY — filter the loaded states. The committed state is set solely in
+     * [onStateSelected]. */
     fun onStateQuery(rawValue: String) {
         val value = rawValue.take(TextLimits.LOCATION)
-        _uiState.update {
-            it.copy(
-                state = value,
-                stateError = false,
-                selectedStateCode = null,
-                city = "",
-                cityError = false,
-                cityOptions = emptyList(),
-                cityOptionsError = null,
-                stateOptions = states.map { s -> s.name }.filterByQuery(value),
-            )
-        }
-        viewModelScope.launch {
-            draftDataSource.saveState(value)
-            draftDataSource.saveCity("")
-        }
+        _uiState.update { it.copy(stateOptions = states.map { s -> s.name }.filterByQuery(value)) }
     }
 
     /** Picked a real state → resolve its code and load the first page of cities. */
@@ -513,8 +495,10 @@ class ProfileCreationViewModel @Inject constructor(
                 state = state.name,
                 stateError = false,
                 selectedStateCode = state.stateCode,
+                selectedStateHasNoCities = false,
                 city = "",
                 cityError = false,
+                selectedCity = null,
                 cityOptions = emptyList(),
                 cityOptionsError = null,
             )
@@ -526,11 +510,10 @@ class ProfileCreationViewModel @Inject constructor(
         locationJob = viewModelScope.launch { loadCitiesFor(iso2, state.stateCode, null) }
     }
 
-    /** Typing in City: debounced prefix search against the catalog (needs both ids). */
+    /** Typing in City: SEARCH ONLY — debounced prefix search against the catalog (needs both ids).
+     * The committed city is set solely in [onCitySelected]. */
     fun onCityQuery(rawValue: String) {
         val value = rawValue.take(TextLimits.LOCATION)
-        _uiState.update { it.copy(city = value, cityError = false) }
-        viewModelScope.launch { draftDataSource.saveCity(value) }
         val iso2 = _uiState.value.selectedCountryIso2
         val code = _uiState.value.selectedStateCode
         if (iso2 == null || code == null) return
@@ -543,7 +526,7 @@ class ProfileCreationViewModel @Inject constructor(
 
     fun onCitySelected(name: String) {
         locationJob?.cancel()
-        _uiState.update { it.copy(city = name, cityError = false) }
+        _uiState.update { it.copy(city = name, cityError = false, selectedCity = name) }
         viewModelScope.launch { draftDataSource.saveCity(name) }
     }
 
@@ -625,20 +608,20 @@ class ProfileCreationViewModel @Inject constructor(
     fun onNextFromPersonalInfo(): Boolean {
         val state = _uiState.value
         val dobOk = state.dob.isNotBlank()
-        // Location is optional: a blank field is skipped. If typed, it must resolve to a real
-        // catalog pick (we won't store partial location text). City is a free-text leaf — any
-        // value (or blank) is acceptable.
-        val countryOk = state.country.isBlank() || state.selectedCountryIso2 != null
-        val stateOk = state.state.isBlank() || state.selectedCountryHasNoStates || state.selectedStateCode != null
+        // Dropdown-selection only. Country is MANDATORY. State/City are required only when the
+        // selected country/state actually has them (else they stay blank).
+        val countryOk = state.selectedCountryIso2 != null
+        val stateOk = state.selectedCountryHasNoStates || state.selectedStateCode != null
+        val cityOk = state.selectedCountryHasNoStates || state.selectedStateHasNoCities || state.selectedCity != null
         _uiState.update {
             it.copy(
                 dobError = !dobOk,
                 countryError = !countryOk,
                 stateError = !stateOk,
-                cityError = false,
+                cityError = !cityOk,
             )
         }
-        if (!dobOk || !countryOk || !stateOk) return false
+        if (!dobOk || !countryOk || !stateOk || !cityOk) return false
         goToStep(3)
         return true
     }

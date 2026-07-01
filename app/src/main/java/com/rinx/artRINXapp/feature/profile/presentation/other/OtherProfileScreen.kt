@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
+import com.rinx.artRINXapp.core.ui.ErrorSnackbarHost
 import com.rinx.artRINXapp.core.ui.ProfileHeaderTabsPager
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.shape.CircleShape
@@ -106,11 +107,11 @@ fun OtherProfileScreen(
     var confirm by remember { mutableStateOf<ConfirmKind?>(null) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
 
+    // A report/action failure closes the report sheet and surfaces the reason in the red error
+    // banner (Scaffold snackbarHost). Only flip the local flag — do NOT call onReportClosed() here
+    // (harmless for actionError, but keeps the single clear point in ErrorSnackbarHost.onShown).
     LaunchedEffect(uiState.actionError) {
-        uiState.actionError?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-            viewModel.onActionErrorShown()
-        }
+        if (uiState.actionError != null) showReport = false
     }
 
     LaunchedEffect(uiState.unblockedSuccess) {
@@ -141,6 +142,9 @@ fun OtherProfileScreen(
                     }
                 },
             )
+        },
+        snackbarHost = {
+            ErrorSnackbarHost(message = uiState.actionError, onShown = viewModel::onActionErrorShown)
         },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
     ) { innerPadding ->

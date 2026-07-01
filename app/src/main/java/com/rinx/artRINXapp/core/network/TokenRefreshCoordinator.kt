@@ -60,7 +60,11 @@ class TokenRefreshCoordinator @Inject constructor(
             val body = response.body()
             when {
                 response.isSuccessful && body != null -> {
-                    session.saveSession(body)
+                    // Persist ONLY the rotated tokens — never the envelope's user fields. A refresh
+                    // envelope can omit/false-default user.profile_exists (or omit `user`), and
+                    // saveSession would then flip the persisted profile_completed true→false, which
+                    // bounced signed-in users to the profile-setup wizard on the next cold start.
+                    session.saveTokens(body)
                     true
                 }
                 response.code() == 401 -> {

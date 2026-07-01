@@ -238,16 +238,34 @@ private fun ProfileCreationContent(
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
+                // The mediums step (last) uses a PINNED-footer layout: the step fills the space above
+                // the footer and scrolls internally only if it overflows, so "Get Started" + the
+                // progress dots are always visible without scrolling. Steps 0–2 keep the shared
+                // single-scroll layout (they're taller / need the keyboard scroll).
+                val isMediumsStep = currentStep == ProfileCreationViewModel.LAST_STEP
+                val outerScroll = rememberScrollState()
+                val mediumsScroll = rememberScrollState()
                 Column(
                     modifier = Modifier
-                        .verticalScroll(rememberScrollState())
-                        .heightIn(min = maxHeight)
+                        .then(
+                            if (isMediumsStep) {
+                                Modifier.fillMaxSize()
+                            } else {
+                                Modifier.verticalScroll(outerScroll).heightIn(min = maxHeight)
+                            },
+                        )
                         .padding(horizontal = dimens.screenPaddingHorizontal),
-                    verticalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = if (isMediumsStep) Arrangement.Top else Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                  // ── Content group ──
-                  Column(modifier = Modifier.fillMaxWidth()) {
+                  // ── Content group ── (weighted + internally scrollable on the mediums step)
+                  Column(
+                    modifier = if (isMediumsStep) {
+                        Modifier.weight(1f).fillMaxWidth().verticalScroll(mediumsScroll)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    },
+                  ) {
                     when (currentStep) {
                     0 -> ProfileTitleStep(
                         profileTypes = uiState.profileTypes,

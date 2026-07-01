@@ -376,7 +376,10 @@ class AuthRepositoryImpl @Inject constructor(
         runCatching {
             val envelope = gson.fromJson(raw, OtpVerifyResponse::class.java)
             if (envelope != null && envelope.accessToken.isNotBlank() && envelope.refreshToken.isNotBlank()) {
-                sessionDataSource.saveSession(envelope)
+                // Adopt only the rotated token pair; each caller persists the new email/phone
+                // separately. Using saveTokens (not saveSession) avoids the envelope's user fields
+                // clobbering the persisted profile_completed/role.
+                sessionDataSource.saveTokens(envelope)
             }
         }
     }

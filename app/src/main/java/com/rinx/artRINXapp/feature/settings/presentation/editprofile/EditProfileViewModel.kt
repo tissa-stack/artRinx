@@ -32,7 +32,9 @@ data class EditProfileUiState(
     val username: String = "",
     val fullName: String = "",
     val bio: String = "",
-    val shopLink: String = "",
+    // Profile link — premium-locked. Shown as a normal field but not persisted; entering a value and
+    // saving surfaces the upgrade banner. Starts empty (never prefilled) so it only gates on intent.
+    val profileLink: String = "",
     val displayName: String = "",
     val dob: String = "", // ISO YYYY-MM-DD
     val country: String = "",
@@ -45,8 +47,16 @@ data class EditProfileUiState(
     val cityOptions: List<String> = emptyList(),
     val selectedCountryIso2: String? = null,
     val selectedStateCode: String? = null,
-    // True once the selected country's master state list comes back empty (no subdivisions).
+    // Dropdown-only: a committed city must be a catalog pick.
+    val selectedCity: String? = null,
+    // True once the selected country's master state list comes back empty (no subdivisions), and the
+    // analogous "this state has no cities" — State/City then stay blank/optional.
     val selectedCountryHasNoStates: Boolean = false,
+    val selectedStateHasNoCities: Boolean = false,
+    // Inline location validation errors (Country mandatory; State/City required only when available).
+    val countryError: Boolean = false,
+    val stateError: Boolean = false,
+    val cityError: Boolean = false,
     val isLoading: Boolean = true,
     val loadError: String? = null,
     val isSaving: Boolean = false,
@@ -55,7 +65,9 @@ data class EditProfileUiState(
     val takenUsername: String? = null,
     val saveStatus: SaveStatus? = null,
     val saveError: String? = null,
-    val showUsernameTooltip: Boolean = false,
+    /** Transient red banner (e.g. the premium profile-link upgrade prompt). */
+    val upgradeMessage: String? = null,
+    val showProfileLinkTooltip: Boolean = false,
     val showFullNameTooltip: Boolean = false,
     val showDisplayNameTooltip: Boolean = false,
     /** Full name may be changed at most twice (handout §9); false once the cap is reached. */
@@ -207,6 +219,23 @@ class EditProfileViewModel @Inject constructor(
     fun onSave() {
         val o = original ?: return
         val s = _state.value
+
+        // Profile link is premium-locked: entering one and saving prompts an upgrade and blocks the
+        // save (it isn't persisted). An empty field saves normally.
+        if (s.profileLink.isNotBlank()) {
+            _state.update { it.copy(upgradeMessage = "Upgrade your plan to use profile link") }
+            return
+        }
+
+        // Location: Country mandatory (dropdown pick); State/City required only when available.
+        val countryOk = s.selectedCountryIso2 != null
+        val stateOk = s.selectedCountryHasNoStates || s.selectedStateCode != null
+        val cityOk = s.selectedCountryHasNoStates || s.selectedStateHasNoCities || s.selectedCity != null
+        if (!countryOk || !stateOk || !cityOk) {
+            _state.update { it.copy(countryError = !countryOk, stateError = !stateOk, cityError = !cityOk) }
+            return
+        }
+
         val changes = ProfileUpdate(
             username = s.username.trim().takeIf { it != o.username },
             fullName = s.fullName.capitalizeWords().takeIf { it != o.fullName },
@@ -297,6 +326,12 @@ class EditProfileViewModel @Inject constructor(
         userEdited = true
         _state.update { it.copy(bio = v) }
     }
+    fun onProfileLinkChange(v: String) {
+        userEdited = true
+        _state.update { it.copy(profileLink = v) }
+    }
+    /** Clears the transient upgrade banner once the screen's ErrorSnackbarHost has shown it. */
+    fun onUpgradeMessageShown() = _state.update { it.copy(upgradeMessage = null) }
     fun onDisplayNameChange(v: String) {
         userEdited = true
         _state.update { it.copy(displayName = v) }
@@ -330,33 +365,27 @@ class EditProfileViewModel @Inject constructor(
             }
 
             val state = states.firstOrNull { it.name.equals(savedState.trim(), ignoreCase = true) } ?: return@launch
-            val citiesResult = masterLocationRepository.getCities(country.iso2, state.stateCode, null)
+            val cities = (masterLocationRepository.getCities(country.iso2, state.stateCode, null) as? ApiResult.Success)?.data.orEmpty()
+            val cityMatch = cities.firstOrNull { it.equals(_state.value.city.trim(), ignoreCase = true) }
             _state.update {
                 it.copy(
                     selectedStateCode = state.stateCode,
-                    cityOptions = (citiesResult as? ApiResult.Success)?.data.orEmpty(),
+                    cityOptions = cities,
+                    selectedStateHasNoCities = cities.isEmpty(),
+                    // Re-mark the saved city as a valid pick so the mandatory-when-available check passes.
+                    selectedCity = cityMatch,
+                    city = cityMatch ?: it.city,
                 )
             }
         }
     }
 
-    /** Typing in Country: filter the catalog and invalidate any prior selection + dependents. */
+    /** Typing in Country: SEARCH ONLY — just filter the catalog. The committed country (and cascade
+     * reset) is set solely in [onCountrySelected]; a search never mutates the selection or dirties
+     * the form. */
     fun onCountryQuery(raw: String) {
         val v = raw.take(TextLimits.LOCATION)
-        userEdited = true
-        states = emptyList()
-        _state.update {
-            it.copy(
-                country = v,
-                selectedCountryIso2 = null,
-                selectedCountryHasNoStates = false,
-                state = "",
-                stateOptions = emptyList(),
-                city = "",
-                cityOptions = emptyList(),
-                countryOptions = countries.map { c -> c.name }.filterByQuery(v),
-            )
-        }
+        _state.update { it.copy(countryOptions = countries.map { c -> c.name }.filterByQuery(v)) }
     }
 
     /** Picked a real country → resolve its iso2 and load its states. */
@@ -368,11 +397,16 @@ class EditProfileViewModel @Inject constructor(
         _state.update {
             it.copy(
                 country = country.name,
+                countryError = false,
                 selectedCountryIso2 = country.iso2,
                 selectedCountryHasNoStates = false,
+                selectedStateHasNoCities = false,
                 state = "",
+                stateError = false,
                 stateOptions = emptyList(),
                 city = "",
+                cityError = false,
+                selectedCity = null,
                 cityOptions = emptyList(),
             )
         }
@@ -390,19 +424,11 @@ class EditProfileViewModel @Inject constructor(
         }
     }
 
-    /** Typing in State: filter loaded states and invalidate any prior selection + city. */
+    /** Typing in State: SEARCH ONLY — filter the loaded states. The committed state is set solely in
+     * [onStateSelected]. */
     fun onStateQuery(raw: String) {
         val v = raw.take(TextLimits.LOCATION)
-        userEdited = true
-        _state.update {
-            it.copy(
-                state = v,
-                selectedStateCode = null,
-                city = "",
-                cityOptions = emptyList(),
-                stateOptions = states.map { s -> s.name }.filterByQuery(v),
-            )
-        }
+        _state.update { it.copy(stateOptions = states.map { s -> s.name }.filterByQuery(v)) }
     }
 
     /** Picked a real state → resolve its code and load the first page of cities. */
@@ -414,22 +440,28 @@ class EditProfileViewModel @Inject constructor(
         _state.update {
             it.copy(
                 state = state.name,
+                stateError = false,
                 selectedStateCode = state.stateCode,
+                selectedStateHasNoCities = false,
                 city = "",
+                cityError = false,
+                selectedCity = null,
                 cityOptions = emptyList(),
             )
         }
         locationJob = viewModelScope.launch {
             val result = masterLocationRepository.getCities(iso2, state.stateCode, null)
-            if (result is ApiResult.Success) _state.update { it.copy(cityOptions = result.data) }
+            if (result is ApiResult.Success) {
+                _state.update { it.copy(cityOptions = result.data, selectedStateHasNoCities = result.data.isEmpty()) }
+            }
         }
     }
 
     /** Typing in City: debounced prefix search against the catalog (needs both ids). */
     fun onCityQuery(raw: String) {
         val v = raw.take(TextLimits.LOCATION)
-        userEdited = true
-        _state.update { it.copy(city = v) }
+        // SEARCH ONLY — debounced fetch of matching cities; the committed city is set solely in
+        // [onCitySelected].
         val iso2 = _state.value.selectedCountryIso2
         val code = _state.value.selectedStateCode
         if (iso2 == null || code == null) return
@@ -444,7 +476,7 @@ class EditProfileViewModel @Inject constructor(
     fun onCitySelected(name: String) {
         userEdited = true
         locationJob?.cancel()
-        _state.update { it.copy(city = name) }
+        _state.update { it.copy(city = name, cityError = false, selectedCity = name) }
     }
 
     private fun List<String>.filterByQuery(query: String): List<String> {
@@ -457,7 +489,7 @@ class EditProfileViewModel @Inject constructor(
         _state.update { it.copy(pictureUri = uri) }
     }
 
-    fun onUsernameTooltipToggle() = _state.update { it.copy(showUsernameTooltip = !it.showUsernameTooltip) }
+    fun onProfileLinkTooltipToggle() = _state.update { it.copy(showProfileLinkTooltip = !it.showProfileLinkTooltip) }
     fun onFullNameTooltipToggle() = _state.update { it.copy(showFullNameTooltip = !it.showFullNameTooltip) }
     fun onDisplayNameTooltipToggle() = _state.update { it.copy(showDisplayNameTooltip = !it.showDisplayNameTooltip) }
 
