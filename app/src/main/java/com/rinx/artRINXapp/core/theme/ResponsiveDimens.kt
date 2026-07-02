@@ -42,14 +42,19 @@ data class ResponsiveDimens(
     val screenPaddingBottom: Dp     = h(0.030f, 16.dp, 32.dp)
 
     // ── Page indicator pills ──────────────────────────────────────────────
-    // 800h × 0.008 ≈ 6dp height  |  360w × 0.067 ≈ 24dp active
+    // iOS: 3 fixed pills 36×6 with 8pt gap; only the active pill scales up.
+    // 360w × 0.100 ≈ 36dp width  |  800h × 0.008 ≈ 6dp height  |  360w × 0.022 ≈ 8dp gap
     val pillHeight: Dp         = h(0.008f, 4.dp, 8.dp)
     val pillCornerRadius: Dp   = pillHeight / 2f
+    val pillWidth: Dp          = w(0.100f, 28.dp, 44.dp)
     val pillActiveWidth: Dp    = w(0.067f, 18.dp, 36.dp)
     val pillInactiveWidth: Dp  = w(0.050f, 14.dp, 26.dp)
     val pillSpacing: Dp        = w(0.022f, 6.dp, 14.dp)
 
-    // ── Progress-arc button ───────────────────────────────────────────────
+    // ── Next / chevron button ─────────────────────────────────────────────
+    // iOS: plain 44×44 circle (white chevron on #45B1E8). 360w × 0.122 ≈ 44dp.
+    val chevronButtonSize: Dp  = w(0.122f, 40.dp, 56.dp)
+    // Legacy progress-arc button tokens (kept for any other callers).
     // 360w × 0.178 ≈ 64dp outer  |  360w × 0.144 ≈ 52dp inner
     val buttonOuterSize: Dp    = w(0.178f, 52.dp, 84.dp)
     val buttonInnerSize: Dp    = w(0.144f, 42.dp, 68.dp)

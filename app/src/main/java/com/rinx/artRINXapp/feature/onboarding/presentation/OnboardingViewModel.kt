@@ -37,6 +37,13 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun previousPage() {
+        // Tapping the left half on the first page is a no-op (never go negative).
+        _uiState.update {
+            if (it.currentPage > 0) it.copy(currentPage = it.currentPage - 1) else it
+        }
+    }
+
     private fun completeOnboarding() {
         viewModelScope.launch {
             repository.markOnboardingComplete()

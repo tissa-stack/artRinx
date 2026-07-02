@@ -6,6 +6,10 @@ import androidx.compose.ui.graphics.Color
 val BrandPrimary = Color(0xFF45B1E8)
 val InactiveButton = Color(0xFF656565)
 
+// Onboarding active progress pill — iOS uses a slightly lighter blue than the
+// #45B1E8 button colour for the active progress indicator.
+val OnboardingActiveProgress = Color(0xFF63AFDE)
+
 // ── Light theme ────────────────────────────────────────────────────────────
 val LightBackground = Color(0xFFFFFFFF)
 val LightSurface = Color(0xFFF8F8F8)

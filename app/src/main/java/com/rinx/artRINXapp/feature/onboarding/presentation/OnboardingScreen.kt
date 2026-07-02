@@ -1,7 +1,14 @@
 package com.rinx.artRINXapp.feature.onboarding.presentation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,28 +21,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import android.content.res.Configuration
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.onboarding.presentation.components.ArtMosaicGrid
-
 import com.rinx.artRINXapp.feature.onboarding.presentation.components.AutoResizeText
 import com.rinx.artRINXapp.feature.onboarding.presentation.components.OnboardingControls
 
@@ -45,20 +51,11 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pagerState = rememberPagerState(pageCount = { uiState.pages.size.coerceAtLeast(1) })
     val dimens = LocalDimens.current
     // Portrait centers content with flexible weights; landscape is short, so make each page scroll
     // with fixed spacing instead — otherwise the grid + headline get clipped with no way to reach them.
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPage }.collect { page -> viewModel.setPage(page) }
-    }
-    LaunchedEffect(uiState.currentPage) {
-        if (pagerState.currentPage != uiState.currentPage) {
-            pagerState.animateScrollToPage(uiState.currentPage)
-        }
-    }
     LaunchedEffect(uiState.isComplete) {
         if (uiState.isComplete) onNavigateToAuth()
     }
@@ -89,15 +86,35 @@ fun OnboardingScreen(
             )
         }
 
-        // ── SWIPEABLE: Grid + label + headline ────────────────────────────
+        // ── CAROUSEL: single currentPage driven by tap zones + swipe ──────
+        // iOS model: tap left half = back, right half = forward; horizontal swipe
+        // is kept as an Android convenience. No auto-advance.
         if (uiState.pages.isNotEmpty()) {
-            HorizontalPager(
-                state = pagerState,
+            val currentPage = uiState.currentPage
+            val page = uiState.pages[currentPage]
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
-            ) { pageIndex ->
-                val page = uiState.pages[pageIndex]
+                    .weight(1f)
+                    .pointerInput(Unit) {
+                        detectTapGestures { offset ->
+                            if (offset.x < size.width / 2f) viewModel.previousPage()
+                            else viewModel.nextPage()
+                        }
+                    }
+                    .pointerInput(uiState.pages.size) {
+                        var dragTotal = 0f
+                        val threshold = 40.dp.toPx()
+                        detectHorizontalDragGestures(
+                            onDragStart = { dragTotal = 0f },
+                            onDragEnd = {
+                                if (dragTotal <= -threshold) viewModel.nextPage()
+                                else if (dragTotal >= threshold) viewModel.previousPage()
+                            },
+                        ) { _, dragAmount -> dragTotal += dragAmount }
+                    },
+            ) {
                 Column(
                     modifier = if (isLandscape) {
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -108,42 +125,58 @@ fun OnboardingScreen(
                     if (isLandscape) Spacer(Modifier.height(Spacing.lg))
                     else Spacer(modifier = Modifier.weight(0.3f))
 
-                    ArtMosaicGrid(
-                        images = page.imageRes,
-                        cardSizes = page.cardSizes,
-                        flipLayout = page.flipLayout,
-                        landscapeHeightScale = page.landscapeHeightScale,
-                        isSettled = pagerState.currentPage == pageIndex,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = dimens.gridPaddingHorizontal),
-                    )
+                    // Re-key on the page so the collage entrance animation replays each advance.
+                    key(currentPage) {
+                        ArtMosaicGrid(
+                            images = page.imageRes,
+                            cardSizes = page.cardSizes,
+                            flipLayout = page.flipLayout,
+                            landscapeHeightScale = page.landscapeHeightScale,
+                            isSettled = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = dimens.gridPaddingHorizontal),
+                        )
+                    }
 
                     if (isLandscape) Spacer(Modifier.height(Spacing.xl))
                     else Spacer(modifier = Modifier.weight(0.5f))
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = dimens.screenPaddingHorizontal),
-                    ) {
-                        Text(
-                            text = page.label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                    // Text (title + subtitle): slide up from bottom + fade in on enter,
+                    // fade only (no move) on exit — spring, matching iOS.
+                    AnimatedContent(
+                        targetState = currentPage,
+                        transitionSpec = {
+                            (slideInVertically(OnboardingAnim.textOffsetSpec()) { it } +
+                                fadeIn(OnboardingAnim.textFloatSpec()))
+                                .togetherWith(fadeOut(OnboardingAnim.textFloatSpec()))
+                        },
+                        label = "onboarding_text",
+                    ) { targetPage ->
+                        val textPage = uiState.pages[targetPage]
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = dimens.screenPaddingHorizontal),
+                        ) {
+                            Text(
+                                text = textPage.label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        Spacer(modifier = Modifier.height(Spacing.sm))
-                        // Shrink-to-fit so the headline is never clipped on small/narrow screens or
-                        // under large font scales — it scales down instead of ellipsizing.
-                        AutoResizeText(
-                            text = page.headline,
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 3,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                            Spacer(modifier = Modifier.height(Spacing.sm))
+                            // Shrink-to-fit so the headline is never clipped on small/narrow screens or
+                            // under large font scales — it scales down instead of ellipsizing.
+                            AutoResizeText(
+                                text = textPage.headline,
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                maxLines = 3,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
 
                     if (isLandscape) Spacer(Modifier.height(Spacing.lg))
@@ -156,7 +189,7 @@ fun OnboardingScreen(
         if (uiState.pages.isNotEmpty()) {
             OnboardingControls(
                 pageCount = uiState.pages.size,
-                currentPage = pagerState.currentPage,
+                currentPage = uiState.currentPage,
                 onNext = viewModel::nextPage,
                 modifier = Modifier
                     .fillMaxWidth()

@@ -2,8 +2,6 @@ package com.rinx.artRINXapp.feature.onboarding.presentation.components
 
 import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.feature.onboarding.domain.model.CardSize
+import com.rinx.artRINXapp.feature.onboarding.presentation.OnboardingAnim
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -45,8 +44,8 @@ private const val TOP_ROW_H_RATIO     = 0.30f
 private const val BOTTOM_BLOCK_H_RATIO = 0.76f
 
 // ── Shuffle timing ──────────────────────────────────────────────────────────
-private const val SHUFFLE_MOVE_MS         = 420
-private const val SHUFFLE_FADE_MS         = 240
+// Motion is spring-based (OnboardingAnim.pageFloatSpec, damping 0.8 / stiffness 110)
+// to match iOS; only the stagger/tilt/scale-from shaping constants remain.
 private const val SHUFFLE_PAIR_STAGGER_MS = 90L
 private const val SHUFFLE_TALL_DELAY_MS   = 50L
 private const val SHUFFLE_TILT_DEG        = 6f
@@ -280,12 +279,11 @@ private fun MosaicImage(
 
             delay(staggerMs)
 
-            val moveSpec = tween<Float>(durationMillis = SHUFFLE_MOVE_MS, easing = FastOutSlowInEasing)
-            launch { alpha.animateTo(1f, tween(durationMillis = SHUFFLE_FADE_MS)) }
-            launch { tx.animateTo(0f, moveSpec) }
-            launch { ty.animateTo(0f, moveSpec) }
-            launch { rot.animateTo(0f, moveSpec) }
-            scale.animateTo(1f, moveSpec)
+            launch { alpha.animateTo(1f, OnboardingAnim.pageFloatSpec()) }
+            launch { tx.animateTo(0f, OnboardingAnim.pageFloatSpec()) }
+            launch { ty.animateTo(0f, OnboardingAnim.pageFloatSpec()) }
+            launch { rot.animateTo(0f, OnboardingAnim.pageFloatSpec()) }
+            scale.animateTo(1f, OnboardingAnim.pageFloatSpec())
         }
     }
 

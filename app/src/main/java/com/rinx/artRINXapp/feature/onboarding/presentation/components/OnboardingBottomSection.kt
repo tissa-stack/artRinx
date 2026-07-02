@@ -1,10 +1,7 @@
 package com.rinx.artRINXapp.feature.onboarding.presentation.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,14 +21,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import com.rinx.artRINXapp.core.theme.LocalDimens
-
-private const val MAX_VISIBLE_PILLS = 5
+import com.rinx.artRINXapp.core.theme.OnboardingActiveProgress
+import com.rinx.artRINXapp.feature.onboarding.presentation.OnboardingAnim
 
 @Composable
 fun OnboardingControls(
@@ -46,38 +40,36 @@ fun OnboardingControls(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Page the pills in groups of [MAX_VISIBLE_PILLS]: within a group the active pill advances,
-        // and once the group is complete the next set restarts from the beginning — so the indicator
-        // keeps showing progress for any page count instead of overflowing / sticking at the last pill.
-        val groupStart = (currentPage / MAX_VISIBLE_PILLS) * MAX_VISIBLE_PILLS
-        val groupEnd = minOf(groupStart + MAX_VISIBLE_PILLS, pageCount)
+        // iOS progress: exactly [pageCount] fixed-size pills. Only the active pill
+        // scales 1.0 → 1.1 and takes the active colour; the rest stay secondary.
         Row(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(dimens.pillSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            for (index in groupStart until groupEnd) {
-                // Fill every pill up to and including the current page so the row reads as a
-                // cumulative progress bar; going back un-fills them (animated) instead of just
-                // moving a single highlighted pill.
-                val isFilled = index <= currentPage
-                val pillWidth by animateDpAsState(
-                    targetValue = if (index == currentPage) dimens.pillActiveWidth else dimens.pillInactiveWidth,
-                    animationSpec = tween(durationMillis = 250),
-                    label = "pill_width_$index",
+            for (index in 0 until pageCount) {
+                val active = index == currentPage
+                val scale by animateFloatAsState(
+                    targetValue = if (active) 1.1f else 1.0f,
+                    animationSpec = OnboardingAnim.pillFloatSpec(),
+                    label = "pill_scale_$index",
                 )
                 val pillColor by animateColorAsState(
-                    targetValue = if (isFilled)
-                        MaterialTheme.colorScheme.primary
+                    targetValue = if (active)
+                        OnboardingActiveProgress
                     else
-                        MaterialTheme.colorScheme.outline,
-                    animationSpec = tween(durationMillis = 250),
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = OnboardingAnim.pillColorSpec(),
                     label = "pill_color_$index",
                 )
                 Box(
                     modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
                         .height(dimens.pillHeight)
-                        .width(pillWidth)
+                        .width(dimens.pillWidth)
                         .background(
                             color = pillColor,
                             shape = RoundedCornerShape(dimens.pillCornerRadius),
@@ -86,57 +78,20 @@ fun OnboardingControls(
             }
         }
 
-        val arcProgress by animateFloatAsState(
-            targetValue = (currentPage + 1).toFloat() / pageCount.toFloat(),
-            animationSpec = tween(durationMillis = 300),
-            label = "arc_progress",
-        )
-        val primaryColor = MaterialTheme.colorScheme.primary
-
+        // iOS next button: plain 44×44 circle, white chevron on #45B1E8.
         Box(
-            modifier = Modifier.size(dimens.buttonOuterSize),
+            modifier = Modifier
+                .size(dimens.chevronButtonSize)
+                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                .clickable(onClick = onNext),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(modifier = Modifier.size(dimens.buttonOuterSize)) {
-                val strokePx = dimens.buttonArcStroke.toPx()
-                val inset = strokePx / 2f
-                val arcRect = Size(size.width - strokePx, size.height - strokePx)
-                val arcOffset = Offset(inset, inset)
-
-                drawArc(
-                    color = primaryColor.copy(alpha = 0.2f),
-                    startAngle = -90f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    topLeft = arcOffset,
-                    size = arcRect,
-                    style = Stroke(width = strokePx, cap = StrokeCap.Round),
-                )
-                drawArc(
-                    color = primaryColor,
-                    startAngle = -90f,
-                    sweepAngle = arcProgress * 360f,
-                    useCenter = false,
-                    topLeft = arcOffset,
-                    size = arcRect,
-                    style = Stroke(width = strokePx, cap = StrokeCap.Round),
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(dimens.buttonInnerSize)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .clickable(onClick = onNext),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = if (currentPage == pageCount - 1) "Get Started" else "Next",
-                    tint = Color.White,
-                    modifier = Modifier.size(dimens.buttonIconSize),
-                )
-            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = if (currentPage == pageCount - 1) "Get Started" else "Next",
+                tint = Color.White,
+                modifier = Modifier.size(dimens.buttonIconSize),
+            )
         }
     }
 }

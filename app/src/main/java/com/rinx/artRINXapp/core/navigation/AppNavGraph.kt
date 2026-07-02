@@ -4,6 +4,10 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -204,7 +208,11 @@ fun AppNavGraph(
 
         // ── Auth / onboarding flow ────────────────────────────────────────────
 
-        composable(NavRoutes.ONBOARDING) {
+        composable(
+            NavRoutes.ONBOARDING,
+            // iOS uses a 300ms ease-in-out swap from onboarding into the invite/auth flow.
+            exitTransition = { fadeOut(tween(durationMillis = 300, easing = EaseInOut)) },
+        ) {
             OnboardingScreen(
                 onNavigateToAuth = {
                     navController.navigate(NavRoutes.AUTH) {
@@ -214,7 +222,10 @@ fun AppNavGraph(
             )
         }
 
-        composable(NavRoutes.AUTH) {
+        composable(
+            NavRoutes.AUTH,
+            enterTransition = { fadeIn(tween(durationMillis = 300, easing = EaseInOut)) },
+        ) {
             InviteCodeScreen(
                 onNavigateToSignup  = { inviteCode -> navController.navigate(NavRoutes.signup(inviteCode)) },
                 onJoinWaitlist      = { navController.navigate(NavRoutes.WAITLIST) },

@@ -2,6 +2,7 @@ package com.rinx.artRINXapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,16 +39,24 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var deepLinkRouter: DeepLinkRouter
     @Inject lateinit var unreadNotificationsStore: UnreadNotificationsStore
 
+    private companion object {
+        const val SPLASH_MIN_HOLD_MS = 1000L
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
+        // iOS holds the splash (black bg, centered logo) for a minimum ~1s before the first screen.
+        val splashStartMs = SystemClock.elapsedRealtime()
         splashScreen.setKeepOnScreenCondition {
             // Hold the splash until the start destination is known AND any cold-start push/deep-link
             // target has been consumed. The nav graph renders its start destination (Home) and then
             // navigates to the target UNDER the splash, so a tapped notification lands directly on the
-            // relevant screen with no Home flash in between.
-            mainViewModel.startDestination.value == null || hasPendingContentTarget()
+            // relevant screen with no Home flash in between. Also enforce the iOS ~1s minimum hold.
+            mainViewModel.startDestination.value == null ||
+                hasPendingContentTarget() ||
+                SystemClock.elapsedRealtime() - splashStartMs < SPLASH_MIN_HOLD_MS
         }
 
         enableEdgeToEdge()
