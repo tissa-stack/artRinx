@@ -32,7 +32,9 @@ fun InviteCodeTextField(
         // keystroke (and pasted text) to upper case here so casing is handled entirely in the field.
         onValueChange = { onValueChange(it.uppercase().take(TextLimits.INVITE_CODE)) },
         modifier = modifier.heightIn(min = dimens.textFieldHeight),
-        label = {
+        // Inline placeholder (iOS parity): the hint sits in the box and disappears on typing —
+        // no floating label, no visible border.
+        placeholder = {
             Text(
                 text = "Enter invite code",
                 style = MaterialTheme.typography.bodyMedium,
@@ -58,9 +60,8 @@ fun InviteCodeTextField(
             focusedTextColor = MaterialTheme.colorScheme.onSurface,
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             errorTextColor = MaterialTheme.colorScheme.onSurface,
-            focusedLabelColor = BrandPrimary,
-            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            errorLabelColor = MaterialTheme.colorScheme.error,
+            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
     )
 }

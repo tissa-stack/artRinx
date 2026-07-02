@@ -46,6 +46,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -169,11 +170,12 @@ fun InviteCodeScreen(
                 Text(
                     text = "Hi, welcome to artRINX!",
                     style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(Spacing.sm))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
                     text = "Input your invite below to sign up",
                     style = MaterialTheme.typography.bodyMedium,
@@ -197,7 +199,7 @@ fun InviteCodeScreen(
                 // Errors are surfaced via the AlertDialog above (Done to dismiss); the field border
                 // still reflects the error via hasError.
 
-                Spacer(modifier = Modifier.height(Spacing.xxxl))
+                Spacer(modifier = Modifier.height(Spacing.xxl))
 
                 val continueColor by animateColorAsState(
                     targetValue = if (uiState.isSubmitEnabled) BrandPrimary else InactiveButton,
@@ -233,11 +235,12 @@ fun InviteCodeScreen(
                         Text(
                             text = "Continue",
                             style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium,
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(Spacing.sm))
+                Spacer(modifier = Modifier.height(Spacing.md))
 
                 OutlinedButton(
                     onClick = onJoinWaitlist,
@@ -253,12 +256,13 @@ fun InviteCodeScreen(
                     Text(
                         text = "Join Waitlist",
                         style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
 
                 // Fixed, comfortable gap below Join Waitlist — the block stays right here under the
                 // buttons (top-aligned content), it does NOT stretch to the bottom of the screen.
-                Spacer(modifier = Modifier.height(Spacing.xxxl))
+                Spacer(modifier = Modifier.height(Spacing.huge))
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -273,6 +277,7 @@ fun InviteCodeScreen(
                     Text(
                         text = "Continue to login",
                         style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .clickable(onClick = onNavigateToLogin)
