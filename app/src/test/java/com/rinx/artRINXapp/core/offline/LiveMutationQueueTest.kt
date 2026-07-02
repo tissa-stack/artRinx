@@ -23,7 +23,7 @@ import java.io.IOException
 class LiveMutationQueueTest {
 
     private fun newQueue(scope: kotlinx.coroutines.CoroutineScope, repo: HomeRepository): LiveMutationQueue =
-        LiveMutationQueue(repo, FakePreferencesDataStore(), mockk<Context>(relaxed = true), scope)
+        LiveMutationQueue(repo, com.rinx.artRINXapp.core.util.LikeStore(), FakePreferencesDataStore(), mockk<Context>(relaxed = true), scope)
 
     @Test
     fun `net-of-action - only the latest action per target is replayed`() = runTest {

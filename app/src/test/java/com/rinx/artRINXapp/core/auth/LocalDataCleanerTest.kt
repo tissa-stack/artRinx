@@ -47,6 +47,7 @@ class LocalDataCleanerTest {
     private val chatCache: ChatCache = mockk(relaxed = true)
     private val outgoingMessageStore: OutgoingMessageStore = mockk(relaxed = true)
     private val blockedUsersStore: BlockedUsersStore = mockk(relaxed = true)
+    private val likeStore: com.rinx.artRINXapp.core.util.LikeStore = mockk(relaxed = true)
     private val unreadNotificationsStore: UnreadNotificationsStore = mockk(relaxed = true)
     private val pushTokenManager: PushTokenManager = mockk(relaxed = true)
     private val googleAuthClient: GoogleAuthClient = mockk(relaxed = true)
@@ -61,7 +62,7 @@ class LocalDataCleanerTest {
         cleaner = LocalDataCleaner(
             session, profileDraft, liveMutationQueue, uploadManager, curationManager,
             homeRepository, searchRepository, profileRepository, detailCache, curationPreviewStore,
-            chatCache, outgoingMessageStore, blockedUsersStore, unreadNotificationsStore, pushTokenManager,
+            chatCache, outgoingMessageStore, blockedUsersStore, likeStore, unreadNotificationsStore, pushTokenManager,
             googleAuthClient, googlePrefillHolder, blockedArtworkStore, appContext,
         )
     }

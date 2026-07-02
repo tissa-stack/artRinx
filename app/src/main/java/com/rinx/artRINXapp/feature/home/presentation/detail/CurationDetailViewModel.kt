@@ -67,7 +67,8 @@ class CurationDetailViewModel @Inject constructor(
     private val messagesRepository: MessagesRepository,
     private val curationRepository: CurationRepository,
     private val editTargetStore: EditTargetStore,
-    private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
+    private val likeManager: com.rinx.artRINXapp.feature.home.domain.LikeManager,
+    private val likeBus: com.rinx.artRINXapp.core.util.LikeBus,
     private val detailCache: DetailCache,
     private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
     private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
@@ -120,6 +121,18 @@ class CurationDetailViewModel @Inject constructor(
     init {
         load()
         observeBlocks()
+        observeLikes()
+    }
+
+    /** Reflect a like/unlike outcome (optimistic, confirm, or the async revert dispatched by
+     *  LikeManager after the network resolves) for THIS curation, even though the toggle ran off-screen. */
+    private fun observeLikes() {
+        viewModelScope.launch {
+            likeBus.curationEvents.collect { u ->
+                if (u.id != curationId) return@collect
+                _uiState.update { it.copy(isLiked = u.isLiked, likeCount = u.likeCount) }
+            }
+        }
     }
 
     /** If an artwork in this open curation gets blocked, drop it from the live deck immediately. */
@@ -296,24 +309,11 @@ class CurationDetailViewModel @Inject constructor(
     fun onLikeToggled() {
         val id = curationId ?: return
         val nowLiked = !_uiState.value.isLiked
-        pendingLike = nowLiked
-        setLiked(nowLiked)
-        // Write-through so a reopen before the network returns is already correct.
-        detailCache.updateCurationLike(id, nowLiked, _uiState.value.likeCount)
-        viewModelScope.launch {
-            when (if (nowLiked) repository.likeCuration(id) else repository.unlikeCuration(id)) {
-                is ApiResult.Error.Network ->
-                    // Offline: keep optimistic state (pendingLike stays), queue to replay on reconnect.
-                    liveMutationQueue.enqueue("curation", id, nowLiked)
-                is ApiResult.Error -> {
-                    // Hard failure → revert; local and server now agree.
-                    pendingLike = null
-                    setLiked(!nowLiked)
-                    detailCache.updateCurationLike(id, !nowLiked, _uiState.value.likeCount)
-                }
-                else -> pendingLike = null // server confirmed
-            }
-        }
+        pendingLike = nowLiked // guards the initial load() from clobbering a like tapped mid-load
+        setLiked(nowLiked)     // instant local feedback
+        // Durable state + network run on LikeManager's app scope so leaving this screen can't cancel
+        // them; a hard-failure revert (or "already liked" convergence) comes back via observeLikes.
+        likeManager.toggleCuration(id, nowLiked, _uiState.value.likeCount)
     }
 
     private fun setLiked(liked: Boolean) {

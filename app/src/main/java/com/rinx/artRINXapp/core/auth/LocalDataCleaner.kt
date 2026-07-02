@@ -6,6 +6,7 @@ import com.rinx.artRINXapp.core.util.BlockedArtworkStore
 import com.rinx.artRINXapp.core.offline.LiveMutationQueue
 import com.rinx.artRINXapp.core.push.PushTokenManager
 import com.rinx.artRINXapp.core.util.BlockedUsersStore
+import com.rinx.artRINXapp.core.util.LikeStore
 import com.rinx.artRINXapp.feature.auth.data.local.SessionDataSource
 import com.rinx.artRINXapp.feature.auth.domain.GooglePrefillHolder
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -49,6 +50,7 @@ class LocalDataCleaner @Inject constructor(
     private val chatCache: ChatCache,
     private val outgoingMessageStore: OutgoingMessageStore,
     private val blockedUsersStore: BlockedUsersStore,
+    private val likeStore: LikeStore,
     private val unreadNotificationsStore: UnreadNotificationsStore,
     private val pushTokenManager: PushTokenManager,
     private val googleAuthClient: GoogleAuthClient,
@@ -68,6 +70,8 @@ class LocalDataCleaner @Inject constructor(
         chatCache.clear()
         outgoingMessageStore.clear()
         blockedUsersStore.clear()
+        // Drop the previous user's like overrides so they can't leak into the next session's feeds.
+        likeStore.clear()
         unreadNotificationsStore.reset()
     }
 

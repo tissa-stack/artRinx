@@ -73,10 +73,10 @@ class ArtDetailViewModel @Inject constructor(
     private val editTargetStore: EditTargetStore,
     private val profileRefreshBus: ProfileRefreshBus,
     private val likeBus: LikeBus,
+    private val likeManager: com.rinx.artRINXapp.feature.home.domain.LikeManager,
     private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
     private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
     private val blockedArtworkStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
-    private val liveMutationQueue: com.rinx.artRINXapp.core.offline.LiveMutationQueue,
     private val detailCache: DetailCache,
 ) : ViewModel() {
 
@@ -124,6 +124,21 @@ class ArtDetailViewModel @Inject constructor(
     init {
         load()
         observeBlocks()
+        observeLikes()
+    }
+
+    /** Reflect a like/unlike outcome (optimistic, confirm, or the async revert dispatched by
+     *  LikeManager after the network resolves) for THIS artwork, even though the toggle ran off-screen. */
+    private fun observeLikes() {
+        viewModelScope.launch {
+            likeBus.events.collect { u ->
+                if (u.id != artworkId) return@collect
+                _uiState.update { st ->
+                    val p = st.post ?: return@update st
+                    st.copy(post = p.copy(isLiked = u.isLiked, likeCount = u.likeCount))
+                }
+            }
+        }
     }
 
     /** Drop a blocked artwork — or any art by a blocked owner/artist — from the "More like this"
@@ -252,28 +267,11 @@ class ArtDetailViewModel @Inject constructor(
         val id = artworkId ?: return
         val post = _uiState.value.post ?: return
         val nowLiked = !post.isLiked
-        pendingLike = nowLiked
-        setLiked(nowLiked)
-        // Write-through to every cache + live Home feed so a reopen / the feed card stay in sync.
-        propagateLike(id, nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
-        viewModelScope.launch {
-            when (if (nowLiked) repository.likeArtwork(id) else repository.unlikeArtwork(id)) {
-                is ApiResult.Error.Network ->
-                    // Offline: keep the optimistic state (pendingLike stays) and queue for replay.
-                    liveMutationQueue.enqueue("artwork", id, nowLiked)
-                is ApiResult.Error -> {
-                    // Hard failure (server rejected) → revert; local and server now agree.
-                    pendingLike = null
-                    setLiked(!nowLiked)
-                    propagateLike(id, !nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
-                }
-                else -> {
-                    pendingLike = null // server confirmed
-                    // Keep the Profile "Liked" tab in sync — an unliked art drops out on return.
-                    profileRefreshBus.signal()
-                }
-            }
-        }
+        pendingLike = nowLiked // guards the initial load() from clobbering a like tapped mid-load
+        setLiked(nowLiked)     // instant local feedback
+        // Durable state + network run on LikeManager's app scope so leaving this screen can't cancel
+        // them; a hard-failure revert (or "already liked" convergence) comes back via observeLikes.
+        likeManager.toggleArtwork(id, nowLiked, _uiState.value.post?.likeCount ?: post.likeCount)
     }
 
     private fun setLiked(liked: Boolean) {
@@ -286,13 +284,6 @@ class ArtDetailViewModel @Inject constructor(
                 ),
             )
         }
-    }
-
-    /** Persist the like to the detail + feed caches and notify any live Home feed (absolute values). */
-    private fun propagateLike(id: Int, isLiked: Boolean, likeCount: Int) {
-        detailCache.updateArtworkLike(id, isLiked, likeCount)
-        repository.updateCachedLike(id, isLiked, likeCount)
-        likeBus.signal(id, isLiked, likeCount)
     }
 
     // ── Report / block ────────────────────────────────────────────────────────

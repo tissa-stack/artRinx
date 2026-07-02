@@ -4,6 +4,7 @@ import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.toApiError
 import com.rinx.artRINXapp.core.util.BlockedArtworkStore
 import com.rinx.artRINXapp.core.util.BlockedUsersStore
+import com.rinx.artRINXapp.core.util.LikeStore
 import com.rinx.artRINXapp.feature.home.data.remote.HomeApiService
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkDto
 import com.rinx.artRINXapp.feature.home.data.remote.dto.ArtworkSizeDto
@@ -28,6 +29,7 @@ class HomeRepositoryImpl @Inject constructor(
     private val apiService: HomeApiService,
     private val blockedStore: BlockedArtworkStore,
     private val blockedUsersStore: BlockedUsersStore,
+    private val likeStore: LikeStore,
 ) : HomeRepository {
 
     // SWR cache — survives navigation (this is @Singleton); cleared on logout/delete.
@@ -41,17 +43,22 @@ class HomeRepositoryImpl @Inject constructor(
     override fun cachedFeed(): HomeFeed? = feedCache?.let { f ->
         f.copy(
             newArt = f.newArt.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
-            posts = f.posts.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) },
+            posts = f.posts.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
+                .map { it.withLike(confirm = false) },
             recentlyViewed = f.recentlyViewed.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
-            curations = f.curations.filterNot { isUserBlocked(it.authorId) }.map { it.stripBlocked() },
+            curations = f.curations.filterNot { isUserBlocked(it.authorId) }
+                .map { it.stripBlocked().withLike(confirm = false) },
         )
     }
     override fun cachedDiscover(): List<FeedPost>? =
         discoverCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
+            ?.map { it.withLike(confirm = false) }
     override fun cachedShop(): List<ShoppablePost>? =
         shopCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+            ?.map { it.withLike(confirm = false) }
     override fun cachedForYou(): List<FeedPost>? =
         forYouCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
+            ?.map { it.withLike(confirm = false) }
     override fun clearCache() {
         feedCache = null
         discoverCache = null
@@ -86,8 +93,9 @@ class HomeRepositoryImpl @Inject constructor(
                 banners = data?.sponsored.orEmpty().map { it.toBannerItem() },
                 newArt = newArt.map { it.toArtworkItem() },
                 curations = data?.popularCurations.orEmpty().map { it.toCurationItem() }
-                    .filterNot { isUserBlocked(it.authorId) },
-                posts = newArt.map { it.toFeedPost() },
+                    .filterNot { isUserBlocked(it.authorId) }
+                    .map { it.withLike(confirm = true) },
+                posts = newArt.map { it.toFeedPost().withLike(confirm = true) },
                 // Render in the exact order the backend returns recently_viewed.
                 recentlyViewed = data?.recentlyViewed.orEmpty().notBlocked().map { it.toArtworkItem() },
             )
@@ -102,7 +110,7 @@ class HomeRepositoryImpl @Inject constructor(
         val response = apiService.getAllArtworks(page, size)
         if (response.isSuccessful) {
             val body = response.body()?.data
-            val items = body?.items.orEmpty().notBlocked().map { it.toFeedPost() }
+            val items = body?.items.orEmpty().notBlocked().map { it.toFeedPost().withLike(confirm = true) }
             if (page == PAGE) discoverCache = items // cache only the first page (what the tab seeds from)
             ApiResult.Success(Paged(items, page, size, body?.total ?: 0))
         } else {
@@ -114,7 +122,7 @@ class HomeRepositoryImpl @Inject constructor(
         val response = apiService.getShopArtworks(page, size)
         if (response.isSuccessful) {
             val body = response.body()?.data
-            val items = body?.items.orEmpty().notBlocked().map { it.toShoppablePost() }
+            val items = body?.items.orEmpty().notBlocked().map { it.toShoppablePost().withLike(confirm = true) }
             if (page == PAGE) shopCache = items // cache only the first page (what the tab seeds from)
             ApiResult.Success(Paged(items, page, size, body?.total ?: 0))
         } else {
@@ -126,7 +134,7 @@ class HomeRepositoryImpl @Inject constructor(
         val response = apiService.getRecommendedArtworks(page, size)
         if (response.isSuccessful) {
             val body = response.body()?.data
-            val items = body?.items.orEmpty().notBlocked().map { it.toFeedPost() }
+            val items = body?.items.orEmpty().notBlocked().map { it.toFeedPost().withLike(confirm = true) }
             if (page == PAGE) forYouCache = items // cache only the first page (what the tab seeds from)
             ApiResult.Success(Paged(items, page, size, body?.total ?: 0))
         } else {
@@ -150,7 +158,7 @@ class HomeRepositoryImpl @Inject constructor(
         val response = apiService.getArtwork(id)
         val dto = response.body()?.data
         if (response.isSuccessful && dto != null) {
-            ApiResult.Success(dto.toShoppablePost())
+            ApiResult.Success(dto.toShoppablePost().withLike(confirm = true))
         } else {
             errorFor(response)
         }
@@ -171,7 +179,7 @@ class HomeRepositoryImpl @Inject constructor(
         val response = apiService.getCuration(id)
         val dto = response.body()?.data
         if (response.isSuccessful && dto != null) {
-            ApiResult.Success(dto.toCurationItem())
+            ApiResult.Success(dto.toCurationItem().withLike(confirm = true))
         } else {
             errorFor(response)
         }
@@ -180,7 +188,9 @@ class HomeRepositoryImpl @Inject constructor(
     override suspend fun getMoreCurations(): ApiResult<List<CurationItem>> = safeCall {
         val response = apiService.getAllCurations(PAGE, SIZE)
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toCurationItem() })
+            ApiResult.Success(
+                response.body()?.data?.items.orEmpty().map { it.toCurationItem().withLike(confirm = false) },
+            )
         } else {
             errorFor(response)
         }
@@ -194,6 +204,45 @@ class HomeRepositoryImpl @Inject constructor(
     override suspend fun unlikeCuration(curationId: Int): ApiResult<Unit> = safeCall {
         val response = apiService.unlikeCuration(curationId)
         if (response.isSuccessful) ApiResult.Success(Unit) else errorFor(response)
+    }
+
+    // ── Like overlay (LikeStore) ────────────────────────────────────────────────
+    // Reconcile an item's like state with the user's own recorded intent. The ±1 count delta is
+    // applied ONLY when the server/cached isLiked DISAGREES with the intent — on agreement the
+    // server count is trusted as-is (no delta), so this composes with updateCachedLike and never
+    // double-counts. [confirm] is set only on fresh network reads: when the server already agrees
+    // with the stored intent we drop the entry, so the override is transient and the server becomes
+    // authoritative again once it has caught up (a later change on another device is then respected).
+
+    /** @return reconciled (isLiked, likeCount) for an artwork id, or the inputs unchanged. */
+    private fun reconcileArtwork(id: String?, isLiked: Boolean, likeCount: Int, confirm: Boolean): Pair<Boolean, Int> {
+        val key = id?.toIntOrNull() ?: return isLiked to likeCount
+        val want = likeStore.artwork(key) ?: return isLiked to likeCount
+        if (isLiked == want) {
+            if (confirm) likeStore.clearArtwork(key)
+            return isLiked to likeCount
+        }
+        return want to (likeCount + if (want) 1 else -1).coerceAtLeast(0)
+    }
+
+    private fun FeedPost.withLike(confirm: Boolean): FeedPost {
+        val (liked, count) = reconcileArtwork(id, isLiked, likeCount, confirm)
+        return if (liked == isLiked && count == likeCount) this else copy(isLiked = liked, likeCount = count)
+    }
+
+    private fun ShoppablePost.withLike(confirm: Boolean): ShoppablePost {
+        val (liked, count) = reconcileArtwork(id, isLiked, likeCount, confirm)
+        return if (liked == isLiked && count == likeCount) this else copy(isLiked = liked, likeCount = count)
+    }
+
+    private fun CurationItem.withLike(confirm: Boolean): CurationItem {
+        val key = id.toIntOrNull() ?: return this
+        val want = likeStore.curation(key) ?: return this
+        if (isLiked == want) {
+            if (confirm) likeStore.clearCuration(key)
+            return this
+        }
+        return copy(isLiked = want, likeCount = (likeCount + if (want) 1 else -1).coerceAtLeast(0))
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

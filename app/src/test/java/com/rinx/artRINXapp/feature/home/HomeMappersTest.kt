@@ -25,6 +25,7 @@ class HomeMappersTest {
         mockk(relaxed = true),
         com.rinx.artRINXapp.core.util.BlockedArtworkStore(),
         com.rinx.artRINXapp.core.util.BlockedUsersStore(),
+        com.rinx.artRINXapp.core.util.LikeStore(),
     )
 
     // ── toArtworkItem ─────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.rinx.artRINXapp.core.di.ApplicationScope
 import com.rinx.artRINXapp.core.network.ApiResult
+import com.rinx.artRINXapp.core.util.LikeStore
 import com.rinx.artRINXapp.feature.home.domain.repository.HomeRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,7 @@ data class LikeMutation(
 @Singleton
 class LiveMutationQueue @Inject constructor(
     private val homeRepository: HomeRepository,
+    private val likeStore: LikeStore,
     private val dataStore: DataStore<Preferences>,
     @ApplicationContext context: Context,
     @ApplicationScope private val scope: CoroutineScope,
@@ -79,7 +81,17 @@ class LiveMutationQueue @Inject constructor(
                 "curation" -> if (m.like) homeRepository.likeCuration(m.id) else homeRepository.unlikeCuration(m.id)
                 else -> ApiResult.Success(Unit)
             }
-            if (result is ApiResult.Error.Network) remaining.add(m) // still offline → retry later
+            when {
+                // Still offline → keep the mutation AND the optimistic LikeStore override; retry later.
+                result is ApiResult.Error.Network -> remaining.add(m)
+                // Hard rejection (server refused) → stop overriding with an intent the server rejected;
+                // drop the LikeStore entry so lists fall back to server truth. (Success leaves the entry;
+                // the data-layer read overlay self-clears it once a fetch agrees.)
+                result is ApiResult.Error -> when (m.type) {
+                    "artwork" -> likeStore.clearArtwork(m.id)
+                    "curation" -> likeStore.clearCuration(m.id)
+                }
+            }
         }
         save(remaining)
     }

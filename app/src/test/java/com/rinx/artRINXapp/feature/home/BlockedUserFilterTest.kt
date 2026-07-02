@@ -27,7 +27,7 @@ class BlockedUserFilterTest {
     private val api = mockk<HomeApiService>()
     private val blockedArtwork = BlockedArtworkStore()
     private val blockedUsers = BlockedUsersStore()
-    private val repo = HomeRepositoryImpl(api, blockedArtwork, blockedUsers)
+    private val repo = HomeRepositoryImpl(api, blockedArtwork, blockedUsers, com.rinx.artRINXapp.core.util.LikeStore())
 
     private fun shopPage(vararg dtos: ArtworkDto) =
         Response.success(EnvelopeDto(success = true, code = 200, data = PageDto(items = dtos.toList())))
