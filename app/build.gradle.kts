@@ -102,6 +102,10 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.google.identity.googleid)
 
+    // Google Play Billing (in-app purchases / subscriptions). billing-ktx adds coroutine
+    // suspend APIs and pulls in the core billing library transitively.
+    implementation(libs.billing.ktx)
+
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
