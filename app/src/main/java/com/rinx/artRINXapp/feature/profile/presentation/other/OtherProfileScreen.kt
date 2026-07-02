@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.profile.presentation.other
 
 import android.widget.Toast
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -54,6 +55,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -531,6 +533,7 @@ private fun OtherProfileHeader(
                     Text(
                         text = profile.role,
                         style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -560,44 +563,48 @@ private fun OtherProfileHeader(
             }
         }
 
-        if (profile.bio.isNotEmpty()) {
+        // ── Website + bio (collapsible) — order: website → bio → More/Less ─
+        if (profile.website.isNotEmpty() || profile.bio.isNotEmpty()) {
             Spacer(Modifier.height(Spacing.xs))
-            val truncateAt = 90
-            val isLong = profile.bio.length > truncateAt
-            if (!isBioExpanded && isLong) {
-                Row {
+            Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+                // Portfolio link ABOVE the bio — tap opens the third-party-warning popup.
+                if (profile.website.isNotEmpty()) {
                     Text(
-                        text = profile.bio.take(truncateAt) + "... ",
+                        text = profile.website,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "More",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Italic,
                         color = BrandPrimary,
-                        modifier = Modifier.clickable { onExpandBio() },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable { showPortfolio = true },
                     )
                 }
-            } else {
-                Text(
-                    text = profile.bio,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (profile.bio.isNotEmpty()) {
+                    if (profile.website.isNotEmpty()) Spacer(Modifier.height(Spacing.xs))
+                    // Truncation measured while collapsed; retained when expanded so "Less" stays shown.
+                    var bioOverflow by remember(profile.bio) { mutableStateOf(false) }
+                    Text(
+                        text = profile.bio,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = if (isBioExpanded) Int.MAX_VALUE else 2,
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { if (!isBioExpanded) bioOverflow = it.hasVisualOverflow },
+                    )
+                    // Toggle on its OWN line, right-aligned — can't be squeezed into a vertical sliver.
+                    if (isBioExpanded || bioOverflow) {
+                        Text(
+                            text = if (isBioExpanded) "Less" else "More",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .padding(top = Spacing.xs)
+                                .clickable { onExpandBio() },
+                        )
+                    }
+                }
             }
-        }
-        // Portfolio link below the bio — tap opens the third-party-warning popup.
-        if (profile.website.isNotEmpty()) {
-            Spacer(Modifier.height(Spacing.sm))
-            Text(
-                text = profile.website,
-                style = MaterialTheme.typography.bodySmall,
-                color = BrandPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable { showPortfolio = true },
-            )
         }
 
         Spacer(Modifier.height(Spacing.lg))

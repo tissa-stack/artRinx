@@ -254,46 +254,48 @@ fun ProfileHeaderSection(
         }
 
         // ── Website + bio (collapsible) ───────────────────────────────────
+        // Order (matches design): role → website → bio → More/Less.
         if (profile.website.isNotEmpty() || profile.bio.isNotEmpty()) {
             Spacer(Modifier.height(Spacing.sm))
-            Column(modifier = Modifier.animateContentSize()) {
-                if (profile.bio.isNotEmpty()) {
-                    val truncateAt = 90
-                    val isLong = profile.bio.length > truncateAt
-                    if (!isBioExpanded && isLong) {
-                        Row {
-                            Text(
-                                text = profile.bio.take(truncateAt) + "... ",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "More",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = BrandPrimary,
-                                modifier = Modifier.clickable { onExpandBio() },
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = profile.bio,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                // Portfolio link below the bio — tap opens the third-party-warning popup.
+            Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+                // Portfolio link ABOVE the bio — tap opens the third-party-warning popup.
                 if (profile.website.isNotEmpty()) {
-                    Spacer(Modifier.height(Spacing.xs))
                     Text(
                         text = profile.website,
                         style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
                         color = BrandPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.clickable { showPortfolio = true },
                     )
+                }
+                if (profile.bio.isNotEmpty()) {
+                    if (profile.website.isNotEmpty()) Spacer(Modifier.height(Spacing.xs))
+                    // Whether the collapsed bio is actually truncated. Measured while collapsed and
+                    // retained when expanded (so the "Less" toggle stays shown); resets if bio changes.
+                    var bioOverflow by remember(profile.bio) { mutableStateOf(false) }
+                    Text(
+                        text = profile.bio,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = if (isBioExpanded) Int.MAX_VALUE else 2,
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { if (!isBioExpanded) bioOverflow = it.hasVisualOverflow },
+                    )
+                    // Toggle on its OWN line, right-aligned (never in a Row with the bio, so it can't
+                    // be squeezed into a sliver and wrap vertically). Same callback flips expand/collapse.
+                    if (isBioExpanded || bioOverflow) {
+                        Text(
+                            text = if (isBioExpanded) "Less" else "More",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .padding(top = Spacing.xs)
+                                .clickable { onExpandBio() },
+                        )
+                    }
                 }
             }
         }
