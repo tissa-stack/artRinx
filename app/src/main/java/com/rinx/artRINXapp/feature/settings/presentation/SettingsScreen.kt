@@ -113,7 +113,10 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            // Keep the whole screen (incl. the bottom logout/version block) above the 3-button
+            // system nav bar. Global insets consume only horizontal, so this vertical inset is real.
+            .navigationBarsPadding(),
     ) {
         // ── Header ────────────────────────────────────────────────────────────
         Row(
@@ -197,8 +200,7 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = dimens.screenPaddingHorizontal)
-                    .padding(top = Spacing.lg, bottom = Spacing.md)
-                    .navigationBarsPadding(),
+                    .padding(top = Spacing.lg, bottom = Spacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {

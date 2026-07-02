@@ -64,6 +64,9 @@ fun ProfileHeaderSection(
     /** Owner-only chrome (invite + settings buttons, clickable follower/following stats). Shown only
      *  on the real Profile tab; hidden when the own profile is opened as a pushed screen from elsewhere. */
     showOwnerActions: Boolean = true,
+    /** Owner-only feedback (β) action. When non-null it renders as a circular button at the end of the
+     *  name row (just above the bio) so it never overlaps the bio text. Null = hidden (read-only view). */
+    onFeedbackClick: (() -> Unit)? = null,
 ) {
     val d = LocalDimens.current
     var showPortfolio by remember { mutableStateOf(false) }
@@ -233,24 +236,51 @@ fun ProfileHeaderSection(
 
         Spacer(Modifier.height(Spacing.md))
 
-        // ── Display name + role ───────────────────────────────────────────
-        Text(
-            text = profile.displayName,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (profile.role.isNotBlank()) {
-            Text(
-                text = profile.role,
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        // ── Display name + role (+ owner feedback β button at the end) ─────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = profile.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (profile.role.isNotBlank()) {
+                    Text(
+                        text = profile.role,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            // Feedback (β) button pinned to the end of the name row — sits just above the bio and,
+            // being in-flow, can never overlap the bio text. Owner-only.
+            if (onFeedbackClick != null) {
+                Spacer(Modifier.width(Spacing.sm))
+                Box(
+                    modifier = Modifier
+                        .size(Spacing.giant)
+                        .clip(CircleShape)
+                        .background(BrandPrimary)
+                        .clickable { onFeedbackClick() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_feedback),
+                        contentDescription = "Leave feedback",
+                        tint = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier.size(Spacing.xl),
+                    )
+                }
+            }
         }
 
         // ── Website + bio (collapsible) ───────────────────────────────────

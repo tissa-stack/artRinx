@@ -223,41 +223,21 @@ private fun UserProfileContent(
                 listStateFor = { listStateFor(tabs[it]) },
                 modifier = Modifier.fillMaxSize(),
                 header = {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        ProfileHeaderSection(
-                            profile = uiState.profile,
-                            isBioExpanded = uiState.isBioExpanded,
-                            onExpandBio = onBioExpandToggle,
-                            onSettingsClick = onNavigateToSettings,
-                            onInviteFriendsClick = onNavigateToInviteFriends,
-                            onInviteBounds = onInviteBounds,
-                            onFollowersClick = onOpenFollowers,
-                            onFollowingClick = onOpenFollowing,
-                            onBack = onBack,
-                            showOwnerActions = showOwnerActions,
-                        )
-                        // Feedback button — mid/bottom-right of the header, just above the tabs.
-                        // Owner-only: hidden when the own profile is opened as a pushed screen.
-                        if (showOwnerActions) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(end = Spacing.lg, bottom = Spacing.md)
-                                    .size(Spacing.giant)
-                                    .clip(CircleShape)
-                                    .background(BrandPrimary)
-                                    .clickable { showFeedback = true },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_feedback),
-                                    contentDescription = "Leave feedback",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(Spacing.xl),
-                                )
-                            }
-                        }
-                    }
+                    ProfileHeaderSection(
+                        profile = uiState.profile,
+                        isBioExpanded = uiState.isBioExpanded,
+                        onExpandBio = onBioExpandToggle,
+                        onSettingsClick = onNavigateToSettings,
+                        onInviteFriendsClick = onNavigateToInviteFriends,
+                        onInviteBounds = onInviteBounds,
+                        onFollowersClick = onOpenFollowers,
+                        onFollowingClick = onOpenFollowing,
+                        onBack = onBack,
+                        showOwnerActions = showOwnerActions,
+                        // Feedback (β) button now lives in-flow at the end of the name row (just above
+                        // the bio) instead of overlaying the bottom-right — owner-only.
+                        onFeedbackClick = if (showOwnerActions) ({ showFeedback = true }) else null,
+                    )
                 },
                 tabBar = {
                     ProfileTabBar(
