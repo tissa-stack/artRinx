@@ -51,10 +51,8 @@ data class ResponsiveDimens(
     val pillInactiveWidth: Dp  = w(0.050f, 14.dp, 26.dp)
     val pillSpacing: Dp        = w(0.022f, 6.dp, 14.dp)
 
-    // ── Next / chevron button ─────────────────────────────────────────────
-    // iOS: plain 44×44 circle (white chevron on #45B1E8). 360w × 0.122 ≈ 44dp.
-    val chevronButtonSize: Dp  = w(0.122f, 40.dp, 56.dp)
-    // Legacy progress-arc button tokens (kept for any other callers).
+    // ── Progress-arc next button ──────────────────────────────────────────
+    // Ring around the chevron fills as pages advance.
     // 360w × 0.178 ≈ 64dp outer  |  360w × 0.144 ≈ 52dp inner
     val buttonOuterSize: Dp    = w(0.178f, 52.dp, 84.dp)
     val buttonInnerSize: Dp    = w(0.144f, 42.dp, 68.dp)
