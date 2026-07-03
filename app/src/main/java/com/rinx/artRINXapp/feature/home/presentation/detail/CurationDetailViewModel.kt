@@ -200,8 +200,15 @@ class CurationDetailViewModel @Inject constructor(
                 val isLiked = pendingLike ?: reordered.isLiked
                 val likeCount = if (pendingLike != null) _uiState.value.likeCount else reordered.likeCount
                 val curation = reordered.copy(isLiked = isLiked, likeCount = likeCount)
-                val more = ((moreRes as? ApiResult.Success)?.data ?: _uiState.value.moreLikeThis)
-                    .filter { it.id != curation.id }
+                // Keep the last-good list on a failed OR empty-successful refresh, so a populated
+                // "more" list is never cleared (and the cache never poisoned). Mirrors ArtDetail.
+                val fetchedMore = (moreRes as? ApiResult.Success)?.data
+                val priorMore = _uiState.value.moreLikeThis
+                val more = when {
+                    fetchedMore == null -> priorMore
+                    fetchedMore.isEmpty() && priorMore.isNotEmpty() -> priorMore
+                    else -> fetchedMore
+                }.filter { it.id != curation.id }
                 // Remember the previews of the "More like this" curations too, so tapping one
                 // opens it with the same first images.
                 more.forEach { curationPreviewStore.put(it.id, it.artworkUrls) }

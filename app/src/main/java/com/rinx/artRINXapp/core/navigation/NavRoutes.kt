@@ -62,7 +62,10 @@ object NavRoutes {
     fun newArtForEdit() = "new_art/$NEW_ART_EDIT_SENTINEL"
 
     // source arg carries the originating bottom-tab so detail screens keep the correct tab highlighted.
-    const val ART_DETAIL      = "art_detail/{postId}?source={source}"
+    // fromOwnArt is set true ONLY by the Profile ▸ Art grid (own uploads) and is intentionally NOT
+    // propagated by any onward navigation — it gates Edit/Delete + the "More like this" suppression,
+    // so tapping your own art inside a "More like this" rail never opens it in editable mode.
+    const val ART_DETAIL      = "art_detail/{postId}?source={source}&fromOwnArt={fromOwnArt}"
     const val CURATION_DETAIL = "curation_detail/{curationId}?source={source}"
 
     fun signup(inviteCode: String) = "signup?inviteCode=${Uri.encode(inviteCode)}"
@@ -70,8 +73,8 @@ object NavRoutes {
     /** Login entry screen locked to a contact type — "EMAIL" or "PHONE" (ContactType.name). */
     fun loginEntry(contactType: String) = "login_entry?contactType=$contactType"
 
-    fun artDetail(postId: String, source: String = HOME) =
-        "art_detail/${Uri.encode(postId)}?source=${Uri.encode(source)}"
+    fun artDetail(postId: String, source: String = HOME, fromOwnArt: Boolean = false) =
+        "art_detail/${Uri.encode(postId)}?source=${Uri.encode(source)}&fromOwnArt=$fromOwnArt"
 
     fun curationDetail(curationId: String, source: String = HOME) =
         "curation_detail/${Uri.encode(curationId)}?source=${Uri.encode(source)}"

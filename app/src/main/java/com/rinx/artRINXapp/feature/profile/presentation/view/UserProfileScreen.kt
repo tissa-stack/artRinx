@@ -67,6 +67,10 @@ fun UserProfileScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToInviteFriends: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
+    /** Navigate to a LIKED artwork's detail. Distinct from [onNavigateToDetail] so the Art (own
+     *  uploads) tab and the Liked tab can pass different detail sources — Edit/Delete show only for
+     *  the Art tab. Defaults to [onNavigateToDetail]'s behavior via the call site. */
+    onNavigateToLikedDetail: (String) -> Unit = {},
     onNavigateToCurationDetail: (String) -> Unit = {},
     onOpenFollowers: () -> Unit = {},
     onOpenFollowing: () -> Unit = {},
@@ -114,6 +118,7 @@ fun UserProfileScreen(
         onNavigateToSettings      = onNavigateToSettings,
         onNavigateToInviteFriends = onNavigateToInviteFriends,
         onNavigateToDetail        = onNavigateToDetail,
+        onNavigateToLikedDetail   = onNavigateToLikedDetail,
         onNavigateToCurationDetail = onNavigateToCurationDetail,
         onOpenFollowers = onOpenFollowers,
         onOpenFollowing = onOpenFollowing,
@@ -144,6 +149,7 @@ private fun UserProfileContent(
     onNavigateToInviteFriends: () -> Unit = {},
     onInviteBounds: ((Rect) -> Unit)? = null,
     onNavigateToDetail: (String) -> Unit,
+    onNavigateToLikedDetail: (String) -> Unit = onNavigateToDetail,
     onNavigateToCurationDetail: (String) -> Unit,
     onOpenFollowers: () -> Unit = {},
     onOpenFollowing: () -> Unit = {},
@@ -310,7 +316,7 @@ private fun UserProfileContent(
                                 ProfileArtMasonryGrid(
                                     items = uiState.likedItems,
                                     modifier = Modifier.padding(top = Spacing.md),
-                                    onItemClick = { onNavigateToDetail(it.id) },
+                                    onItemClick = { onNavigateToLikedDetail(it.id) },
                                 )
                             }
                         }

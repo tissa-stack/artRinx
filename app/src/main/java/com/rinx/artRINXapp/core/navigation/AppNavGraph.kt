@@ -507,7 +507,11 @@ fun AppNavGraph(
                 onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                 onNavigateToSettings      = { navController.navigate(NavRoutes.SETTINGS) },
                 onNavigateToInviteFriends = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
-                onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, NavRoutes.PROFILE)) },
+                // Own uploads (Art tab): fromOwnArt = true → Edit/Delete shown, "More like this" hidden.
+                onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, NavRoutes.PROFILE, fromOwnArt = true)) },
+                // Liked art: same PROFILE source (keeps the tab highlighted) but fromOwnArt = false →
+                // no Edit/Delete even when the liked artwork is your own, and the rail is shown.
+                onNavigateToLikedDetail   = { id -> navController.navigate(NavRoutes.artDetail(id, NavRoutes.PROFILE)) },
                 onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, NavRoutes.PROFILE)) },
                 onOpenFollowers           = { navController.navigate(NavRoutes.followList("followers")) },
                 onOpenFollowing           = { navController.navigate(NavRoutes.followList("following")) },
@@ -550,7 +554,11 @@ fun AppNavGraph(
                     onNavigateToProfile       = { navController.navigateToTab(NavRoutes.PROFILE) },
                     onNavigateToSettings      = { navController.navigate(NavRoutes.SETTINGS) },
                     onNavigateToInviteFriends = { navController.navigate(NavRoutes.INVITE_FRIENDS) },
+                    // Pushed own-profile (opened from home/search/etc.) is NOT the Profile tab, so
+                    // neither grid passes fromOwnArt → no Edit/Delete, matching "only when opened
+                    // directly from the Profile tab". source stays the originating tab for highlight.
                     onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, source)) },
+                    onNavigateToLikedDetail   = { id -> navController.navigate(NavRoutes.artDetail(id, source)) },
                     onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, source)) },
                     onOpenFollowers           = { navController.navigate(NavRoutes.followList("followers")) },
                     onOpenFollowing           = { navController.navigate(NavRoutes.followList("following")) },
@@ -711,9 +719,14 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("postId") { type = NavType.StringType },
                 navArgument("source") { type = NavType.StringType; defaultValue = NavRoutes.HOME },
+                navArgument("fromOwnArt") { type = NavType.BoolType; defaultValue = false },
             ),
         ) { backStackEntry ->
             val source = backStackEntry.arguments?.getString("source") ?: NavRoutes.HOME
+            // source drives only the bottom-tab highlight and onward navigation, so it propagates
+            // freely. Editability (Edit/Delete + "More like this" suppression) rides on the separate
+            // fromOwnArt flag, which is set ONLY by the Profile ▸ Art grid and never propagated —
+            // so tapping your own art inside a rail opens it as a normal, non-editable detail.
             ArtDetailScreen(
                 onBack = { navController.popBackStack() },
                 onExitToSafeScreen = { navController.exitAfterBlock(source) },

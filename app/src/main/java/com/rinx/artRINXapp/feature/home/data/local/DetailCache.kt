@@ -51,7 +51,24 @@ class DetailCache @Inject constructor(
     }
 
     fun putArtwork(id: Int, post: ShoppablePost, similar: List<ArtworkItem>, isOwn: Boolean) =
-        synchronized(art) { art[id] = ArtDetailEntry(post, similar, isOwn) }
+        synchronized(art) {
+            // Never let an empty list overwrite a populated one. A Profile-open skips the similar
+            // fetch (and a failed/empty refresh yields no items); writing that empty list would
+            // poison the cache and hide the "More like this" rail on the next open. Keep the
+            // last-good list until a genuinely non-empty one arrives.
+            val prior = art[id]?.similar
+            val keep = if (similar.isEmpty() && !prior.isNullOrEmpty()) prior else similar
+            art[id] = ArtDetailEntry(post, keep, isOwn)
+        }
+
+    /** Write just the "More like this" list onto the cached entry (no-op if not cached), guarded
+     *  the same way as [putArtwork] so an empty page never clears a populated rail. Used by the
+     *  decoupled similar-load coroutine so it doesn't race the post write. */
+    fun updateArtworkSimilar(id: Int, similar: List<ArtworkItem>) = synchronized(art) {
+        val entry = art[id] ?: return@synchronized
+        if (similar.isEmpty() && entry.similar.isNotEmpty()) return@synchronized
+        art[id] = entry.copy(similar = similar)
+    }
 
     /** Write-through a like toggle onto the cached post (no-op if not cached). */
     fun updateArtworkLike(id: Int, isLiked: Boolean, likeCount: Int) = synchronized(art) {
@@ -91,7 +108,13 @@ class DetailCache @Inject constructor(
     }
 
     fun putCuration(id: Int, curation: CurationItem, more: List<CurationItem>, isOwn: Boolean = false) =
-        synchronized(cur) { cur[id] = CurationDetailEntry(curation, more, isOwn) }
+        synchronized(cur) {
+            // Same guard as putArtwork: an empty "more" list (Profile-open or empty/failed refresh)
+            // must not overwrite a populated one and poison the next open.
+            val prior = cur[id]?.more
+            val keep = if (more.isEmpty() && !prior.isNullOrEmpty()) prior else more
+            cur[id] = CurationDetailEntry(curation, keep, isOwn)
+        }
 
     fun updateCurationLike(id: Int, isLiked: Boolean, likeCount: Int) = synchronized(cur) {
         cur[id]?.let { cur[id] = it.copy(curation = it.curation.copy(isLiked = isLiked, likeCount = likeCount)) }

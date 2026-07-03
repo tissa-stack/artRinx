@@ -69,6 +69,7 @@ import com.rinx.artRINXapp.feature.share.presentation.ShareSheet
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ArtDetailShimmer
+import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.ShopArtButton
@@ -254,6 +255,7 @@ fun ArtDetailScreen(
                     onInviteSheetClosed = viewModel::onInviteSheetClosed,
                     onLoadMoreSimilar = viewModel::loadMoreSimilar,
                     onRetryLoadMoreSimilar = viewModel::retryLoadMoreSimilar,
+                    onRetrySimilarFirstPage = viewModel::retrySimilarFirstPage,
                     // Add-to-curation / Share / Like show on every artwork, including your own.
                     showActions = true,
                     // Send-message + Shop-Art only make sense on someone else's art — you can't
@@ -288,9 +290,10 @@ fun ArtDetailScreen(
                 // Hold the action until ownership is known so we never flash Report on our own art.
                 if (uiState.ownershipResolved) {
                     if (uiState.isOwn) {
-                        // Edit/Delete only when opened from the user's own Profile tab. For own art
-                        // opened from any other flow (feed/search/curation) show no action at all.
-                        if (uiState.isFromProfile) {
+                        // Edit/Delete only when opened from the user's own Profile ▸ Art section.
+                        // NOT from Profile ▸ Liked (a liked artwork you own) nor any other flow
+                        // (feed/search/curation) — those show no action at all.
+                        if (uiState.isFromOwnArtSection) {
                             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                                 ScrimIconButton(R.drawable.ic_edit, "Edit") {
                                     viewModel.prepareEdit(); onEditArt()
@@ -330,6 +333,28 @@ private fun ScrimIconButton(
     }
 }
 
+/** First-page placeholder for the "More like this" rail — shimmer cards sized like [ArtworkCard],
+ *  so a cold/slow similar load shows a skeleton instead of the section popping in from nothing. */
+@Composable
+private fun SimilarRailFirstLoad() {
+    val d = LocalDimens.current
+    val brush = rememberShimmerBrush()
+    Row(
+        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        repeat(2) {
+            Box(
+                modifier = Modifier
+                    .width(d.artCardWidth)
+                    .height(d.artCardHeight)
+                    .clip(RoundedCornerShape(d.cardCornerRadius))
+                    .background(brush),
+            )
+        }
+    }
+}
+
 @Composable
 private fun ArtDetailContent(
     uiState: ArtDetailUiState,
@@ -344,6 +369,7 @@ private fun ArtDetailContent(
     onInviteSheetClosed: () -> Unit = {},
     onLoadMoreSimilar: () -> Unit = {},
     onRetryLoadMoreSimilar: () -> Unit = {},
+    onRetrySimilarFirstPage: () -> Unit = {},
     showActions: Boolean = true,
     showContactActions: Boolean = true,
     modifier: Modifier = Modifier,
@@ -683,54 +709,78 @@ private fun ArtDetailContent(
             }
         }
 
-        // ── More like this (hidden when there are no suggestions, e.g. from Profile) ──
-        if (uiState.moreLikeThis.isNotEmpty()) {
+        // ── More like this ──
+        // Shown for non-Profile flows: a populated rail, a first-page shimmer while it loads, or a
+        // Retry if the first page failed with nothing to show (so a transient blip is recoverable
+        // instead of the section silently vanishing). From Profile the fetch is skipped, so all
+        // three flags stay false/empty and the whole section is hidden — the intended clean preview.
+        if (uiState.moreLikeThis.isNotEmpty() || uiState.similarFirstLoading || uiState.similarFirstError) {
             item(key = "more-header") {
                 SectionHeader(title = "More like this")
             }
-            item(key = "more-content") {
-                LazyRow(
-                    state = similarRowState,
-                    contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    items(uiState.moreLikeThis, key = { it.id }) { artItem ->
-                        ArtworkCard(
-                            item = artItem,
-                            onClick = { onNavigateToDetail(artItem.id) },
-                        )
-                    }
-                    // Trailing rail footer: spinner while the next page loads, or a Retry chip on failure.
-                    val railPaging = uiState.moreLikeThisPaging
-                    if (railPaging.isLoadingMore) {
-                        item(key = "more-loading") {
-                            Box(
-                                // Match the card height so the spinner sits centered against the cards,
-                                // not at the top (a LazyRow item wraps content, so fillMaxHeight collapses).
-                                modifier = Modifier
-                                    .height(d.artCardHeight)
-                                    .padding(horizontal = Spacing.md),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(
-                                    color = BrandPrimary,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(Spacing.lg),
-                                )
-                            }
+            when {
+                uiState.moreLikeThis.isNotEmpty() -> item(key = "more-content") {
+                    LazyRow(
+                        state = similarRowState,
+                        contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                    ) {
+                        items(uiState.moreLikeThis, key = { it.id }) { artItem ->
+                            ArtworkCard(
+                                item = artItem,
+                                onClick = { onNavigateToDetail(artItem.id) },
+                            )
                         }
-                    } else if (railPaging.loadMoreError != null) {
-                        item(key = "more-error") {
-                            Box(
-                                modifier = Modifier
-                                    .height(d.artCardHeight)
-                                    .padding(horizontal = Spacing.md),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                OutlinedButton(onClick = onRetryLoadMoreSimilar) {
-                                    Text(text = "Retry", style = MaterialTheme.typography.labelLarge)
+                        // Trailing rail footer: spinner while the next page loads, or a Retry chip on failure.
+                        val railPaging = uiState.moreLikeThisPaging
+                        if (railPaging.isLoadingMore) {
+                            item(key = "more-loading") {
+                                Box(
+                                    // Match the card height so the spinner sits centered against the cards,
+                                    // not at the top (a LazyRow item wraps content, so fillMaxHeight collapses).
+                                    modifier = Modifier
+                                        .height(d.artCardHeight)
+                                        .padding(horizontal = Spacing.md),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = BrandPrimary,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(Spacing.lg),
+                                    )
                                 }
                             }
+                        } else if (railPaging.loadMoreError != null) {
+                            item(key = "more-error") {
+                                Box(
+                                    modifier = Modifier
+                                        .height(d.artCardHeight)
+                                        .padding(horizontal = Spacing.md),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    OutlinedButton(onClick = onRetryLoadMoreSimilar) {
+                                        Text(text = "Retry", style = MaterialTheme.typography.labelLarge)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // First page still loading with nothing to show yet → shimmer placeholder cards.
+                uiState.similarFirstLoading -> item(key = "more-first-loading") {
+                    SimilarRailFirstLoad()
+                }
+                // First page failed and the rail is empty → offer Retry.
+                else -> item(key = "more-first-error") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(d.artCardHeight)
+                            .padding(horizontal = Spacing.md),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        OutlinedButton(onClick = onRetrySimilarFirstPage) {
+                            Text(text = "Retry", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }

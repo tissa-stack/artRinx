@@ -37,13 +37,20 @@ data class ArtDetailUiState(
     val moreLikeThis: List<ArtworkItem> = emptyList(),
     /** Horizontal infinite-scroll state for the "More like this" rail. */
     val moreLikeThisPaging: ListPage = ListPage(),
+    /** True while the FIRST page of "More like this" is loading and nothing is shown yet (a rail
+     *  seeded from cache revalidates silently, so this stays false there). Drives the shimmer rail. */
+    val similarFirstLoading: Boolean = false,
+    /** True when the first "More like this" page failed and the rail is empty — shows a Retry, so a
+     *  transient blip is recoverable instead of the section silently vanishing. */
+    val similarFirstError: Boolean = false,
     val isLoading: Boolean = true,
     val error: Boolean = false,
     /** True when the current user owns this artwork → show Edit/Delete instead of Report. */
     val isOwn: Boolean = false,
-    /** True when this detail was opened from the user's own Profile tab. Edit/Delete are shown ONLY
-     *  for own artwork opened from there; from any other flow (feed/search/curation) no action shows. */
-    val isFromProfile: Boolean = false,
+    /** True ONLY when opened from the Profile ▸ Art (own-uploads) section. This flow both gates
+     *  Edit/Delete AND suppresses the "More like this" rail (a clean preview of your own upload).
+     *  Every other flow — including Profile ▸ Liked — shows the rail and no owner actions. */
+    val isFromOwnArtSection: Boolean = false,
     /** False until ownership is known. The top-bar action stays hidden until then so we never
      *  flash Report on the user's own art before [isOwn] resolves. */
     val ownershipResolved: Boolean = false,
@@ -82,8 +89,11 @@ class ArtDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val artworkId: Int? = savedStateHandle.get<String>("postId")?.toIntOrNull()
-    private val source: String? = savedStateHandle.get<String>("source")
-    private val isFromProfile: Boolean = source == "profile"
+    // Set true ONLY by the Profile ▸ Art grid (own uploads); this flag is never propagated by any
+    // onward navigation (similar-taps, artist links, etc.), so opening your own art from a "More
+    // like this" rail lands here as false. Gates Edit/Delete AND the "More like this" suppression —
+    // both happen only when the detail is opened directly from the Profile ▸ Art tab.
+    private val isFromOwnArtSection: Boolean = savedStateHandle.get<Boolean>("fromOwnArt") ?: false
 
     private var currentUserId: Int = 0
 
@@ -99,10 +109,13 @@ class ArtDetailViewModel @Inject constructor(
         val cached = detailCache.peekArtwork(id) ?: return ArtDetailUiState(isLoading = true)
         return ArtDetailUiState(
             post = cached.post,
-            moreLikeThis = cached.similar,
+            // Profile ▸ Art is a clean preview → never seed the cached rail here, even if a prior
+            // feed/Liked open populated it. The cache entry itself is left intact (the guard in
+            // putArtwork keeps it) so other flows still get the list instantly.
+            moreLikeThis = if (isFromOwnArtSection) emptyList() else cached.similar,
             isLoading = false,
             isOwn = cached.isOwn,
-            isFromProfile = isFromProfile,
+            isFromOwnArtSection = isFromOwnArtSection,
             ownershipResolved = true,
         )
     }
@@ -215,15 +228,16 @@ class ArtDetailViewModel @Inject constructor(
             return
         }
         val hasCache = _uiState.value.post != null
+        // "More like this" loads on its own track so a slow/failing similar call never delays — or
+        // hides — the artwork itself. Skipped only for your own uploads (Profile ▸ Art) so that
+        // flow reads as a clean preview; Profile ▸ Liked and every other flow load the rail.
+        if (!isFromOwnArtSection) loadSimilarFirstPage()
         viewModelScope.launch {
             // Cache hit → already rendered; revalidate silently (don't flip isLoading/shimmer).
             if (!hasCache) _uiState.update { it.copy(isLoading = true, error = false) }
             val detailJob = async { repository.getArtworkDetail(id) }
-            // Opened from Profile → no "More like this" (it should read like a clean preview).
-            val similarJob = if (isFromProfile) null else async { repository.getSimilarArtworks(id, 1, SIMILAR_SIZE) }
             val meJob = async { profileRepository.getMyProfile() }
             val detailRes = detailJob.await()
-            val similarRes = similarJob?.await()
             val meId = (meJob.await() as? ApiResult.Success)?.data?.id
             currentUserId = meId ?: 0
 
@@ -233,21 +247,16 @@ class ArtDetailViewModel @Inject constructor(
                 pendingLike?.let { liked ->
                     post = post.copy(isLiked = liked, likeCount = _uiState.value.post?.likeCount ?: post.likeCount)
                 }
-                // Keep prior similar list if this refresh's similar call failed/absent.
-                val similarPage = (similarRes as? ApiResult.Success)?.data
-                val similar = similarPage?.items ?: _uiState.value.moreLikeThis
                 val isOwn = meId != null && post.ownerId == meId
-                detailCache.putArtwork(id, post, similar, isOwn)
+                // Cache the post with whatever similar list we currently have; the similar coroutine
+                // writes its own fresh list via updateArtworkSimilar. The cache guard keeps a
+                // populated rail from being cleared by this (possibly still-empty) snapshot.
+                detailCache.putArtwork(id, post, _uiState.value.moreLikeThis, isOwn)
                 _uiState.update {
                     it.copy(
-                        isLoading = false, error = false, post = post, moreLikeThis = similar,
-                        // Reset the rail's paging to page 1 when we got a fresh page; else keep prior.
-                        moreLikeThisPaging = if (similarPage != null) {
-                            ListPage(page = 1, hasMore = !similarPage.endReached)
-                        } else {
-                            it.moreLikeThisPaging
-                        },
-                        isOwn = isOwn, isFromProfile = isFromProfile, ownershipResolved = true,
+                        isLoading = false, error = false, post = post,
+                        isOwn = isOwn,
+                        isFromOwnArtSection = isFromOwnArtSection, ownershipResolved = true,
                     )
                 }
                 // Resolve the conversation state with the owner so the send sheet shows the right
@@ -264,6 +273,44 @@ class ArtDetailViewModel @Inject constructor(
             // else: transient refresh failure with a cache showing → keep it silently (no error/spinner).
         }
     }
+
+    /** Load the first "More like this" page on its own coroutine. A cache-seeded rail revalidates
+     *  silently; a cold rail shows a shimmer; a failure with nothing to show offers Retry. An empty
+     *  successful page never clears an already-populated rail (SWR: keep the last-good list). */
+    private fun loadSimilarFirstPage() {
+        val id = artworkId ?: return
+        val hadItems = _uiState.value.moreLikeThis.isNotEmpty()
+        _uiState.update {
+            it.copy(similarFirstLoading = !hadItems, similarFirstError = false)
+        }
+        viewModelScope.launch {
+            val page = (repository.getSimilarArtworks(id, 1, SIMILAR_SIZE) as? ApiResult.Success)?.data
+            val prior = _uiState.value.moreLikeThis
+            when {
+                page == null -> _uiState.update {
+                    // Failed: keep any list we had (silent); surface Retry only when empty.
+                    it.copy(similarFirstLoading = false, similarFirstError = prior.isEmpty())
+                }
+                page.items.isEmpty() && prior.isNotEmpty() -> _uiState.update {
+                    // Empty success → keep last-good; don't let the rail vanish on refresh.
+                    it.copy(similarFirstLoading = false, similarFirstError = false)
+                }
+                else -> {
+                    detailCache.updateArtworkSimilar(id, page.items)
+                    _uiState.update {
+                        it.copy(
+                            moreLikeThis = page.items,
+                            moreLikeThisPaging = ListPage(page = 1, hasMore = !page.endReached),
+                            similarFirstLoading = false, similarFirstError = false,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** First-page rail "Retry": re-fetch page 1 (clears the error, shows the shimmer meanwhile). */
+    fun retrySimilarFirstPage() = loadSimilarFirstPage()
 
     /** Fetch the owner's public profile to derive the [SendMode] + remaining new-chat count. */
     private fun resolveSendMode(ownerId: Int) {

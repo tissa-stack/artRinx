@@ -501,13 +501,20 @@ class HomeViewModel @Inject constructor(
     // ── Like (Discover + For You feeds) ────────────────────────────────────────
 
     fun onLikeToggled(postId: String) {
-        val post = _uiState.value.feedItems.find { it.id == postId } ?: return
         val id = postId.toIntOrNull() ?: return
+        // The tap can originate from Discover OR For You, which are SEPARATE lists — resolve from
+        // whichever holds the post. Keying off feedItems alone silently dropped For-You-only likes
+        // (recommendations that aren't also in the Discover feed), so those taps did nothing.
+        val post = _uiState.value.feedItems.find { it.id == postId }
+            ?: _uiState.value.forYouItems.firstNotNullOfOrNull {
+                (it as? ForYouItem.Post)?.post?.takeIf { p -> p.id == postId }
+            }
+            ?: return
         val nowLiked = !post.isLiked
-        setFeedLiked(postId, nowLiked) // instant local feedback
+        setFeedLiked(postId, nowLiked) // instant local feedback (updates both feed + For You)
         // Durable state + network run on LikeManager's app scope so leaving the tab can't cancel them;
         // a hard-failure revert comes back through LikeBus → applyLikeUpdate.
-        val newCount = _uiState.value.feedItems.find { it.id == postId }?.likeCount ?: post.likeCount
+        val newCount = (post.likeCount + if (nowLiked) 1 else -1).coerceAtLeast(0)
         likeManager.toggleArtwork(id, nowLiked, newCount)
     }
 
