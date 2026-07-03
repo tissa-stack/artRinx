@@ -58,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -121,6 +122,9 @@ fun ChatScreen(
 ) {
     val state     by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
+    // Kept hidden until the list is first scrolled to the newest message, so the user never sees it
+    // paint from the top and jump to the bottom on open (the flicker). Flipped in the scroll effect.
+    var initialScrollDone by remember { mutableStateOf(false) }
     val isDark    = isSystemInDarkTheme()
     val dimens    = LocalDimens.current
     val context   = LocalContext.current
@@ -276,7 +280,10 @@ fun ChatScreen(
     // when older messages are prepended by pagination.
     val lastMessageId = state.messages.lastOrNull()?.id
     LaunchedEffect(lastMessageId) {
-        if (state.messages.isNotEmpty()) listState.scrollToItem(state.messages.size - 1)
+        if (state.messages.isNotEmpty()) {
+            listState.scrollToItem(state.messages.size - 1)
+            initialScrollDone = true
+        }
     }
     // Scroll-to-top → load the next older page.
     LaunchedEffect(listState) {
@@ -416,7 +423,12 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             else -> LazyColumn(
-            modifier       = Modifier.fillMaxSize(),
+            modifier       = Modifier
+                .fillMaxSize()
+                // Hide the list for the ~1 frame before it's scrolled to the newest message, so it's
+                // never seen painting from the top and jumping. Empty lists aren't gated (nothing to
+                // position); revealed at the bottom once positioned.
+                .alpha(if (initialScrollDone || state.messages.isEmpty()) 1f else 0f),
             state          = listState,
             contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.md),
         ) {

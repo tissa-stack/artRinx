@@ -119,6 +119,7 @@ class EditProfileViewModel @Inject constructor(
 
     private fun load() {
         userEdited = false // a fresh prefill is not a user edit
+        locationEdited = false // ditto for the location cascade
         _state.update { it.copy(isLoading = true, loadError = null) }
         viewModelScope.launch {
             when (val result = repository.getEditableProfile()) {
@@ -227,13 +228,19 @@ class EditProfileViewModel @Inject constructor(
             return
         }
 
-        // Location: Country mandatory (dropdown pick); State/City required only when available.
-        val countryOk = s.selectedCountryIso2 != null
-        val stateOk = s.selectedCountryHasNoStates || s.selectedStateCode != null
-        val cityOk = s.selectedCountryHasNoStates || s.selectedStateHasNoCities || s.selectedCity != null
-        if (!countryOk || !stateOk || !cityOk) {
-            _state.update { it.copy(countryError = !countryOk, stateError = !stateOk, cityError = !cityOk) }
-            return
+        // Location gate — only when the user actually changed the cascade this session. An untouched,
+        // server-loaded location is already valid and isn't re-sent (see the `!= o.*` diffs below), so
+        // validating it would only surface a spurious "Please select from the list" when the fragile
+        // catalog re-match in loadCountriesThenRestore left selectedCity null for a good saved value.
+        if (locationEdited) {
+            // Country mandatory (dropdown pick); State/City required only when available.
+            val countryOk = s.selectedCountryIso2 != null
+            val stateOk = s.selectedCountryHasNoStates || s.selectedStateCode != null
+            val cityOk = s.selectedCountryHasNoStates || s.selectedStateHasNoCities || s.selectedCity != null
+            if (!countryOk || !stateOk || !cityOk) {
+                _state.update { it.copy(countryError = !countryOk, stateError = !stateOk, cityError = !cityOk) }
+                return
+            }
         }
 
         val changes = ProfileUpdate(
@@ -305,6 +312,15 @@ class EditProfileViewModel @Inject constructor(
      * diff did (loaded representation vs. picker-normalized form). Reset to false after a load.
      */
     private var userEdited = false
+    /**
+     * True once the user actively committed a location pick this session (Country/State/City are
+     * dropdown-only, so only [onCountrySelected]/[onStateSelected]/[onCitySelected] set this). The
+     * save-time location gate runs ONLY when this is true — an untouched, server-loaded location is
+     * already valid and must never trip "Please select from the list" (the fragile catalog re-match
+     * in [loadCountriesThenRestore] can leave [EditProfileUiState.selectedCity] null even for a good
+     * saved value). Reset on load.
+     */
+    private var locationEdited = false
     // Dirty when a profile field changed, OR mediums differ from their saved baseline (unsaved medium
     // edits still warn; a standalone medium Save moves the baseline, so saved mediums don't prompt).
     val isDirty: Boolean get() = userEdited || _state.value.selectedMediumIds != originalMediumIds
@@ -365,8 +381,11 @@ class EditProfileViewModel @Inject constructor(
             }
 
             val state = states.firstOrNull { it.name.equals(savedState.trim(), ignoreCase = true) } ?: return@launch
-            val cities = (masterLocationRepository.getCities(country.iso2, state.stateCode, null) as? ApiResult.Success)?.data.orEmpty()
-            val cityMatch = cities.firstOrNull { it.equals(_state.value.city.trim(), ignoreCase = true) }
+            // Query with the saved city so it's guaranteed in the returned page — an unfiltered fetch
+            // caps at 200 and can drop a saved city that's alphabetically beyond it, failing the match.
+            val savedCity = _state.value.city.trim()
+            val cities = (masterLocationRepository.getCities(country.iso2, state.stateCode, savedCity.takeIf { it.isNotEmpty() }) as? ApiResult.Success)?.data.orEmpty()
+            val cityMatch = cities.firstOrNull { it.equals(savedCity, ignoreCase = true) }
             _state.update {
                 it.copy(
                     selectedStateCode = state.stateCode,
@@ -392,6 +411,7 @@ class EditProfileViewModel @Inject constructor(
     fun onCountrySelected(name: String) {
         val country = countries.firstOrNull { it.name == name } ?: return
         userEdited = true
+        locationEdited = true
         locationJob?.cancel()
         states = emptyList()
         _state.update {
@@ -436,6 +456,7 @@ class EditProfileViewModel @Inject constructor(
         val iso2 = _state.value.selectedCountryIso2 ?: return
         val state = states.firstOrNull { it.name == name } ?: return
         userEdited = true
+        locationEdited = true
         locationJob?.cancel()
         _state.update {
             it.copy(
@@ -475,6 +496,7 @@ class EditProfileViewModel @Inject constructor(
 
     fun onCitySelected(name: String) {
         userEdited = true
+        locationEdited = true
         locationJob?.cancel()
         _state.update { it.copy(city = name, cityError = false, selectedCity = name) }
     }

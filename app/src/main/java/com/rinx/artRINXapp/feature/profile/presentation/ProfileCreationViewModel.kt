@@ -364,9 +364,12 @@ class ProfileCreationViewModel @Inject constructor(
 
             val state = states.firstOrNull { it.name.equals(savedState.trim(), ignoreCase = true) } ?: return@launch
             _uiState.update { it.copy(selectedStateCode = state.stateCode) }
-            loadCitiesFor(country.iso2, state.stateCode, null)
+            // Query with the saved city so it's guaranteed in the returned page — an unfiltered fetch
+            // caps at 200 and can drop a saved city that's alphabetically beyond it, failing the match.
+            val trimmedCity = savedCity.trim()
+            loadCitiesFor(country.iso2, state.stateCode, trimmedCity.takeIf { it.isNotEmpty() })
             // Re-mark the saved city as a valid pick so validation passes on a returning draft.
-            val cityMatch = _uiState.value.cityOptions.firstOrNull { it.equals(savedCity.trim(), ignoreCase = true) }
+            val cityMatch = _uiState.value.cityOptions.firstOrNull { it.equals(trimmedCity, ignoreCase = true) }
             if (cityMatch != null) _uiState.update { it.copy(selectedCity = cityMatch, city = cityMatch) }
         }
     }
