@@ -198,7 +198,13 @@ fun InviteFriendsScreen(
                             .clip(RoundedCornerShape(50))
                             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
                             .clickable(enabled = hasCode) {
-                                context.shareText("Join me on artRINX! Use my invitation code: ${state.code}")
+                                // Share as a link the app already accepts (manifest autoVerify /invite +
+                                // DeepLinkParser → pre-fills the invite field on signup). Same host as
+                                // ShareTarget.webUrl. Message + code + tappable link.
+                                val link = "https://www.artrinx.com/invite/${state.code}"
+                                context.shareText(
+                                    "Join me on artRINX! Use my invitation code: ${state.code}\n\n$link",
+                                )
                             }
                             .padding(vertical = Spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
