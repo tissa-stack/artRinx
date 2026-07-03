@@ -158,7 +158,13 @@ class HomeRepositoryImpl @Inject constructor(
         val response = apiService.getArtwork(id)
         val dto = response.body()?.data
         if (response.isSuccessful && dto != null) {
-            ApiResult.Success(dto.toShoppablePost().withLike(confirm = true))
+            // A blocked artwork — or one by a blocked owner/artist — is treated as GONE, so it can't
+            // be opened from cache, a deep link, or a stale list item (parity with the list filters).
+            if (blockedStore.isBlocked(id) || isUserBlocked(dto.userId, dto.artist?.artistId)) {
+                ApiResult.Error.NotFound("This artwork isn't available.")
+            } else {
+                ApiResult.Success(dto.toShoppablePost().withLike(confirm = true))
+            }
         } else {
             errorFor(response)
         }

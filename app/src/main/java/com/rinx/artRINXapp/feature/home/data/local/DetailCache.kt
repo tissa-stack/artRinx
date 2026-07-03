@@ -1,6 +1,7 @@
 package com.rinx.artRINXapp.feature.home.data.local
 
 import com.rinx.artRINXapp.core.util.BlockedArtworkStore
+import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.feature.home.domain.model.ArtworkItem
 import com.rinx.artRINXapp.feature.home.domain.model.CurationItem
 import com.rinx.artRINXapp.feature.home.domain.model.ShoppablePost
@@ -30,15 +31,22 @@ data class CurationDetailEntry(val curation: CurationItem, val more: List<Curati
 @Singleton
 class DetailCache @Inject constructor(
     private val blockedStore: BlockedArtworkStore,
+    private val blockedUsersStore: BlockedUsersStore,
 ) {
 
     private val art = lru<ArtDetailEntry>()
     private val cur = lru<CurationDetailEntry>()
 
     // ── Artwork ──────────────────────────────────────────────────────────────
-    // A blocked artwork must never be re-served from cache (e.g. re-opening it).
+    // Never re-serve a blocked artwork — OR one whose owner/credited artist I've blocked — from
+    // cache (e.g. re-opening it after blocking the artist from their profile).
     fun peekArtwork(id: Int): ArtDetailEntry? = synchronized(art) {
-        if (blockedStore.isBlocked(id)) null else art[id]
+        val entry = art[id] ?: return@synchronized null
+        if (blockedStore.isBlocked(id) || isOwnerBlocked(entry.post.ownerId, entry.post.artistId)) {
+            null
+        } else {
+            entry
+        }
     }
 
     fun putArtwork(id: Int, post: ShoppablePost, similar: List<ArtworkItem>, isOwn: Boolean) =
@@ -50,6 +58,14 @@ class DetailCache @Inject constructor(
     }
 
     fun evictArtwork(id: Int) = synchronized(art) { art.remove(id); Unit }
+
+    /** Drop every cached artwork owned by / credited to a now-blocked user. */
+    fun evictByOwner(ownerId: Int) = synchronized(art) {
+        art.entries.removeAll { it.value.post.ownerId == ownerId || it.value.post.artistId == ownerId }
+    }
+
+    private fun isOwnerBlocked(vararg ids: Int?): Boolean =
+        ids.any { it != null && blockedUsersStore.isBlocked(it) }
 
     // ── Curation ─────────────────────────────────────────────────────────────
     // Strip any blocked artwork from the cached curation deck before serving it.

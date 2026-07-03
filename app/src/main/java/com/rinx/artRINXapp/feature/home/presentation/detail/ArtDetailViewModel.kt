@@ -77,6 +77,7 @@ class ArtDetailViewModel @Inject constructor(
     private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
     private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
     private val blockedArtworkStore: com.rinx.artRINXapp.core.util.BlockedArtworkStore,
+    private val blockedUsersStore: com.rinx.artRINXapp.core.util.BlockedUsersStore,
     private val detailCache: DetailCache,
 ) : ViewModel() {
 
@@ -147,6 +148,12 @@ class ArtDetailViewModel @Inject constructor(
     private fun observeBlocks() {
         viewModelScope.launch {
             blockedArtworkBus.events.collect { blockedId ->
+                // THIS artwork was blocked → treat as gone: evict + leave the screen.
+                if (blockedId == artworkId) {
+                    artworkId?.let { detailCache.evictArtwork(it) }
+                    _gone.send(Unit)
+                    return@collect
+                }
                 val idStr = blockedId.toString()
                 _uiState.update { st ->
                     if (st.moreLikeThis.none { it.id == idStr }) st
@@ -156,6 +163,14 @@ class ArtDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             blockedUserBus.events.collect { blockedUserId ->
+                // The owner/credited artist of THIS artwork was blocked → the artwork is gone too, so
+                // the back-stacked detail auto-closes to the neutral "not available" instead of lingering.
+                val post = _uiState.value.post
+                if (post != null && (post.ownerId == blockedUserId || post.artistId == blockedUserId)) {
+                    detailCache.evictByOwner(blockedUserId)
+                    _gone.send(Unit)
+                    return@collect
+                }
                 _uiState.update { st ->
                     val filtered = st.moreLikeThis.filterNot {
                         it.ownerId == blockedUserId || it.artistId == blockedUserId
@@ -225,6 +240,12 @@ class ArtDetailViewModel @Inject constructor(
 
     /** Fetch the owner's public profile to derive the [SendMode] + remaining new-chat count. */
     private fun resolveSendMode(ownerId: Int) {
+        // I've blocked this owner → resolve instantly, no network. Avoids the send sheet spinning
+        // forever if the owner's profile endpoint is slow/500 (common on a mutual block).
+        if (blockedUsersStore.isBlocked(ownerId)) {
+            _uiState.update { it.copy(sendMode = SendMode.BLOCKED_BY_ME, sendModeReady = true) }
+            return
+        }
         viewModelScope.launch {
             val pub = (profileRepository.getPublicProfile(ownerId) as? ApiResult.Success)?.data
             _uiState.update {
@@ -366,19 +387,18 @@ class ArtDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isSendingInvite = true, actionError = null) }
         viewModelScope.launch {
             val cid = UUID.randomUUID().toString()
-            when (messagesRepository.sendMessage(ownerId, currentUserId, text, imageId = artworkId, clientMessageId = cid)) {
+            when (val res = messagesRepository.sendMessage(ownerId, currentUserId, text, imageId = artworkId, clientMessageId = cid)) {
                 is ApiResult.Success -> _uiState.update {
                     // Only a brand-new invite spends from the monthly new-chat quota.
                     val left = if (it.sendMode == SendMode.INVITE)
                         it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) } else it.invitationsLeft
                     it.copy(isSendingInvite = false, inviteSent = true, invitationsLeft = left)
                 }
-                is ApiResult.Error.Blocked -> _uiState.update {
-                    it.copy(isSendingInvite = false,
-                        actionError = "You can't message this profile right now.")
-                }
+                // Surface the server's real reason (e.g. 403 "Cannot message blocked user") instead
+                // of a generic string; covers Blocked and every other error uniformly.
                 is ApiResult.Error -> _uiState.update {
-                    it.copy(isSendingInvite = false, actionError = "Couldn't send your invitation. Please try again.")
+                    it.copy(isSendingInvite = false,
+                        actionError = res.userMessage("Couldn't send your invitation. Please try again."))
                 }
             }
         }

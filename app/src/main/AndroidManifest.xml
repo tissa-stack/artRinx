@@ -79,6 +79,29 @@
                     android:host="www.artrinx.com"
                     android:pathPrefix="/event" />
             </intent-filter>
+
+            <!-- Content deep links (custom scheme): rinxart://{artwork|curation|profile}/<ID> -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rinxart" android:host="artwork" />
+                <data android:scheme="rinxart" android:host="curation" />
+                <data android:scheme="rinxart" android:host="profile" />
+            </intent-filter>
+
+            <!-- Content universal links: https://www.artrinx.com/{artwork|curation|profile}/<ID>.
+                 These are the URLs built by ShareTarget.webUrl for the system share sheet, so a
+                 tapped shared link opens the app (subject to /.well-known/assetlinks.json on the
+                 host). Routing is already handled by DeepLinkParser.fromPath(). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.artrinx.com" android:pathPrefix="/artwork" />
+                <data android:scheme="https" android:host="www.artrinx.com" android:pathPrefix="/curation" />
+                <data android:scheme="https" android:host="www.artrinx.com" android:pathPrefix="/profile" />
+            </intent-filter>
         </activity>
 
         <!-- Firebase Cloud Messaging (API §11 / handout Push Notifications). -->

@@ -372,17 +372,16 @@ class CurationDetailViewModel @Inject constructor(
         _uiState.update { it.copy(isSendingInvite = true, actionError = null) }
         viewModelScope.launch {
             val cid = UUID.randomUUID().toString()
-            when (messagesRepository.sendMessage(ownerId, currentUserId, text, clientMessageId = cid)) {
+            when (val res = messagesRepository.sendMessage(ownerId, currentUserId, text, clientMessageId = cid)) {
                 is ApiResult.Success -> _uiState.update {
                     val left = if (it.sendMode == SendMode.INVITE)
                         it.invitationsLeft?.let { n -> (n - 1).coerceAtLeast(0) } else it.invitationsLeft
                     it.copy(isSendingInvite = false, inviteSent = true, invitationsLeft = left)
                 }
-                is ApiResult.Error.Blocked -> _uiState.update {
-                    it.copy(isSendingInvite = false, actionError = "You can't message this profile right now.")
-                }
+                // Surface the server's real reason (e.g. 403 "Cannot message blocked user").
                 is ApiResult.Error -> _uiState.update {
-                    it.copy(isSendingInvite = false, actionError = "Couldn't send your invitation. Please try again.")
+                    it.copy(isSendingInvite = false,
+                        actionError = res.userMessage("Couldn't send your invitation. Please try again."))
                 }
             }
         }

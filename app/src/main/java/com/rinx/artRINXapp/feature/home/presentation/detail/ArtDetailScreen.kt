@@ -360,6 +360,12 @@ private fun ArtDetailContent(
     var showSendSheet by remember { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
 
+    // A send failure (e.g. 403 "Cannot message blocked user") surfaces in the parent's red error
+    // banner — close this modal sheet so the banner isn't hidden behind it.
+    LaunchedEffect(uiState.actionError) {
+        if (uiState.actionError != null) showSendSheet = false
+    }
+
     // Horizontal infinite scroll for the "More like this" rail — fetch the next page as it nears its
     // right edge. The ViewModel guards against duplicate/end/errored loads, so firing eagerly is cheap.
     val similarRowState = rememberLazyListState()

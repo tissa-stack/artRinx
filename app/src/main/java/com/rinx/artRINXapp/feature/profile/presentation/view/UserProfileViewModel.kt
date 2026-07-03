@@ -267,14 +267,20 @@ class UserProfileViewModel @Inject constructor(
                 if (forProfile is UploadProgress.Success) {
                     _uiState.update { state ->
                         val newItem = forProfile.toProfileArtItem()
-                        val deduped = state.artItems.filterNot { it.id == newItem.id }
+                        // Idempotent: a private Success now lingers in the shared flow until the
+                        // create screen dismisses it (we deliberately don't dismiss here — that race
+                        // could starve NewArtViewModel's overlay collector via StateFlow
+                        // conflation). So guard against re-inserting / double-counting on re-emission.
+                        val alreadyThere = state.artItems.any { it.id == newItem.id }
                         state.copy(
-                            artItems = listOf(newItem) + deduped,
-                            profile = state.profile?.let { it.copy(artCount = it.artCount + 1) },
+                            artItems = if (alreadyThere) state.artItems else listOf(newItem) + state.artItems,
+                            profile = if (alreadyThere) state.profile
+                            else state.profile?.let { it.copy(artCount = it.artCount + 1) },
                             uploadProgress = null,
                         )
                     }
-                    uploadManager.dismiss()
+                    // NOTE: no uploadManager.dismiss() here — the create-screen owner
+                    // (NewArtViewModel.onCreationDone) / the next enqueue() clears the flow.
                 }
             }
         }
