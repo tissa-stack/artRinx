@@ -98,18 +98,15 @@ fun AppNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
-    // A signed-out session can only deep-link to the invite screen. Content routes (chat / art /
-    // curation / profile / events / home) require an authenticated start — otherwise a stray push
-    // (e.g. one that arrived after logout, or on an expired session) would navigate into an authed
-    // screen that immediately 403s. Derive auth from the resolved start destination.
-    val authed = startDestination == NavRoutes.HOME || startDestination == NavRoutes.PROFILE_COMPLETION
-
     // Forced logout: the session was authoritatively invalidated (refresh token rejected). Wipe any
-    // remaining local data and return to login with a cleared back stack (same as a manual logout).
+    // remaining local data, drop any parked push target (non-invite) so it can't fire after we land
+    // on login, and return to login with a cleared back stack (same as a manual logout).
     val sessionWatcher: SessionWatcherViewModel = hiltViewModel()
     LaunchedEffect(Unit) {
         sessionWatcher.forceLogout.collect {
             sessionWatcher.onForcedLogout()
+            if (deepLinkRouter.target.value !is DeepLinkTarget.Invite) deepLinkRouter.consume()
+            deepLinkRouter.consumeEventId()
             navController.navigate(NavRoutes.AUTH) { popUpTo(0) { inclusive = true } }
         }
     }
@@ -129,11 +126,14 @@ fun AppNavGraph(
     // Push-tap / universal-link routing. Invite codes are consumed by the invite screen itself;
     // here we only act on content routes and the gallery_enterprise_notice home-only case.
     val pendingDeepLink by deepLinkRouter.target.collectAsState()
-    LaunchedEffect(pendingDeepLink, authed) {
+    LaunchedEffect(pendingDeepLink) {
         val t = pendingDeepLink ?: return@LaunchedEffect
-        // Not signed in → don't navigate into authenticated screens. Drop content targets so the
-        // AUTH start destination stands (invite targets are consumed by the invite screen).
-        if (!authed) {
+        // Auth gate. The start destination is fixed for this composition's life, so it can't be
+        // trusted after a mid-session forced logout (token expired / refresh reused). Read LIVE
+        // session validity at tap time: a signed-out user may only act on an invite target; content
+        // routes (chat / art / curation / profile / event / home) are dropped so the login screen
+        // stands and we never navigate into a screen that immediately 403s.
+        if (!sessionWatcher.isLoggedIn()) {
             if (t !is DeepLinkTarget.Invite) deepLinkRouter.consume()
             return@LaunchedEffect
         }

@@ -27,6 +27,13 @@ class SessionWatcherViewModel @Inject constructor(
 
     val forceLogout: SharedFlow<Unit> = sessionEventBus.forceLogout
 
+    /**
+     * Live session validity for the push/deep-link gate in [AppNavGraph]. The composition's start
+     * destination is fixed for its lifetime, so it can't detect a mid-session forced logout (token
+     * expired / refresh reused); the gate reads this at tap time instead. False once [SessionDataSource.clearSession] has run.
+     */
+    fun isLoggedIn(): Boolean = sessionDataSource.isSessionValid()
+
     /** Full local wipe (caches + offline queue + FCM token); the session tokens are already cleared. */
     fun onForcedLogout() {
         viewModelScope.launch { localDataCleaner.clearAll() }
