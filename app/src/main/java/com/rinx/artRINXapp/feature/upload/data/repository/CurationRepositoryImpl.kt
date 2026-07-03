@@ -50,6 +50,10 @@ class CurationRepositoryImpl @Inject constructor(
         )
         val data = response.body()?.data
         if (response.isSuccessful && data?.id != null) {
+            // A new collection changes every "my curations" list — tell observers (Add-to-Collection
+            // sheet, Profile grids) to refresh so it appears next time the sheet is opened. Mirrors
+            // the signal in addArtworksToCuration/updateCuration/deleteCuration.
+            profileRefreshBus.signal()
             ApiResult.Success(CreatedCuration(id = data.id))
         } else {
             errorFor(response)

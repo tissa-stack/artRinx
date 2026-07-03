@@ -19,9 +19,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://apifargate.rinx.com/"
+//    private const val BASE_URL = "https://apifargate.rinx.com/"
 
-//    private const val BASE_URL ="https://api.artrinx.com/"
+    private const val BASE_URL ="https://api.artrinx.com/"
 private const val TIMEOUT_SECONDS = 30L
     private const val UPLOAD_WRITE_TIMEOUT_SECONDS = 120L
 
