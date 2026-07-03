@@ -87,6 +87,9 @@ private const val SIMILAR_PREFETCH = 3
 @Composable
 fun ArtDetailScreen(
     onBack: () -> Unit,
+    /** Leave for the originating tab, skipping now-broken intermediate screens — used after
+     *  blocking the artist (whose art/detail we may have come through). */
+    onExitToSafeScreen: () -> Unit = onBack,
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
@@ -124,12 +127,14 @@ fun ArtDetailScreen(
         }
     }
 
-    // Close the sheet and pop back once the art/user is blocked (toast survives the pop).
+    // Close the sheet and leave once the art/user is blocked (toast survives the navigation).
+    // Blocking the USER exits to a safe tab (the previous screen may be the blocked artist's own
+    // now-broken art/detail); blocking a single ART just pops one level (artist still valid).
     LaunchedEffect(Unit) {
-        viewModel.blocked.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.blocked.collect { outcome ->
+            Toast.makeText(context, outcome.message, Toast.LENGTH_SHORT).show()
             showReportSheet = false
-            onBack()
+            if (outcome.wasUserBlock) onExitToSafeScreen() else onBack()
         }
     }
 

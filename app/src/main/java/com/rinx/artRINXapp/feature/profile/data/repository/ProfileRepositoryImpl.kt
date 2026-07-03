@@ -87,7 +87,7 @@ class ProfileRepositoryImpl @Inject constructor(
         myArtworksCache?.filterNot { blockedStore.isBlocked(it.id) }
     override fun cachedMyCurations(): List<ProfileCurationItem>? = myCurationsCache
     override fun cachedLikedArtworks(): List<ProfileArtItem>? =
-        likedArtworksCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+        likedArtworksCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
     override fun cachedUploadQuota(): UploadQuota? = uploadQuotaCache
     override fun clearCache() {
         profileDataCache = null
@@ -653,7 +653,7 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getPublicArtworks(userId, page, size)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) })
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) })
             } else {
                 profileError(response.code())
             }
@@ -668,7 +668,7 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getArtworksByName(name, page, size)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) })
+                ApiResult.Success(response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) })
             } else {
                 profileError(response.code())
             }
@@ -909,7 +909,7 @@ class ProfileRepositoryImpl @Inject constructor(
             val response = apiService.getLikedArtworks(page, size)
             if (response.isSuccessful) {
                 val items = response.body()?.data?.items.orEmpty().map { it.toProfileArtItem() }
-                    .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+                    .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
                 if (page == 1) likedArtworksCache = items
                 ApiResult.Success(items)
             } else {

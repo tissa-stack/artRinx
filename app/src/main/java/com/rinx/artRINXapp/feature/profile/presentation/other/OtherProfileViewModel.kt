@@ -40,6 +40,11 @@ data class OtherProfileUiState(
      *  Drives a neutral "not available" panel (no Retry, no block reveal); never set on a transient
      *  network/server error (those keep [error] + Retry). */
     val notAvailable: Boolean = false,
+    /** True only immediately after *I* blocked this user from THIS screen (via [block]). Gates the
+     *  "skip broken screens → jump to a safe screen" back behavior to a fresh block. Navigating to an
+     *  already-blocked / they-blocked / deleted profile leaves this false → normal back (return to the
+     *  previous screen). Only ever co-occurs with `profile.iBlocked`. */
+    val justBlocked: Boolean = false,
     // pagination
     val isLoadingMore: Boolean = false,
     val artHasMore: Boolean = false,
@@ -111,7 +116,7 @@ class OtherProfileViewModel @Inject constructor(
                     st.copy(
                         profile = if (isThisProfile) st.profile?.copy(iBlocked = true) else st.profile,
                         artItems = if (isThisProfile) emptyList() else st.artItems.filterNot { item ->
-                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                            item.ownerId == blockedUserId
                         },
                         curations = if (isThisProfile) emptyList() else st.curations,
                     )
@@ -376,6 +381,7 @@ class OtherProfileViewModel @Inject constructor(
                             artItems = emptyList(),
                             curations = emptyList(),
                             actionMessage = if (name != null) "Blocked $name" else "Blocked",
+                            justBlocked = true, // fresh block from this screen → back should safe-exit
                         )
                     }
                 }

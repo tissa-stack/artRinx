@@ -82,10 +82,10 @@ class SearchViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         artResults = it.artResults.filterNot { item ->
-                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                            item.ownerId == blockedUserId
                         },
                         recommended = it.recommended.filterNot { item ->
-                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                            item.ownerId == blockedUserId
                         },
                         curationResults = it.curationResults.filterNot { c -> c.authorId == blockedUserId },
                         userResults = it.userResults.filterNot { u -> u.id == idStr },

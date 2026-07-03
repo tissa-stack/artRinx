@@ -85,12 +85,22 @@ import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileC
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileTabBar
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.shimmer.ProfileShimmer
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.filled.Warning
+import com.rinx.artRINXapp.core.theme.WarningDark
+import com.rinx.artRINXapp.core.theme.WarningLight
+
 private enum class ConfirmKind { UNFOLLOW, BLOCK, UNBLOCK }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtherProfileScreen(
     onBack: () -> Unit,
+    /** Leave for the originating tab when the profile is unavailable (I just blocked them, they
+     *  blocked me, or the account is gone) — the screen(s) below us may be this user's now-broken
+     *  art/detail, so a plain back would land on a dead-end. Defaults to [onBack]. */
+    onExitToSafeScreen: () -> Unit = onBack,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCurationDetail: (String) -> Unit,
     onMessage: (userId: Int) -> Unit,
@@ -108,6 +118,14 @@ fun OtherProfileScreen(
     var showReport by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<ConfirmKind?>(null) }
     var shareTarget by remember { mutableStateOf<ShareTarget?>(null) }
+
+    // Safe-exit (skip this user's now-broken art/detail → land on a safe screen) applies ONLY right
+    // after *I* blocked from this screen. Then the DEVICE/gesture back runs the same lambda as the
+    // panel's Back arrow. For any OTHER unavailable state (opening an already-blocked / they-blocked /
+    // deleted profile) this handler is disabled → device back falls through to the NavHost default
+    // popBackStack(), which is exactly what those panels' `onBack` does → both backs return to the
+    // previous screen, not the tab root.
+    BackHandler(enabled = uiState.justBlocked) { onExitToSafeScreen() }
 
     // A report/action failure closes the report sheet and surfaces the reason in the red error
     // banner (Scaffold snackbarHost). Only flip the local flag — do NOT call onReportClosed() here
@@ -188,7 +206,9 @@ fun OtherProfileScreen(
             uiState.profile?.iBlocked == true -> ProfileStatePanel(
                 message = "This profile isn't available.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
-                onBack = onBack,
+                // Fresh block from this screen → safe-exit; an already-blocked profile opened from
+                // elsewhere → normal back to where I came from (matches the device back above).
+                onBack = if (uiState.justBlocked) onExitToSafeScreen else onBack,
             )
 
             else -> {
@@ -774,6 +794,14 @@ private fun ProfileStatePanel(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            Icon(
+                imageVector = Icons.Filled.Warning,
+                contentDescription = null,
+                // Amber warning glyph — the dark-aware shade from the theme palette.
+                tint = if (isSystemInDarkTheme()) WarningDark else WarningLight,
+                modifier = Modifier.size(Spacing.giant),
+            )
+            Spacer(Modifier.height(Spacing.md))
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,

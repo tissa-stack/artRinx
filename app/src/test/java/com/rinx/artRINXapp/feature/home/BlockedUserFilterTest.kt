@@ -17,10 +17,11 @@ import retrofit2.Response
 import org.junit.Test
 
 /**
- * Data-layer guard for blocking a *user*: the repository must drop any artwork whose uploader
- * (`userId`) or credited artist (`artist.artistId`) is in [BlockedUsersStore], so a blocked
- * person's art never reaches the UI — even before the next network refresh. Mirrors the existing
- * blocked-*artwork* filter, now keyed on owner ids. Null-owner items are always kept (no false drops).
+ * Data-layer guard for blocking a *user*: the repository must drop any artwork whose UPLOADER
+ * (`userId`) is in [BlockedUsersStore], so a blocked person's own posts never reach the UI — even
+ * before the next network refresh. Art merely CREDITING a blocked user as artist but uploaded by
+ * someone else is KEPT (blocking hides the person's presence, not others' legitimate posts).
+ * Null-owner items are always kept (no false drops).
  */
 class BlockedUserFilterTest {
 
@@ -45,15 +46,15 @@ class BlockedUserFilterTest {
     }
 
     @Test
-    fun `getShopArtworks drops art credited to a blocked artist`() = runTest {
+    fun `getShopArtworks keeps art merely credited to a blocked artist when someone else uploaded it`() = runTest {
         blockedUsers.markBlocked(7)
         coEvery { api.getShopArtworks(any(), any()) } returns shopPage(
-            ArtworkDto(id = 1, userId = 99, artist = ArtistDto(artistId = 7)), // blocked artist → dropped
-            ArtworkDto(id = 2, userId = 99),
+            ArtworkDto(id = 1, userId = 99, artist = ArtistDto(artistId = 7)), // uploaded by 99, credits blocked 7 → kept
+            ArtworkDto(id = 2, userId = 7),                                    // uploaded by blocked 7 → dropped
         )
 
         val result = repo.getShopArtworks(1, 20) as ApiResult.Success
-        assertEquals(listOf("2"), result.data.items.map { it.id })
+        assertEquals(listOf("1"), result.data.items.map { it.id })
     }
 
     @Test

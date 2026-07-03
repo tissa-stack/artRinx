@@ -115,12 +115,29 @@ class ArtDetailViewModel @Inject constructor(
     private val _gone = Channel<Unit>(Channel.BUFFERED)
     val gone = _gone.receiveAsFlow()
 
-    /** One-shot: emits the success toast text after a block so the screen toasts, closes the sheet & pops. */
-    private val _blocked = Channel<String>(Channel.BUFFERED)
+    /** One-shot block outcome so the screen toasts, closes the sheet, and leaves. [wasUserBlock]
+     *  distinguishes blocking the USER (→ exit to a safe tab, since the previous screen may be the
+     *  blocked artist's now-broken art/detail) from blocking a single ART (→ plain one-level back;
+     *  the artist isn't blocked so the previous screen is still valid). */
+    data class BlockOutcome(val message: String, val wasUserBlock: Boolean)
+    private val _blocked = Channel<BlockOutcome>(Channel.BUFFERED)
     val blocked = _blocked.receiveAsFlow()
 
     /** Reasons chosen on the report step, reused as the message when blocking the art. */
     private var lastReportMessage: String = ""
+
+    /** True while THIS screen's own [blockArt] is in flight. It signals [blockedArtworkBus] to notify
+     *  other screens, and this VM also observes that bus — so it would receive its own emission and
+     *  fire a second navigation (`_gone`) on top of the intended `_blocked` one, double-popping the
+     *  back stack into a blank screen. The flag lets [observeBlocks] skip that self-echo; an external
+     *  block of this same artwork (flag false) still auto-closes the back-stacked detail. */
+    private var selfBlockingArt = false
+
+    /** Same self-echo guard for blocking the artist. [ProfileRepository.blockUser] itself signals
+     *  [blockedUserBus] (so it fires before we even see Success), and this VM observes that bus — its
+     *  self-echo would double-pop the back stack. Set before the repo call, consumed by [observeBlocks],
+     *  and reset on failure so a later external block of this artist still auto-closes the detail. */
+    private var selfBlockingUser = false
 
     init {
         load()
@@ -142,7 +159,7 @@ class ArtDetailViewModel @Inject constructor(
         }
     }
 
-    /** Drop a blocked artwork — or any art by a blocked owner/artist — from the "More like this"
+    /** Drop a blocked artwork — or any art uploaded by a blocked user — from the "More like this"
      *  rail immediately, so a block made elsewhere (e.g. on a rail item's own detail) is reflected
      *  the moment we return here, without waiting for a reload. */
     private fun observeBlocks() {
@@ -150,6 +167,12 @@ class ArtDetailViewModel @Inject constructor(
             blockedArtworkBus.events.collect { blockedId ->
                 // THIS artwork was blocked → treat as gone: evict + leave the screen.
                 if (blockedId == artworkId) {
+                    // Skip our own echo: blockArt() already navigates via `_blocked` (with the right
+                    // "Art blocked" toast). Reacting here too would double-pop into a blank screen.
+                    if (selfBlockingArt) {
+                        selfBlockingArt = false
+                        return@collect
+                    }
                     artworkId?.let { detailCache.evictArtwork(it) }
                     _gone.send(Unit)
                     return@collect
@@ -163,18 +186,22 @@ class ArtDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             blockedUserBus.events.collect { blockedUserId ->
-                // The owner/credited artist of THIS artwork was blocked → the artwork is gone too, so
-                // the back-stacked detail auto-closes to the neutral "not available" instead of lingering.
+                // The UPLOADER of THIS artwork was blocked → the artwork is gone too, so the
+                // back-stacked detail auto-closes to the neutral "not available" instead of lingering.
                 val post = _uiState.value.post
-                if (post != null && (post.ownerId == blockedUserId || post.artistId == blockedUserId)) {
+                if (post != null && post.ownerId == blockedUserId) {
                     detailCache.evictByOwner(blockedUserId)
+                    // Skip our own echo: blockUser() already navigates via `_blocked`. Cache is still
+                    // evicted above; only the redundant `_gone` (second pop → blank screen) is skipped.
+                    if (selfBlockingUser) {
+                        selfBlockingUser = false
+                        return@collect
+                    }
                     _gone.send(Unit)
                     return@collect
                 }
                 _uiState.update { st ->
-                    val filtered = st.moreLikeThis.filterNot {
-                        it.ownerId == blockedUserId || it.artistId == blockedUserId
-                    }
+                    val filtered = st.moreLikeThis.filterNot { it.ownerId == blockedUserId }
                     if (filtered.size == st.moreLikeThis.size) st else st.copy(moreLikeThis = filtered)
                 }
             }
@@ -337,10 +364,12 @@ class ArtDetailViewModel @Inject constructor(
                     // fresh, any screen, on back-navigation) — not just the currently-live ones.
                     blockedArtworkStore.add(id)
                     detailCache.evictArtwork(id)
-                    // Drop it from every live on-screen list immediately (no refresh wait).
+                    // Drop it from every live on-screen list immediately (no refresh wait). Mark the
+                    // self-block first so observeBlocks() ignores our own echo (avoids a double pop).
+                    selfBlockingArt = true
                     blockedArtworkBus.signal(id)
                     profileRefreshBus.signal()
-                    _blocked.send("Art blocked")
+                    _blocked.send(BlockOutcome("Art blocked", wasUserBlock = false))
                 }
                 is ApiResult.Error -> _uiState.update {
                     it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this art. Please try again."))
@@ -354,14 +383,20 @@ class ArtDetailViewModel @Inject constructor(
         if (_uiState.value.isBlocking) return
         _uiState.update { it.copy(isBlocking = true, actionError = null) }
         viewModelScope.launch {
+            // blockUser() signals blockedUserBus inside the repo, so arm the self-echo guard first.
+            selfBlockingUser = true
             when (val r = profileRepository.blockUser(ownerId)) {
                 is ApiResult.Success -> {
                     artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
-                    _blocked.send("Blocked ${_uiState.value.post?.artistName ?: "user"}")
+                    _blocked.send(BlockOutcome("Blocked ${_uiState.value.post?.artistName ?: "user"}", wasUserBlock = true))
                 }
-                is ApiResult.Error -> _uiState.update {
-                    it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this user. Please try again."))
+                is ApiResult.Error -> {
+                    // No bus signal fired on failure → disarm so a later external block isn't swallowed.
+                    selfBlockingUser = false
+                    _uiState.update {
+                        it.copy(isBlocking = false, actionError = r.userMessage("Couldn't block this user. Please try again."))
+                    }
                 }
             }
         }

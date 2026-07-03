@@ -99,7 +99,7 @@ class UserProfileViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         likedItems = it.likedItems.filterNot { item ->
-                            item.ownerId == blockedUserId || item.artistId == blockedUserId
+                            item.ownerId == blockedUserId
                         },
                     )
                 }

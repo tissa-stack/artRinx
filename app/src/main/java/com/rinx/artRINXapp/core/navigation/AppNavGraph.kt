@@ -557,6 +557,7 @@ fun AppNavGraph(
                 )
                 else -> OtherProfileScreen(
                     onBack                    = { navController.popBackStack() },
+                    onExitToSafeScreen        = { navController.exitAfterBlock(source) },
                     onNavigateToDetail        = { id -> navController.navigate(NavRoutes.artDetail(id, source)) },
                     onNavigateToCurationDetail = { id -> navController.navigate(NavRoutes.curationDetail(id, source)) },
                     onMessage                 = { uid -> navController.navigate(NavRoutes.chat(uid.toString(), source)) },
@@ -715,6 +716,7 @@ fun AppNavGraph(
             val source = backStackEntry.arguments?.getString("source") ?: NavRoutes.HOME
             ArtDetailScreen(
                 onBack = { navController.popBackStack() },
+                onExitToSafeScreen = { navController.exitAfterBlock(source) },
                 onNavigateToDetail = { postId ->
                     navController.navigate(NavRoutes.artDetail(postId, source))
                 },
@@ -803,6 +805,40 @@ private fun NavHostController.navigateToTab(route: String) {
             popUpTo(graph.findStartDestination().id) { inclusive = false }
             launchSingleTop = true
         }
+    }
+}
+
+/**
+ * Leave a screen that a block just invalidated (the blocked user's profile, or an art detail/list
+ * of theirs) and land back on the originating [source] tab, skipping every now-broken intermediate
+ * screen — so the user never walks back through an "artwork not available" dead-end. This mirrors
+ * iOS, which pops to a safe screen when a block just occurred.
+ *
+ * Returns to the EXISTING [source] tab entry (preserving its scroll) when it's still on the back
+ * stack; every USER_PROFILE / ART_DETAIL call passes a tab route as [source], so that's the norm.
+ * [navigateToTab] is a defensive fallback if the entry is somehow absent.
+ */
+private fun NavHostController.exitToSourceTab(source: String) {
+    if (!popBackStack(source, inclusive = false)) navigateToTab(source)
+}
+
+/**
+ * Leave a just-blocked user's profile (or their art detail) and land "where you came from" — for
+ * BOTH the on-screen Back arrow and the device/gesture back (they share this lambda, so they stay
+ * in lockstep).
+ *
+ * The screen we came from is usually still valid to return to (a chat with the blocked user shows a
+ * "blocked" gate; a search/notifications/follow list just won't list them) → a plain [popBackStack]
+ * returns to it. ONLY when that previous screen is the blocked user's own art detail / art-by-artist
+ * — which the block turns into "not available" — do we skip it and pop all the way to the [source]
+ * tab, so the user never walks back into a dead-end (the artwork→artist→profile→Home case).
+ */
+private fun NavHostController.exitAfterBlock(source: String) {
+    val prevRoute = previousBackStackEntry?.destination?.route
+    if (prevRoute == NavRoutes.ART_DETAIL || prevRoute == NavRoutes.ART_BY_ARTIST) {
+        exitToSourceTab(source)
+    } else if (!popBackStack()) {
+        navigateToTab(source)
     }
 }
 

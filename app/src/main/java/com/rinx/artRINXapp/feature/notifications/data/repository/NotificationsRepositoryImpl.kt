@@ -2,6 +2,8 @@ package com.rinx.artRINXapp.feature.notifications.data.repository
 
 import com.rinx.artRINXapp.core.network.ApiResult
 import com.rinx.artRINXapp.core.network.serverMessageOrNull
+import com.rinx.artRINXapp.core.util.BlockedArtworkStore
+import com.rinx.artRINXapp.core.util.BlockedUsersStore
 import com.rinx.artRINXapp.feature.notifications.data.remote.NotificationsApiService
 import com.rinx.artRINXapp.feature.notifications.data.remote.dto.NotificationDto
 import com.rinx.artRINXapp.feature.notifications.domain.model.NotificationItem
@@ -17,16 +19,41 @@ import javax.inject.Inject
 
 class NotificationsRepositoryImpl @Inject constructor(
     private val apiService: NotificationsApiService,
+    private val blockedUsersStore: BlockedUsersStore,
+    private val blockedArtworkStore: BlockedArtworkStore,
 ) : NotificationsRepository {
 
     override suspend fun getNotifications(): ApiResult<List<NotificationItem>> = safeCall {
         val response = apiService.getNotifications()
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()?.data?.notifications.orEmpty().mapNotNull { it.toItem() })
+            // Drop rows for a blocked user's activity (they followed/liked/shared) or a blocked
+            // artwork — parity with the feed/search/profile lists, which all filter through the
+            // blocked stores. The stores are seeded app-wide (Home entry).
+            ApiResult.Success(
+                response.body()?.data?.notifications.orEmpty()
+                    .mapNotNull { it.toItem() }
+                    .filterNot { it.isHidden() },
+            )
         } else {
             errorFor(response)
         }
     }
+
+    /** True if this row belongs to a blocked user (actor/organizer) or a blocked artwork. */
+    private fun NotificationItem.isHidden(): Boolean {
+        if (isUserBlocked(actorId?.toInt(), organizerId?.toInt())) return true
+        // Only artwork-kind rows carry an ARTWORK target id (curation rows carry a curation id).
+        if ((kind == NotificationKind.ARTWORK_LIKE || kind == NotificationKind.ARTWORK_SHARE) &&
+            blockedArtworkStore.isBlocked(targetId?.toString())
+        ) {
+            return true
+        }
+        return false
+    }
+
+    /** True if any of the given user ids belongs to a user I've blocked (nulls ignored). */
+    private fun isUserBlocked(vararg ids: Int?): Boolean =
+        ids.any { it != null && blockedUsersStore.isBlocked(it) }
 
     override suspend fun markRead(id: String): ApiResult<Unit> = safeCall {
         val nid = id.toLongOrNull() ?: return@safeCall ApiResult.Error.Validation("Invalid notification id")

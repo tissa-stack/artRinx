@@ -42,10 +42,10 @@ class HomeRepositoryImpl @Inject constructor(
     // reads so a re-seed / back-navigation never resurfaces it before the next network refresh.
     override fun cachedFeed(): HomeFeed? = feedCache?.let { f ->
         f.copy(
-            newArt = f.newArt.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
+            newArt = f.newArt.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) },
             posts = f.posts.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
                 .map { it.withLike(confirm = false) },
-            recentlyViewed = f.recentlyViewed.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
+            recentlyViewed = f.recentlyViewed.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) },
             curations = f.curations.filterNot { isUserBlocked(it.authorId) }
                 .map { it.stripBlocked().withLike(confirm = false) },
         )
@@ -54,7 +54,7 @@ class HomeRepositoryImpl @Inject constructor(
         discoverCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
             ?.map { it.withLike(confirm = false) }
     override fun cachedShop(): List<ShoppablePost>? =
-        shopCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+        shopCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
             ?.map { it.withLike(confirm = false) }
     override fun cachedForYou(): List<FeedPost>? =
         forYouCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
@@ -160,7 +160,7 @@ class HomeRepositoryImpl @Inject constructor(
         if (response.isSuccessful && dto != null) {
             // A blocked artwork — or one by a blocked owner/artist — is treated as GONE, so it can't
             // be opened from cache, a deep link, or a stale list item (parity with the list filters).
-            if (blockedStore.isBlocked(id) || isUserBlocked(dto.userId, dto.artist?.artistId)) {
+            if (blockedStore.isBlocked(id) || isUserBlocked(dto.userId)) {
                 ApiResult.Error.NotFound("This artwork isn't available.")
             } else {
                 ApiResult.Success(dto.toShoppablePost().withLike(confirm = true))
@@ -255,7 +255,7 @@ class HomeRepositoryImpl @Inject constructor(
 
     /** Drop blocked artworks from a DTO list (by artwork id, or by a blocked owner/artist) before mapping. */
     private fun List<ArtworkDto>.notBlocked(): List<ArtworkDto> =
-        filterNot { (it.id != null && blockedStore.isBlocked(it.id)) || isUserBlocked(it.userId, it.artist?.artistId) }
+        filterNot { (it.id != null && blockedStore.isBlocked(it.id)) || isUserBlocked(it.userId) }
 
     /** True if any of the given user ids belongs to a user I've blocked (nulls ignored). */
     private fun isUserBlocked(vararg ids: Int?): Boolean =

@@ -123,13 +123,13 @@ class HomeViewModel @Inject constructor(
                             it is ForYouItem.Post && it.post.ownerId == blockedUserId
                         },
                         shoppableItems = state.shoppableItems.filterNot {
-                            it.ownerId == blockedUserId || it.artistId == blockedUserId
+                            it.ownerId == blockedUserId
                         },
                         newArtItems = state.newArtItems.filterNot {
-                            it.ownerId == blockedUserId || it.artistId == blockedUserId
+                            it.ownerId == blockedUserId
                         },
                         recentlyViewed = state.recentlyViewed.filterNot {
-                            it.ownerId == blockedUserId || it.artistId == blockedUserId
+                            it.ownerId == blockedUserId
                         },
                         // Drop whole curations authored by the blocked user (deck artworks lack a per-art
                         // owner, so a blocked user's single piece inside someone else's deck clears on refresh).

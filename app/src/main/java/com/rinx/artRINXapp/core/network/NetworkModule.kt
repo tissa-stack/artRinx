@@ -19,9 +19,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://apifargate.rinx.com/"
+//    private const val BASE_URL = "https://apifargate.rinx.com/"
 
-//    private const val BASE_URL ="https://api.artrinx.com/"
+    private const val BASE_URL ="https://api.artrinx.com/"
 private const val TIMEOUT_SECONDS = 30L
     private const val UPLOAD_WRITE_TIMEOUT_SECONDS = 120L
 
@@ -33,7 +33,7 @@ private const val TIMEOUT_SECONDS = 30L
     // queued behind each other while the backend is warming up.
     private const val MAX_REQUESTS_PER_HOST = 10
 
-    // The refresh runs inside a blocking preflight on every authed call, so keep it short — a stuck
+    // The refresh runs inside a blocking preflight on evemary authed call, so keep it short — a stuck
     // /refresh must fail fast rather than freeze the UI for the full 30s.
     private const val REFRESH_TIMEOUT_SECONDS = 12L
 

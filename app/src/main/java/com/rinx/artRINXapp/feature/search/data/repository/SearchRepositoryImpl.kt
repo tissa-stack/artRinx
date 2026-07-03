@@ -38,7 +38,7 @@ class SearchRepositoryImpl @Inject constructor(
 
     override fun cachedTrendingTags(): List<String>? = trendingCache
     override fun cachedRecommended(): List<SearchResultItem>? =
-        recommendedCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+        recommendedCache?.filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
     override fun clearCache() {
         trendingCache = null
         recommendedCache = null
@@ -69,7 +69,7 @@ class SearchRepositoryImpl @Inject constructor(
         if (response.isSuccessful) {
             ApiResult.Success(
                 response.body()?.data?.artworks.orEmpty().map { it.toResultItem() }
-                    .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) },
+                    .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) },
             )
         } else {
             errorFor(response)
@@ -147,7 +147,7 @@ class SearchRepositoryImpl @Inject constructor(
         val response = apiService.getRecommended(page = PAGE, size = SIZE)
         if (response.isSuccessful) {
             val items = response.body()?.data?.items.orEmpty().map { it.toResultItem() }
-                .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId, it.artistId) }
+                .filterNot { blockedStore.isBlocked(it.id) || isUserBlocked(it.ownerId) }
             recommendedCache = items
             ApiResult.Success(items)
         } else {

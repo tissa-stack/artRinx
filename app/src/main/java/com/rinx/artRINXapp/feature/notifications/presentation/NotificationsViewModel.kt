@@ -83,6 +83,8 @@ class NotificationsViewModel @Inject constructor(
     private val webSocket: ChatWebSocketManager,
     private val homeRepository: HomeRepository,
     private val detailCache: DetailCache,
+    private val blockedUserBus: com.rinx.artRINXapp.core.util.BlockedUserBus,
+    private val blockedArtworkBus: com.rinx.artRINXapp.core.util.BlockedArtworkBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NotificationsUiState())
@@ -100,6 +102,8 @@ class NotificationsViewModel @Inject constructor(
         loadNotifications()
         refreshConversations()
         loadInvitationCount()
+        observeUserBlocks()
+        observeBlocks()
         viewModelScope.launch {
             webSocket.events.collect { event ->
                 when (event) {
@@ -255,6 +259,46 @@ class NotificationsViewModel @Inject constructor(
             it.copy(conversations = it.conversations.map { c ->
                 if (c.id == item.id) c.copy(isUnread = false, unreadCount = 0) else c
             })
+        }
+    }
+
+    // ── Blocked-user / blocked-artwork live filtering ───────────────────────────────
+
+    /** Drop a blocked user's notification rows (their follow/like/share activity) the moment I block
+     *  them — no refresh wait — mirroring HomeViewModel. Unblock re-fetches so the rows return. */
+    private fun observeUserBlocks() {
+        viewModelScope.launch {
+            blockedUserBus.events.collect { blockedUserId ->
+                val id = blockedUserId.toLong()
+                _state.update { st ->
+                    val filtered = st.notifications.filterNot { it.actorId == id || it.organizerId == id }
+                    if (filtered.size == st.notifications.size) st else st.copy(notifications = filtered)
+                }
+                unreadStore.set(_state.value.notifications.count { !it.isRead })
+            }
+        }
+        viewModelScope.launch {
+            blockedUserBus.unblocked.collect { loadNotifications() }
+        }
+    }
+
+    /** Drop a blocked artwork's like/share rows immediately; unblock re-fetches. */
+    private fun observeBlocks() {
+        viewModelScope.launch {
+            blockedArtworkBus.events.collect { blockedArtworkId ->
+                val tid = blockedArtworkId.toLong()
+                _state.update { st ->
+                    val filtered = st.notifications.filterNot {
+                        (it.kind == NotificationKind.ARTWORK_LIKE || it.kind == NotificationKind.ARTWORK_SHARE) &&
+                            it.targetId == tid
+                    }
+                    if (filtered.size == st.notifications.size) st else st.copy(notifications = filtered)
+                }
+                unreadStore.set(_state.value.notifications.count { !it.isRead })
+            }
+        }
+        viewModelScope.launch {
+            blockedArtworkBus.unblocked.collect { loadNotifications() }
         }
     }
 

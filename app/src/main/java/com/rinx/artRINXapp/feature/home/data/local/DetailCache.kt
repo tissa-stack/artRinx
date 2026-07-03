@@ -38,11 +38,12 @@ class DetailCache @Inject constructor(
     private val cur = lru<CurationDetailEntry>()
 
     // ── Artwork ──────────────────────────────────────────────────────────────
-    // Never re-serve a blocked artwork — OR one whose owner/credited artist I've blocked — from
-    // cache (e.g. re-opening it after blocking the artist from their profile).
+    // Never re-serve a blocked artwork — OR one uploaded by a user I've blocked — from cache
+    // (e.g. re-opening it after blocking that uploader from their profile). Art merely crediting a
+    // blocked user as artist but uploaded by someone else stays (parity with the list filters).
     fun peekArtwork(id: Int): ArtDetailEntry? = synchronized(art) {
         val entry = art[id] ?: return@synchronized null
-        if (blockedStore.isBlocked(id) || isOwnerBlocked(entry.post.ownerId, entry.post.artistId)) {
+        if (blockedStore.isBlocked(id) || isOwnerBlocked(entry.post.ownerId)) {
             null
         } else {
             entry
@@ -59,9 +60,9 @@ class DetailCache @Inject constructor(
 
     fun evictArtwork(id: Int) = synchronized(art) { art.remove(id); Unit }
 
-    /** Drop every cached artwork owned by / credited to a now-blocked user. */
+    /** Drop every cached artwork uploaded by a now-blocked user. */
     fun evictByOwner(ownerId: Int) = synchronized(art) {
-        art.entries.removeAll { it.value.post.ownerId == ownerId || it.value.post.artistId == ownerId }
+        art.entries.removeAll { it.value.post.ownerId == ownerId }
     }
 
     private fun isOwnerBlocked(vararg ids: Int?): Boolean =
