@@ -24,6 +24,8 @@ data class ChatMenuUiState(
     val unblockedSuccess: Boolean = false,
     /** One-shot: set true after a successful unfollow so the screen can toast a confirmation. */
     val unfollowedSuccess: Boolean = false,
+    /** One-shot: set true after a successful report so the screen can show the "Report sent" sheet. */
+    val reportSuccess: Boolean = false,
 )
 
 @HiltViewModel
@@ -72,11 +74,16 @@ class ChatMenuViewModel @Inject constructor(
     }
 
     fun reportUser() {
-        if (userId == 0) return
+        if (userId == 0 || _state.value.isActioning) return
+        // Clear any prior error and gate re-submits so success (sheet) and error (red snackbar)
+        // can never both fire — they're set in mutually exclusive branches below.
+        _state.update { it.copy(isActioning = true, actionError = null) }
         viewModelScope.launch {
-            val r = profileRepository.reportUser(userId, "Reported from chat")
-            if (r is ApiResult.Error) {
-                _state.update { it.copy(actionError = r.userMessage("Couldn't send the report. Please try again.")) }
+            when (val r = profileRepository.reportUser(userId, "Reported from chat")) {
+                is ApiResult.Success -> _state.update { it.copy(isActioning = false, reportSuccess = true) }
+                is ApiResult.Error -> _state.update {
+                    it.copy(isActioning = false, actionError = r.userMessage("Couldn't send the report. Please try again."))
+                }
             }
         }
     }
@@ -96,6 +103,7 @@ class ChatMenuViewModel @Inject constructor(
     }
 
     fun onActionErrorShown() = _state.update { it.copy(actionError = null) }
+    fun onReportSuccessHandled() = _state.update { it.copy(reportSuccess = false) }
     fun onBlockedHandled() = _state.update { it.copy(blockedSuccess = false) }
     fun onUnblockedHandled() = _state.update { it.copy(unblockedSuccess = false) }
     fun onUnfollowedHandled() = _state.update { it.copy(unfollowedSuccess = false) }

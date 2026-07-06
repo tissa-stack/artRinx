@@ -82,6 +82,7 @@ import kotlinx.coroutines.delay
 import coil.compose.AsyncImage
 import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
+import com.rinx.artRINXapp.core.ui.ErrorSnackbarHost
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.ChatShimmer
 import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 import com.rinx.artRINXapp.core.theme.ChatBubbleReceived
@@ -162,10 +163,12 @@ fun ChatScreen(
     var unblockConfirm by remember { mutableStateOf(false) }
     var unfollowConfirm by remember { mutableStateOf(false) }
 
-    LaunchedEffect(menuState.actionError) {
-        menuState.actionError?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-            menuViewModel.onActionErrorShown()
+    // Report succeeded → show the "Report sent" sheet. This is the ONLY place the success sheet
+    // opens, so it can never appear alongside an error (which lands in actionError → red snackbar).
+    LaunchedEffect(menuState.reportSuccess) {
+        if (menuState.reportSuccess) {
+            showReportSent = true
+            menuViewModel.onReportSuccessHandled()
         }
     }
     LaunchedEffect(menuState.blockedSuccess) {
@@ -242,9 +245,11 @@ fun ChatScreen(
         ReportReasonSheet(
             onDismiss = { showReasonSheet = false },
             onSubmit = {
+                // Fire the report and close the reason sheet. The "Report sent" sheet is opened
+                // ONLY when the VM reports success (see LaunchedEffect(menuState.reportSuccess));
+                // a failure surfaces in the red error snackbar instead — never both.
                 menuViewModel.reportUser()
                 showReasonSheet = false
-                showReportSent = true
             },
         )
     }
@@ -299,6 +304,10 @@ fun ChatScreen(
     // Index of the last message the current user sent — used to show "Invite sent!".
     val lastSentIndex = state.messages.indexOfLast { it.isSent }
 
+    // Box wrapper hosts the red error snackbar as a bottom overlay (chat has no Scaffold). All chat
+    // action errors — report / block / unblock / unfollow — flow through menuState.actionError and
+    // surface here in red, matching the profile & art screens (never as a black toast).
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -643,6 +652,18 @@ fun ChatScreen(
                 .fillMaxWidth()
                 .background(chatBg)
                 .navigationBarsPadding()
+        )
+    }
+
+        // Red error snackbar for any failed chat action (report/block/unblock/unfollow). Floats
+        // above the input bar and keyboard; clears actionError once shown.
+        ErrorSnackbarHost(
+            message = menuState.actionError,
+            onShown = menuViewModel::onActionErrorShown,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .imePadding(),
         )
     }
 
