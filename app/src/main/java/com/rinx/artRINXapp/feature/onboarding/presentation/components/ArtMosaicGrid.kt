@@ -82,7 +82,10 @@ private fun computeBentoLayout(
     totalWidthDp: Float,
     gapDp: Float,
 ): GridLayout {
-    require(cardSizes.size == 5)
+    // The three bento patterns below are defined for exactly 5 cards. Any other count (future
+    // content/config drift) degrades to a uniform grid rather than crashing the very first screen a
+    // new user sees.
+    if (cardSizes.size != 5) return computeFallbackLayout(cardSizes.size, totalWidthDp, gapDp)
     val tallIndex = cardSizes.indexOf(CardSize.TALL_PORTRAIT)
 
     val avail = (totalWidthDp - gapDp).coerceAtLeast(1f)
@@ -124,9 +127,40 @@ private fun computeBentoLayout(
             p += SlotPlacement(2, 0f, y1, narrowW, rowH)
             p += SlotPlacement(4, narrowW + gapDp, y1, wideW, rowH)
         }
-        else -> error("Unsupported mosaic layout: flip=$flipLayout tall=$tallIndex")
+        // Unrecognised flip/tall combination → uniform grid instead of a hard crash.
+        else -> return computeFallbackLayout(cardSizes.size, totalWidthDp, gapDp)
     }
 
+    val totalH = p.maxOf { it.y + it.height }
+    return GridLayout(p, totalH, gapDp)
+}
+
+/**
+ * Crash-proof fallback used whenever the card set doesn't match one of the three hand-tuned bento
+ * patterns (wrong count, or an unrecognised flip/tall combination). Lays every card out in a simple
+ * uniform grid — visually plainer than the bento, but it never throws, so a content/config change
+ * can't crash the first-launch onboarding screen.
+ */
+private fun computeFallbackLayout(
+    count: Int,
+    totalWidthDp: Float,
+    gapDp: Float,
+): GridLayout {
+    if (count <= 0) return GridLayout(emptyList(), 0f, gapDp)
+    val cols = if (count == 1) 1 else 2
+    val colW = ((totalWidthDp - gapDp * (cols - 1)) / cols).coerceAtLeast(1f)
+    val tileH = colW // square-ish tiles keep it tidy for any count
+    val p = (0 until count).map { i ->
+        val row = i / cols
+        val col = i % cols
+        SlotPlacement(
+            slot = i,
+            x = col * (colW + gapDp),
+            y = row * (tileH + gapDp),
+            width = colW,
+            height = tileH,
+        )
+    }
     val totalH = p.maxOf { it.y + it.height }
     return GridLayout(p, totalH, gapDp)
 }
@@ -287,12 +321,13 @@ private fun MosaicImage(
         }
     }
 
+    // decodeResource can return null for a missing/corrupt drawable; guard so the first-launch
+    // screen skips that tile instead of NPE-ing on .asImageBitmap().
     val painter = remember(imageRes) {
-        BitmapPainter(
-            image = BitmapFactory.decodeResource(resources, imageRes).asImageBitmap(),
-            filterQuality = FilterQuality.High,
-        )
-    }
+        runCatching { BitmapFactory.decodeResource(resources, imageRes) }.getOrNull()
+            ?.asImageBitmap()
+            ?.let { BitmapPainter(image = it, filterQuality = FilterQuality.High) }
+    } ?: return
 
     Image(
         painter = painter,
