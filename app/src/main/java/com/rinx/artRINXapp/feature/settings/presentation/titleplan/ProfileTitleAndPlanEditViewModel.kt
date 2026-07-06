@@ -64,9 +64,13 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
         _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             val role = session.getUserRole()
-            val roleStr = role.orEmpty()
             // Default to the user's live title; fall back to the onboarding role if the fetch fails.
             val result = repository.getProfilePlanSummary()
+            // Role for plan gating: prefer the authoritative profile_type_name (the session role isn't
+            // written at profile creation, so it's stale/blank for a brand-new artist → would wrongly
+            // show only Basic). Fall back to the session role if the fetch fails.
+            val roleStr = (result as? ApiResult.Success)?.data?.profileTitle?.takeIf { it.isNotBlank() }
+                ?: role.orEmpty()
             // Fetch the real roles (authoritative id + name); descriptions/badges come from local copy.
             val typesResult = repository.getProfileTypes()
             val current = when (result) {

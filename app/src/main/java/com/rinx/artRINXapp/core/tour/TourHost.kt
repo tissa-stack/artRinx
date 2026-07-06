@@ -22,11 +22,17 @@ fun TourHost(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // When the first-launch tour finishes, show the post-tour Plans finale — regardless of which tab
-    // the tour ended on. Fires once; the Plans screen clears `plansPending` via markPlansShown().
+    // When the first-launch tour finishes, show the post-tour Plans finale — but only for Artists.
+    // Collector / Art Curious skip straight to Home (mirroring the finale's own Continue nav), so the
+    // Home notification-permission prompt fires just the same. Fires once; the Plans screen clears
+    // `plansPending` via markPlansShown() for Artists, and we clear it here for everyone else.
     LaunchedEffect(state.plansPending) {
-        if (state.plansPending) {
+        if (!state.plansPending) return@LaunchedEffect
+        if (viewModel.isArtistUser()) {
             navController.navigate(NavRoutes.POST_TUTORIAL_PLANS) { launchSingleTop = true }
+        } else {
+            viewModel.markPlansShown()
+            navController.navigate(NavRoutes.HOME) { popUpTo(0) { inclusive = true } }
         }
     }
 

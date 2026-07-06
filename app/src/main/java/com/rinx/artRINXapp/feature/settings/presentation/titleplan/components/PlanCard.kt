@@ -10,11 +10,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -42,6 +45,10 @@ fun PlanCard(
     onClick: (() -> Unit)? = null,
     cta: PlanCardCta = PlanCardCta.NONE,
     onCta: () -> Unit = {},
+    // When true (pager usage) the card stretches to the pager's height and scrolls its content
+    // internally so tall cards never clip on small screens / large font scales. Off by default so
+    // stacked-card callers are unaffected.
+    fillHeight: Boolean = false,
 ) {
     val borderColor by animateColorAsState(
         targetValue = if (selected) BrandPrimary else MaterialTheme.colorScheme.outline,
@@ -52,12 +59,16 @@ fun PlanCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier)
+            // Lighter card surface so the card lifts off the screen background.
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Spacing.md))
             .border(
                 width = if (selected) 1.5.dp else 1.dp,
                 color = borderColor,
                 shape = RoundedCornerShape(Spacing.md),
             )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (fillHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier)
             .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
     ) {
         // Header: crown + name + price
@@ -113,7 +124,8 @@ fun PlanCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        // Pill uses `surface` (not `surfaceVariant`) so it stays visible on the card fill.
+                        .background(MaterialTheme.colorScheme.surface)
                         .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
                 ) {
                     Text(

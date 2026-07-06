@@ -149,7 +149,8 @@ fun ProfileTitleAndPlanEditScreen(
                         PlanCard(
                             plan = plan,
                             // Not a radio group — CTAs drive actions (handout SelectPlanView).
-                            selected = false,
+                            // The user's active plan is highlighted with the blue selection border.
+                            selected = plan.id == state.currentPlanId,
                             cta = PlanCatalog.ctaFor(plan.id, state.currentPlanId, state.role, state.isPaid),
                             // Stub until Play Billing lands (Play Console products + verify-google).
                             onCta = {

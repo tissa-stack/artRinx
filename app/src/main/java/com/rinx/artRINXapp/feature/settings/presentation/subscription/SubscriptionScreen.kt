@@ -12,11 +12,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,9 +35,8 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
-import com.rinx.artRINXapp.feature.settings.domain.model.PlanCatalog
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.ProfileTitleAndPlanEditViewModel
-import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.PlanCard
+import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.PlanPager
 
 /**
  * Read-only Subscription screen split out of the old combined flow. Shows the available plans with
@@ -90,7 +88,7 @@ fun SubscriptionScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
                 .padding(horizontal = dimens.screenPaddingHorizontal),
         ) {
             Spacer(Modifier.height(Spacing.lg))
@@ -108,18 +106,18 @@ fun SubscriptionScreen(
             )
             Spacer(Modifier.height(Spacing.xl))
 
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                state.plans.forEach { plan ->
-                    PlanCard(
-                        plan = plan,
-                        selected = false,
-                        cta = PlanCatalog.ctaFor(plan.id, state.currentPlanId, state.role, state.isPaid),
-                        onCta = {
-                            Toast.makeText(context, "Subscriptions are coming soon.", Toast.LENGTH_SHORT).show()
-                        },
-                    )
-                }
-            }
+            PlanPager(
+                plans = state.plans,
+                currentPlanId = state.currentPlanId,
+                role = state.role,
+                isPaid = state.isPaid,
+                onCta = {
+                    Toast.makeText(context, "Subscriptions are coming soon.", Toast.LENGTH_SHORT).show()
+                },
+                // Both cards carry the blue border; per-card CTAs (Upgrade / Current Plan pill) stay.
+                highlightAll = true,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
 
             // Artists-only paywall footer (Restore always; Manage when subscribed → web).
             if (state.role.contains("artist", ignoreCase = true)) {
@@ -143,7 +141,7 @@ fun SubscriptionScreen(
                     }
                 }
             }
-            Spacer(Modifier.height(Spacing.xxxl))
+            Spacer(Modifier.height(Spacing.lg))
         }
     }
 }
