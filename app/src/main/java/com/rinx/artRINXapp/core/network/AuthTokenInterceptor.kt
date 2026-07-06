@@ -30,7 +30,9 @@ class AuthTokenInterceptor @Inject constructor(
         }
 
         val token = sessionDataSource.getAccessToken()
-        val authed = if (token != null) {
+        // Guard against a blank token being sent as "Bearer " (which the backend rejects as
+        // "Not authenticated") — only attach a real, non-empty token.
+        val authed = if (!token.isNullOrBlank()) {
             request.newBuilder().addHeader("Authorization", "Bearer $token").build()
         } else {
             request

@@ -19,9 +19,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://apifargate.rinx.com/"
+//    private const val BASE_URL = "https://apifargate.rinx.com/"
 
-//    private const val BASE_URL ="https://api.artrinx.com/"
+    private const val BASE_URL ="https://api.artrinx.com/"
     private const val TIMEOUT_SECONDS = 30L
     private const val UPLOAD_WRITE_TIMEOUT_SECONDS = 120L
 
@@ -33,9 +33,13 @@ object NetworkModule {
     // queued behind each other while the backend is warming up.
     private const val MAX_REQUESTS_PER_HOST = 10
 
-    // The refresh runs inside a blocking preflight on evemary authed call, so keep it short — a stuck
-    // /refresh must fail fast rather than freeze the UI for the full 30s.
-    private const val REFRESH_TIMEOUT_SECONDS = 12L
+    // The refresh runs inside a blocking preflight on every authed call, so keep it bounded — a stuck
+    // /refresh must fail rather than freeze the UI for the full call timeout. 20s (not 12s) gives a
+    // cold/idle Fargate backend room to answer the FIRST preflight refresh instead of timing out and
+    // sending the request with an expired token (→ 403 "Not authenticated"). Waiting for the response
+    // also makes us more likely to receive the rotated token than to time out mid-rotation. Stays well
+    // under the main client's CALL_TIMEOUT_SECONDS (45s) ceiling: refresh≈20s + a then-warm request≈1s.
+    private const val REFRESH_TIMEOUT_SECONDS = 20L
 
     @Provides
     @Singleton

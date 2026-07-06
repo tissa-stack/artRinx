@@ -23,6 +23,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -98,6 +99,9 @@ class NotificationsViewModel @Inject constructor(
      */
     private val locallyRead = mutableMapOf<String, Int>()
 
+    /** One-shot guard so a failed notifications load auto-retries at most once (see loadNotifications). */
+    private var notificationsAutoRetried = false
+
     init {
         loadNotifications()
         refreshConversations()
@@ -141,13 +145,29 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             when (val res = notificationsRepository.getNotifications()) {
                 is ApiResult.Success -> {
+                    notificationsAutoRetried = false
                     _state.update {
                         it.copy(notifications = res.data, isLoadingNotifications = false, notificationsError = null)
                     }
                     unreadStore.set(res.data.count { !it.isRead })
                 }
-                is ApiResult.Error -> _state.update {
-                    it.copy(isLoadingNotifications = false, notificationsError = res.userMessage())
+                is ApiResult.Error -> {
+                    // A transient auth/network blip (e.g. a cold-backend token refresh that just timed
+                    // out) can leave the list empty. The refresh coordinator caches a failed refresh for
+                    // ~5s, so an instant retry is useless — auto-retry ONCE just past that window, by
+                    // which time the backend is warm and the refresh succeeds, healing the blip with no
+                    // manual tap. Keep the shimmer up during the wait instead of flashing the error.
+                    val listEmpty = _state.value.notifications.isEmpty()
+                    if (listEmpty && !notificationsAutoRetried) {
+                        notificationsAutoRetried = true
+                        _state.update { it.copy(isLoadingNotifications = true, notificationsError = null) }
+                        delay(NOTIFICATIONS_AUTO_RETRY_DELAY_MS)
+                        loadNotifications()
+                    } else {
+                        _state.update {
+                            it.copy(isLoadingNotifications = false, notificationsError = res.userMessage())
+                        }
+                    }
                 }
             }
         }
@@ -179,6 +199,8 @@ class NotificationsViewModel @Inject constructor(
 
     /** Re-show the loading state, then re-fetch — wired to the error view's Retry button. */
     fun retryNotifications() {
+        // A user-initiated retry re-enables the single auto-retry too.
+        notificationsAutoRetried = false
         _state.update { it.copy(isLoadingNotifications = true, notificationsError = null) }
         loadNotifications()
     }
@@ -398,4 +420,9 @@ class NotificationsViewModel @Inject constructor(
 
     /** Clear the one-shot pull-to-refresh error after the screen has shown it as a toast. */
     fun consumeRefreshError() = _state.update { it.copy(refreshError = null) }
+
+    private companion object {
+        /** Just past the refresh coordinator's ~5s failed-refresh window, so the auto-retry can refresh. */
+        const val NOTIFICATIONS_AUTO_RETRY_DELAY_MS = 6_000L
+    }
 }

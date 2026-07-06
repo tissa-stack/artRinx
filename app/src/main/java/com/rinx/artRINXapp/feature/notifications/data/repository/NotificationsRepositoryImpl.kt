@@ -152,7 +152,9 @@ class NotificationsRepositoryImpl @Inject constructor(
     private fun errorFor(response: Response<*>): ApiResult.Error {
         val body = runCatching { response.errorBody()?.string() }.getOrNull()
         return when (response.code()) {
-            403 -> ApiResult.Error.Blocked(body?.take(300) ?: "Action not allowed")
+            // Parse the server body (mirrors MessagesRepositoryImpl) so an auth 403 surfaces the clean
+            // "Not authenticated" message instead of the raw JSON envelope leaking to the UI.
+            403 -> ApiResult.Error.Blocked(serverMessageOrNull(body) ?: "Action not allowed")
             404 -> ApiResult.Error.NotFound("Not found")
             in 400..499 -> ApiResult.Error.Validation(
                 serverMessageOrNull(body) ?: "Request failed (${response.code()})",
