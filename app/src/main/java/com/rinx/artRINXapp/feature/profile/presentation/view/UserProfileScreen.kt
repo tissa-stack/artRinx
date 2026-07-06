@@ -157,10 +157,13 @@ private fun UserProfileContent(
     onRefresh: () -> Unit = {},
     onRetry: () -> Unit = {},
 ) {
-    var showFeedback by remember { mutableStateOf(false) }
-    if (showFeedback) {
-        FeedbackDialog(onDismiss = { showFeedback = false })
-    }
+    // Feedback flow disabled for now — button hidden and dialog not shown. Keep this code so
+    // the whole feedback flow (button + FeedbackDialog + FeedbackViewModel) can be re-enabled
+    // by uncommenting this block and restoring onFeedbackClick below.
+    // var showFeedback by remember { mutableStateOf(false) }
+    // if (showFeedback) {
+    //     FeedbackDialog(onDismiss = { showFeedback = false })
+    // }
     // Profile tab → owner chrome (invite/settings/feedback, clickable stats). Pushed screen (own
     // profile opened from search/home/anywhere else) → hide them; it's a read-only view.
     val showOwnerActions = onBack == null
@@ -242,7 +245,9 @@ private fun UserProfileContent(
                         showOwnerActions = showOwnerActions,
                         // Feedback (β) button now lives in-flow at the end of the name row (just above
                         // the bio) instead of overlaying the bottom-right — owner-only.
-                        onFeedbackClick = if (showOwnerActions) ({ showFeedback = true }) else null,
+                        // Feedback disabled for now: passing null hides the button. To re-enable,
+                        // restore: onFeedbackClick = if (showOwnerActions) ({ showFeedback = true }) else null
+                        onFeedbackClick = null,
                     )
                 },
                 tabBar = {

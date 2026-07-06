@@ -392,6 +392,11 @@ private fun CurationDetailContent(
         // Hidden when the API gives no description — no fabricated placeholder sentence.
         if (curation.description.isNotBlank()) {
             item(key = "desc") {
+            // Whether the description actually needs the more/less toggle. Correct in both
+            // collapsed and expanded states: while collapsed hasVisualOverflow reports the
+            // truncation; while expanded (the default here) lineCount reveals the true
+            // length. Resets if the description changes (e.g. SWR refresh).
+            var descOverflow by remember(curation.description) { mutableStateOf(false) }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -408,12 +413,14 @@ private fun CurationDetailContent(
                         color      = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier   = Modifier.weight(1f),
                     )
-                    Text(
-                        text     = if (descExpanded) "less" else "more",
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.clickable { descExpanded = !descExpanded },
-                    )
+                    if (descOverflow) {
+                        Text(
+                            text     = if (descExpanded) "less" else "more",
+                            style    = MaterialTheme.typography.labelSmall,
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.clickable { descExpanded = !descExpanded },
+                        )
+                    }
                 }
                 Spacer(Modifier.height(Spacing.xs))
                 Text(
@@ -422,6 +429,7 @@ private fun CurationDetailContent(
                     color    = MaterialTheme.colorScheme.onBackground,
                     maxLines = if (descExpanded) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { descOverflow = it.hasVisualOverflow || it.lineCount > 2 },
                     modifier = Modifier.animateContentSize(),
                 )
                 }
