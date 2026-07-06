@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -90,8 +88,9 @@ fun ChangeMediumsScreen(
             )
         }
 
-        // The step no longer scrolls internally (the onboarding flow owns its scroll), so provide
-        // one here — the info text then sits at the bottom of the scroll, same as onboarding.
+        // Fit-to-height: the step fills the space between the header and the Save button; its grid
+        // takes the remaining room (scrolling internally only if it overflows), so the info row +
+        // tooltip stay on-screen without page scrolling.
         MediumSelectionStep(
             mediums = state.mediums,
             isLoading = state.mediumsLoading,
@@ -104,7 +103,6 @@ fun ChangeMediumsScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = dimens.screenPaddingHorizontal),
         )
 

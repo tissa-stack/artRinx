@@ -244,7 +244,6 @@ private fun ProfileCreationContent(
                 // single-scroll layout (they're taller / need the keyboard scroll).
                 val isMediumsStep = currentStep == ProfileCreationViewModel.LAST_STEP
                 val outerScroll = rememberScrollState()
-                val mediumsScroll = rememberScrollState()
                 Column(
                     modifier = Modifier
                         .then(
@@ -261,7 +260,9 @@ private fun ProfileCreationContent(
                   // ── Content group ── (weighted + internally scrollable on the mediums step)
                   Column(
                     modifier = if (isMediumsStep) {
-                        Modifier.weight(1f).fillMaxWidth().verticalScroll(mediumsScroll)
+                        // No internal scroll — the step fits to this bounded height and its grid takes
+                        // the remaining room, keeping the info row + Get-Started button on-screen.
+                        Modifier.weight(1f).fillMaxWidth()
                     } else {
                         Modifier.fillMaxWidth()
                     },
@@ -340,7 +341,7 @@ private fun ProfileCreationContent(
                         onMediumToggle = onMediumToggle,
                         onTooltipToggle = onMediumsTooltipToggle,
                         onRetry = onRetryMediums,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxSize(),
                     )
                   }
                   }

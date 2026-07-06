@@ -67,7 +67,6 @@ fun MediumSelectionStep(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dimens = LocalDimens.current
     val selectedCount = selectedMediumIds.size
 
     // Warm Coil's disk/memory cache for every medium image as soon as the list arrives, so the
@@ -89,7 +88,7 @@ fun MediumSelectionStep(
     // inline child that would grow the Column and push the CTA behind the fold.
     Box(modifier = modifier.fillMaxWidth()) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxSize(),
     ) {
         Spacer(Modifier.height(Spacing.xxl))
 
@@ -121,45 +120,53 @@ fun MediumSelectionStep(
 
         Spacer(Modifier.height(Spacing.xxl))
 
-        when {
-            isLoading -> {
-                CircularProgressIndicator(
-                    color = BrandPrimary,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
-                Spacer(Modifier.height(Spacing.xxxl))
-            }
-            error != null -> {
-                Text(
-                    text = error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Spacer(Modifier.height(Spacing.md))
-                TextButton(onClick = onRetry) {
-                    Text("Retry", color = BrandPrimary)
+        // Flexible region: the grid takes the remaining height (no parent scroll, so the info row +
+        // host button below always stay on-screen). The grid is lazy, so it scrolls WITHIN itself
+        // only if the rows can't fit (small screen / long list) — never pushing the info row away.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            when {
+                isLoading -> {
+                    CircularProgressIndicator(
+                        color = BrandPrimary,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
                 }
-                Spacer(Modifier.height(Spacing.xxxl))
-            }
-            else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(
-                            // fixed height to prevent nested scroll conflict
-                            (((mediums.size + 2) / 3) * (dimens.authButtonHeight.value * 2.5f)).dp,
-                        ),
-                ) {
-                    items(mediums, key = { it.id }) { medium ->
-                        MediumItem(
-                            medium = medium,
-                            selected = medium.id in selectedMediumIds,
-                            disabled = selectedCount >= MAX_MEDIUMS && medium.id !in selectedMediumIds,
-                            onToggle = { onMediumToggle(medium.id) },
+                error != null -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
                         )
+                        Spacer(Modifier.height(Spacing.md))
+                        TextButton(onClick = onRetry) {
+                            Text("Retry", color = BrandPrimary)
+                        }
+                    }
+                }
+                else -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(mediums, key = { it.id }) { medium ->
+                            MediumItem(
+                                medium = medium,
+                                selected = medium.id in selectedMediumIds,
+                                disabled = selectedCount >= MAX_MEDIUMS && medium.id !in selectedMediumIds,
+                                onToggle = { onMediumToggle(medium.id) },
+                            )
+                        }
                     }
                 }
             }
