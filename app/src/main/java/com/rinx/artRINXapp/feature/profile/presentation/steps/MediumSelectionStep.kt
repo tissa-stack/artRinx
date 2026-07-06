@@ -3,10 +3,8 @@ package com.rinx.artRINXapp.feature.profile.presentation.steps
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -86,8 +84,12 @@ fun MediumSelectionStep(
 
     // No internal scroll — the host (onboarding flow / Change Medium screen) owns the scroll so the
     // info text + Get-Started button sit naturally at the bottom of one scroll.
+    // The whole step is wrapped in a Box so the info tooltip can render as a layout-neutral
+    // OVERLAY above the info row (see the AnimatedVisibility after the Column) instead of an
+    // inline child that would grow the Column and push the CTA behind the fold.
+    Box(modifier = modifier.fillMaxWidth()) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Spacer(Modifier.height(Spacing.xxl))
 
@@ -166,18 +168,8 @@ fun MediumSelectionStep(
         Spacer(Modifier.height(Spacing.xl))
 
         // ── Info link (at the bottom — the host scrolls, and the CTA sits just below this) ──────
-        // Tooltip is shown ABOVE the link (tail points down) so it stays on-screen near the bottom.
-        AnimatedVisibility(
-            visible = showTooltip,
-            enter = expandVertically(tween(220)) + fadeIn(tween(220)),
-            exit = shrinkVertically(tween(180)) + fadeOut(tween(180)),
-        ) {
-            InfoTooltip(
-                text = "As our community expands, we'll be adding more. Let us know what you'd like to see: info@rinx.com",
-                onClose = onTooltipToggle,
-                tailAtBottom = true,
-            )
-        }
+        // The tooltip itself is rendered as an overlay after this Column (not inline here), so
+        // toggling it never changes this Column's height.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -202,6 +194,26 @@ fun MediumSelectionStep(
         }
 
         Spacer(Modifier.height(Spacing.lg))
+    }
+
+        // ── Info tooltip overlay ────────────────────────────────────────────────
+        // Floats ABOVE the info row without participating in the Column's layout, so the medium
+        // grid, the info row, and the host's Save/Continue button stay put (no scroll needed).
+        // Tail points down at the info button; bottom padding clears the info row + its Spacer.
+        AnimatedVisibility(
+            visible = showTooltip,
+            enter = fadeIn(tween(180)),
+            exit = fadeOut(tween(150)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = Spacing.xl + Spacing.lg),
+        ) {
+            InfoTooltip(
+                text = "As our community expands, we'll be adding more. Let us know what you'd like to see: info@rinx.com",
+                onClose = onTooltipToggle,
+                tailAtBottom = true,
+            )
+        }
     }
 }
 
