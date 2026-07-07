@@ -76,9 +76,9 @@ fun PlanPager(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            // Wider side inset so a clear slice of the neighbouring card peeks in — signals the pager
-            // is horizontally scrollable.
-            contentPadding = PaddingValues(horizontal = Spacing.xxxl),
+            // Small side inset so the card is nearly full-width (fits the screen properly) while a
+            // slice of the neighbouring card still peeks in to signal the pager is scrollable.
+            contentPadding = PaddingValues(horizontal = Spacing.lg),
             pageSpacing = Spacing.sm,
             beyondViewportPageCount = 1,
         ) { page ->
