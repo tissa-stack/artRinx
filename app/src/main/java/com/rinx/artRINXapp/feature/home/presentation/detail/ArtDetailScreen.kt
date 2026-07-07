@@ -76,6 +76,7 @@ import com.rinx.artRINXapp.feature.home.presentation.components.ShopArtButton
 import com.rinx.artRINXapp.feature.home.presentation.components.LikeButton
 import com.rinx.artRINXapp.core.ui.ErrorSnackbarHost
 import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomSheet
+import com.rinx.artRINXapp.feature.home.presentation.components.ReportSentDialog
 import com.rinx.artRINXapp.feature.home.presentation.components.SectionHeader
 import com.rinx.artRINXapp.feature.home.presentation.components.SendMessageBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.ShopLinkDialog
@@ -146,14 +147,28 @@ fun ArtDetailScreen(
         if (uiState.actionError != null) showReportSheet = false
     }
 
-    if (showReportSheet) {
+    val reporterName = uiState.post?.ownerName?.takeIf { it.isNotBlank() } ?: uiState.post?.artistName ?: ""
+    // Step 1 — reason picker stays a bottom sheet for art reports.
+    if (showReportSheet && !uiState.reportSent) {
         ReportBottomSheet(
             artTitle = uiState.post?.title ?: "",
-            profileName = uiState.post?.ownerName?.takeIf { it.isNotBlank() } ?: uiState.post?.artistName ?: "",
+            profileName = reporterName,
+            subjectLabel = "art",
             isReporting = uiState.isReporting,
-            reportSent = uiState.reportSent,
-            isBlocking = uiState.isBlocking,
+            reportSent = false,
             onSubmitReport = viewModel::submitReport,
+            onDismiss = {
+                showReportSheet = false
+                viewModel.onReportSheetClosed()
+            },
+        )
+    }
+    // Step 2 — the "Report sent" confirmation is a centered pop-up for art reports.
+    if (showReportSheet && uiState.reportSent) {
+        ReportSentDialog(
+            artTitle = uiState.post?.title ?: "",
+            profileName = reporterName,
+            isBlocking = uiState.isBlocking,
             onBlockArt = { blockConfirm = "art" },
             onBlockUser = { blockConfirm = "user" },
             onDismiss = {

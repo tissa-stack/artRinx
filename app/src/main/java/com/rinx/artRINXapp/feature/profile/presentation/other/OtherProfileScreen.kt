@@ -181,13 +181,13 @@ fun OtherProfileScreen(
             // Identical to how a deleted account reads. Checked before the transient-error branch.
             // Has a back button so the user is never stranded when reaching it from anywhere.
             uiState.notAvailable -> ProfileStatePanel(
-                message = "This profile isn't available.",
+                message = "This profile isn't available.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 onBack = onBack,
             )
 
             uiState.error != null || uiState.profile == null -> ProfileStatePanel(
-                message = uiState.error ?: "Profile unavailable.",
+                message = uiState.error ?: "Profile unavailable.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 onBack = onBack,
                 onRetry = viewModel::onRetry,
@@ -195,7 +195,7 @@ fun OtherProfileScreen(
 
             // The other user has blocked the viewer → don't render their profile/actions/content.
             uiState.profile?.theyBlocked == true -> ProfileStatePanel(
-                message = uiState.profile?.blockReason ?: "This profile isn't available.",
+                message = uiState.profile?.blockReason ?: "This profile isn't available.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 onBack = onBack,
             )
@@ -204,7 +204,7 @@ fun OtherProfileScreen(
             // state (SCRUM-54): no tabs/Share/Report on the profile; unblock only via Settings →
             // Blocked Accounts. So the full header/content below renders only for non-blocked profiles.
             uiState.profile?.iBlocked == true -> ProfileStatePanel(
-                message = "This profile isn't available.",
+                message = "This profile isn't available.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 // Fresh block from this screen → safe-exit; an already-blocked profile opened from
                 // elsewhere → normal back to where I came from (matches the device back above).

@@ -436,7 +436,12 @@ class ArtDetailViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     artworkId?.let { detailCache.evictArtwork(it) }
                     profileRefreshBus.signal()
-                    _blocked.send(BlockOutcome("Blocked ${_uiState.value.post?.artistName ?: "user"}", wasUserBlock = true))
+                    // Toast the OWNER name (the one we actually blocked via ownerId), resolved the same
+                    // way as the "Block owner" button/dialog — prefer ownerName, fall back to artistName.
+                    val blockedName = _uiState.value.post?.ownerName?.takeIf { it.isNotBlank() }
+                        ?: _uiState.value.post?.artistName?.takeIf { it.isNotBlank() }
+                        ?: "user"
+                    _blocked.send(BlockOutcome("Blocked $blockedName", wasUserBlock = true))
                 }
                 is ApiResult.Error -> {
                     // No bus signal fired on failure → disarm so a later external block isn't swallowed.
