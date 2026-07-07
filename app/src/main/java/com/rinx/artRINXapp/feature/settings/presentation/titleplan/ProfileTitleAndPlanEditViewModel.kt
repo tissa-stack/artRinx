@@ -23,6 +23,8 @@ data class TitlePlanEditUiState(
     val titles: List<ProfileTitleOption> = emptyList(),
     val plans: List<PlanOption> = emptyList(),
     val selectedTitleId: Int? = null,
+    /** The title the user currently has — used to detect a real change before enabling Save / calling the API. */
+    val originalTitleId: Int? = null,
     val selectedPlanId: String? = null,
     // For the plan-card CTA state machine.
     val role: String = "",
@@ -34,6 +36,9 @@ data class TitlePlanEditUiState(
     val saved: Boolean = false,
 ) {
     val canAdvanceTitle: Boolean get() = selectedTitleId != null
+    /** True only once the user has picked a title different from their current one. */
+    val hasTitleChange: Boolean
+        get() = selectedTitleId != null && selectedTitleId != 0 && selectedTitleId != originalTitleId
     val canSavePlan: Boolean get() = selectedPlanId != null && !isSaving
 }
 
@@ -52,9 +57,6 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
         ),
     )
     val state: StateFlow<TitlePlanEditUiState> = _state.asStateFlow()
-
-    /** The title the user currently has — used to detect a real change before calling the API. */
-    private var originalTitleId: Int? = null
 
     init {
         load()
@@ -98,11 +100,11 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
             // Role-gate the plan list and hide Gallery in-app for now: Artist sees Basic + Artist
             // Pro, Collector / Art Curious see Basic only. Per-card CTA reflects the user's state.
             val currentPlanId = PlanCatalog.currentPlan(roleStr, isPaid).id
-            originalTitleId = current.id.takeIf { it != 0 }
             _state.update {
                 it.copy(
                     titles = titles,
                     selectedTitleId = current.id.takeIf { id -> id != 0 } ?: it.selectedTitleId,
+                    originalTitleId = current.id.takeIf { id -> id != 0 },
                     plans = PlanCatalog.availablePlans(roleStr),
                     role = roleStr,
                     isPaid = isPaid,
@@ -132,7 +134,7 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
      */
     fun onSave() {
         val newTitleId = _state.value.selectedTitleId
-        if (newTitleId == null || newTitleId == 0 || newTitleId == originalTitleId) {
+        if (newTitleId == null || newTitleId == 0 || newTitleId == _state.value.originalTitleId) {
             _state.update { it.copy(saved = true) }
             return
         }
@@ -142,8 +144,7 @@ class ProfileTitleAndPlanEditViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     // Keep the cached role in sync so other screens reflect the new title.
                     roleForTitleId(newTitleId)?.let { session.saveUserRole(it) }
-                    originalTitleId = newTitleId
-                    _state.update { it.copy(isSaving = false, saved = true) }
+                    _state.update { it.copy(isSaving = false, saved = true, originalTitleId = newTitleId) }
                 }
                 is ApiResult.Error -> _state.update {
                     it.copy(isSaving = false, saveError = result.toMessage())

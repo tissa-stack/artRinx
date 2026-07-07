@@ -27,6 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -38,6 +41,8 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.InactiveButton
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
+import com.rinx.artRINXapp.core.ui.SuccessSnackbarHost
+import kotlinx.coroutines.delay
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.ProfileTitleAndPlanEditViewModel
 import com.rinx.artRINXapp.feature.settings.presentation.titleplan.components.ProfileTitleCard
 
@@ -54,14 +59,18 @@ fun ChangeRoleScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val dimens = LocalDimens.current
+    var successMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.saved) {
         if (state.saved) {
             viewModel.onSaveHandled()
+            successMessage = "Profile title updated successfully!"
+            delay(1500)
             onSaved()
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -146,7 +155,7 @@ fun ChangeRoleScreen(
             }
             Button(
                 onClick = { viewModel.onSave() },
-                enabled = state.canAdvanceTitle && !state.isSaving,
+                enabled = state.hasTitleChange && !state.isSaving,
                 modifier = Modifier.fillMaxWidth().height(dimens.authButtonHeight),
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
@@ -163,9 +172,19 @@ fun ChangeRoleScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("Save changes", style = MaterialTheme.typography.labelLarge)
+                    Text("Save", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
+    }
+
+        SuccessSnackbarHost(
+            message = successMessage,
+            onShown = { successMessage = null },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = dimens.screenPaddingHorizontal),
+        )
     }
 }
