@@ -181,13 +181,11 @@ fun OtherProfileScreen(
             // Identical to how a deleted account reads. Checked before the transient-error branch.
             // Has a back button so the user is never stranded when reaching it from anywhere.
             uiState.notAvailable -> ProfileStatePanel(
-                message = "This profile isn't available.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 onBack = onBack,
             )
 
             uiState.error != null || uiState.profile == null -> ProfileStatePanel(
-                message = uiState.error ?: "Profile unavailable.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 onBack = onBack,
                 onRetry = viewModel::onRetry,
@@ -195,7 +193,6 @@ fun OtherProfileScreen(
 
             // The other user has blocked the viewer → don't render their profile/actions/content.
             uiState.profile?.theyBlocked == true -> ProfileStatePanel(
-                message = uiState.profile?.blockReason ?: "This profile isn't available.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 onBack = onBack,
             )
@@ -204,7 +201,6 @@ fun OtherProfileScreen(
             // state (SCRUM-54): no tabs/Share/Report on the profile; unblock only via Settings →
             // Blocked Accounts. So the full header/content below renders only for non-blocked profiles.
             uiState.profile?.iBlocked == true -> ProfileStatePanel(
-                message = "This profile isn't available.This profile may have been removed or is no longer accessible.",
                 bottomPadding = innerPadding.calculateBottomPadding(),
                 // Fresh block from this screen → safe-exit; an already-blocked profile opened from
                 // elsewhere → normal back to where I came from (matches the device back above).
@@ -759,11 +755,16 @@ private fun ContentLoading(modifier: Modifier = Modifier) {
  * reach this screen from anywhere (a feed/search/chat link to a user who has blocked them, a deep
  * link, etc.). [onBack] uses the same navigation as the normal header's back arrow.
  */
+private const val PROFILE_UNAVAILABLE_TITLE = "Profile Not Available"
+private const val PROFILE_UNAVAILABLE_SUBTITLE =
+    "This profile may have been removed or is no longer accessible."
+
 @Composable
 private fun ProfileStatePanel(
-    message: String,
     bottomPadding: Dp,
     onBack: () -> Unit,
+    title: String = PROFILE_UNAVAILABLE_TITLE,
+    subtitle: String = PROFILE_UNAVAILABLE_SUBTITLE,
     onRetry: (() -> Unit)? = null,
 ) {
     Box(
@@ -803,7 +804,15 @@ private fun ProfileStatePanel(
             )
             Spacer(Modifier.height(Spacing.md))
             Text(
-                text = message,
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
