@@ -90,12 +90,23 @@ fun EditProfileScreen(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> pickerInFlight = false; viewModel.onPictureSelected(uri) }
 
+    // Fallback picker for devices with no ACTION_PICK_IMAGES handler (PickVisualMedia would crash
+    // with ActivityNotFoundException); GetContent (ACTION_GET_CONTENT) is universally handled.
+    val getContentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent(),
+    ) { uri -> pickerInFlight = false; viewModel.onPictureSelected(uri) }
+
     val openPhotoPicker = {
         if (!pickerInFlight) {
             pickerInFlight = true
-            galleryLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-            )
+            try {
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+            } catch (e: android.content.ActivityNotFoundException) {
+                runCatching { getContentLauncher.launch("image/*") }
+                    .onFailure { pickerInFlight = false }
+            }
         }
     }
 

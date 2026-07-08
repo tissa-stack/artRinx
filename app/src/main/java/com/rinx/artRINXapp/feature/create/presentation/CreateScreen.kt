@@ -1,8 +1,5 @@
 package com.rinx.artRINXapp.feature.create.presentation
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -46,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rinx.artRINXapp.R
@@ -95,28 +91,35 @@ fun CreateScreen(
         }
     }
 
-    // ── Permission launcher (needed for Android < 13) ─────────────────────────
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        // Keep the in-flight guard set while the picker opens; clear it only when denied.
-        if (granted) photoPickerLauncher.launch(PickVisualMediaRequest(ImageOnly))
-        else pickerInFlight = false
+    // Fallback for devices/emulators where the system Photo Picker is reported available but has no
+    // activity to handle ACTION_PICK_IMAGES (bare/AOSP images) — PickVisualMedia would otherwise
+    // crash with ActivityNotFoundException. GetContent (ACTION_GET_CONTENT) is universally handled.
+    val getContentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri ->
+        pickerInFlight = false
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            onNavigateToNewArt(uri.toString())
+        }
     }
 
     fun launchPicker() {
         if (pickerInFlight) return
         pickerInFlight = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+: Photo Picker needs no permission
+        // PickVisualMedia (Android Photo Picker) needs no runtime permission on any API level
+        // — backported below API 33. Same as the profile avatar flows.
+        try {
             photoPickerLauncher.launch(PickVisualMediaRequest(ImageOnly))
-        } else {
-            val perm = Manifest.permission.READ_EXTERNAL_STORAGE
-            if (ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED) {
-                photoPickerLauncher.launch(PickVisualMediaRequest(ImageOnly))
-            } else {
-                permissionLauncher.launch(perm)
-            }
+        } catch (e: android.content.ActivityNotFoundException) {
+            // No photo-picker activity on this device → fall back to the classic document picker.
+            runCatching { getContentLauncher.launch("image/*") }
+                .onFailure { pickerInFlight = false }
         }
     }
 

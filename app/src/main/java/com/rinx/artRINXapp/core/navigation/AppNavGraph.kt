@@ -443,7 +443,10 @@ fun AppNavGraph(
         ) { entry ->
             val rawUri = entry.arguments?.getString("imageUri") ?: ""
             val imageUri = if (rawUri.isNotEmpty() && rawUri != NavRoutes.NEW_ART_EDIT_SENTINEL) {
-                android.net.Uri.parse(Uri.decode(rawUri))
+                // Navigation-Compose already URL-decodes string path args once, matching the
+                // single Uri.encode in NavRoutes.newArt(). Decoding again here would corrupt any
+                // picked URI containing '%' (e.g. document URIs like …/image%3A123) → unloadable.
+                android.net.Uri.parse(rawUri)
             } else null
             NewArtScreen(
                 imageUri             = imageUri,

@@ -89,14 +89,25 @@ fun ProfileInfoStep(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> pickerInFlight = false; onPictureSelected(uri) }
 
+    // Fallback picker for devices with no ACTION_PICK_IMAGES handler (PickVisualMedia would crash
+    // with ActivityNotFoundException); GetContent (ACTION_GET_CONTENT) is universally handled.
+    val getContentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent(),
+    ) { uri -> pickerInFlight = false; onPictureSelected(uri) }
+
     // Tapping the avatar (or the edit badge) opens the system photo picker directly — gallery is the
     // only supported source for a profile picture.
     val openPhotoPicker = {
         if (!pickerInFlight) {
             pickerInFlight = true
-            galleryLauncher.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-            )
+            try {
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+            } catch (e: android.content.ActivityNotFoundException) {
+                runCatching { getContentLauncher.launch("image/*") }
+                    .onFailure { pickerInFlight = false }
+            }
         }
     }
 
