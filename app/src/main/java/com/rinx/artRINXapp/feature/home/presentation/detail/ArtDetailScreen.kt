@@ -607,6 +607,30 @@ private fun ArtDetailContent(
             }
         }
 
+        // ── Dimensions (only when the artwork has a physical size) ─────
+        post.dimensions?.let { dimensions ->
+            item(key = "dimensions") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                ) {
+                    Text(
+                        text = "Dimensions",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(
+                        text = dimensions,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            }
+        }
+
         // ── Description ────────────────────────────────────────────────
         item(key = "desc") {
             // Whether the description actually needs the more/less toggle. Correct in both
@@ -649,30 +673,6 @@ private fun ArtDetailContent(
                     onTextLayout = { descOverflow = it.hasVisualOverflow || it.lineCount > 2 },
                     modifier = Modifier.animateContentSize(),
                 )
-            }
-        }
-
-        // ── Dimensions (only when the artwork has a physical size) ─────
-        post.dimensions?.let { dimensions ->
-            item(key = "dimensions") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                ) {
-                    Text(
-                        text = "Dimensions",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(Spacing.xs))
-                    Text(
-                        text = dimensions,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
             }
         }
 

@@ -229,6 +229,30 @@ fun NewArtPreviewScreen(
                 )
             }
 
+            // Dimensions — only when a physical size was entered (mirrors the detail screen).
+            dimensionsDisplay(state.sizeHeightCm, state.sizeWidthCm, state.sizeUnit)?.let { dimensions ->
+                item(key = "dimensions") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    ) {
+                        Text(
+                            text       = "Dimensions",
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(Spacing.xs))
+                        Text(
+                            text  = dimensions,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                }
+            }
+
             // Description
             item(key = "desc") {
                 Column(
@@ -256,30 +280,6 @@ fun NewArtPreviewScreen(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.animateContentSize(),
                     )
-                }
-            }
-
-            // Dimensions — only when a physical size was entered (mirrors the detail screen).
-            dimensionsDisplay(state.sizeHeightCm, state.sizeWidthCm, state.sizeUnit)?.let { dimensions ->
-                item(key = "dimensions") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                    ) {
-                        Text(
-                            text       = "Dimensions",
-                            style      = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.height(Spacing.xs))
-                        Text(
-                            text  = dimensions,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
                 }
             }
 
