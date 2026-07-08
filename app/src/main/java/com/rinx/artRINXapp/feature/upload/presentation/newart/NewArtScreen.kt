@@ -300,7 +300,8 @@ fun NewArtScreen(
                         height = state.sizeHeightCm,
                         width = state.sizeWidthCm,
                         unit = state.sizeUnit,
-                        isError = !state.isSizeValid,
+                        hasPartialDimensions = state.hasPartialDimensions,
+                        hasInvalidDimensions = state.hasInvalidDimensions,
                         onHeightChange = viewModel::onSizeHeightChange,
                         onWidthChange = viewModel::onSizeWidthChange,
                         onUnitChange = viewModel::onSizeUnitChange,
@@ -822,10 +823,11 @@ private fun DimensionsRow(
     height: String,
     width: String,
     unit: String,
-    isError: Boolean,
     onHeightChange: (String) -> Unit,
     onWidthChange: (String) -> Unit,
     onUnitChange: (String) -> Unit,
+    hasPartialDimensions: Boolean,
+    hasInvalidDimensions: Boolean,
 ) {
     Column(
         modifier = Modifier
@@ -861,13 +863,22 @@ private fun DimensionsRow(
                 modifier = Modifier.weight(1f),
             )
         }
-        if (isError) {
-            Spacer(Modifier.height(Spacing.xs))
-            Text(
-                "Enter a size between 1 and ${MAX_ARTWORK_DIMENSION.toInt()}",
-                style = MaterialTheme.typography.labelSmall,
-                color = ErrorDark,
-            )
+        when {
+            hasPartialDimensions -> {
+                Text(
+                    "Please enter both height and width",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ErrorDark,
+                )
+            }
+
+            hasInvalidDimensions -> {
+                Text(
+                    "Enter a size between 1 and ${MAX_ARTWORK_DIMENSION.toInt()}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ErrorDark,
+                )
+            }
         }
     }
 }

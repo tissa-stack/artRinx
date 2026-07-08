@@ -132,8 +132,15 @@ data class ArtFormState(
      * Dimensions are optional, but when a value is entered it must be a positive number no greater
      * than [MAX_ARTWORK_DIMENSION] (the server rejects anything larger).
      */
+    val hasPartialDimensions: Boolean
+        get() = sizeHeightCm.isNotBlank() xor sizeWidthCm.isNotBlank()
+
+    val hasInvalidDimensions: Boolean
+        get() = !sizeHeightCm.isValidDimensionOrBlank() ||
+                !sizeWidthCm.isValidDimensionOrBlank()
+
     val isSizeValid: Boolean
-        get() = sizeHeightCm.isValidDimensionOrBlank() && sizeWidthCm.isValidDimensionOrBlank()
+        get() = !hasPartialDimensions && !hasInvalidDimensions
 
     /** The shop link is a normal field available to everyone — it counts whenever non-blank. */
     val isShopLinkEntered: Boolean
