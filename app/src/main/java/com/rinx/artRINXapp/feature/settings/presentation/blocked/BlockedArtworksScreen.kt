@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,6 +52,7 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.PagingFooter
 import com.rinx.artRINXapp.feature.profile.domain.model.BlockedArtwork
+import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 
 @Composable
 fun BlockedArtworksScreen(
@@ -137,16 +140,12 @@ fun BlockedArtworksScreen(
                 }
             }
 
-            state.artworks.isEmpty() -> Box(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "No blocked artworks",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            state.artworks.isEmpty() -> SearchMessageView(
+                title    = "No blocked artworks",
+                subtitle = "You haven't blocked any artwork yet.",
+                icon     = Icons.Outlined.Block,
+                modifier = Modifier.weight(1f),
+            )
 
             else -> LazyColumn(
                 state = listState,

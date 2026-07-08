@@ -78,11 +78,12 @@ object MockSettingsData {
         ProfileTitleOption(
             id = 2, name = "Collector",
             description = "Connect with new artists, grow and refine your collection.",
+            badge = "\"Collector\"",
         ),
         ProfileTitleOption(
             id = 3, name = "Art Curious",
             description = "View art, share art and be inspired, no strings attached!",
-            badge = "title-free",
+            badge = "\"Art Curious\"",
         ),
         ProfileTitleOption(
             id = 4, name = "Gallery - Enterprise",

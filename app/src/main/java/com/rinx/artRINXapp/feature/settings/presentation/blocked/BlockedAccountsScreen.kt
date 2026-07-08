@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -52,6 +53,7 @@ import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.PagingFooter
 import com.rinx.artRINXapp.feature.notifications.presentation.messages.components.RinxAvatar
+import com.rinx.artRINXapp.feature.search.presentation.components.SearchMessageView
 import com.rinx.artRINXapp.feature.settings.domain.model.BlockedAccount
 
 @Composable
@@ -139,16 +141,12 @@ fun BlockedAccountsScreen(
                 }
             }
 
-            state.accounts.isEmpty() -> Box(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "No blocked accounts",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            state.accounts.isEmpty() -> SearchMessageView(
+                title    = "No blocked users",
+                subtitle = "You haven't blocked any user yet.",
+                icon     = Icons.Outlined.Block,
+                modifier = Modifier.weight(1f),
+            )
 
             else -> LazyColumn(
                 state = listState,

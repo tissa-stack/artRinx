@@ -616,7 +616,7 @@ private fun ArtDetailContent(
                         .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 ) {
                     Text(
-                        text = "Dimensions",
+                        text = "Size",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

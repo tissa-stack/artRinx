@@ -237,10 +237,10 @@ fun InviteFriendsScreen(
                             color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.weight(1f),
                         )
-                        // Used/cap this month (already-invited + pending), e.g. "1/5".
-                        if (state.invitesUsed != null && state.invitesMonthlyCap != null) {
+                        // Remaining/cap this month, e.g. "5/5" (none used) down to "0/5" (limit reached).
+                        if (state.invitesPerMonth != null && state.invitesMonthlyCap != null) {
                             Text(
-                                text = "${state.invitesUsed}/${state.invitesMonthlyCap}",
+                                text = "${state.invitesPerMonth}/${state.invitesMonthlyCap}",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = BrandPrimary,
@@ -253,10 +253,13 @@ fun InviteFriendsScreen(
                 if (state.invitees.isEmpty()) {
                     item(key = "empty") {
                         Text(
-                            text = "No invitees yet",
+                            text = "No invited users yet",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = Spacing.sm),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = Spacing.sm),
                         )
                     }
                 } else {

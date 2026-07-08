@@ -60,6 +60,7 @@ import com.rinx.artRINXapp.R
 import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.core.ui.PagingFooter
+import com.rinx.artRINXapp.feature.home.presentation.components.state.EmptyView
 import com.rinx.artRINXapp.feature.profile.domain.model.ProfileCurationItem
 import com.rinx.artRINXapp.feature.profile.presentation.view.components.ProfileCurationCard
 import com.rinx.artRINXapp.feature.upload.domain.model.CurationSource
@@ -250,13 +251,11 @@ fun AddToCurationSheet(
                         CircularProgressIndicator(color = BrandPrimary)
                     }
 
-                    state.curations.isEmpty() -> Text(
-                        text = "You have no collections yet. Create one to get started.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = Spacing.xl),
+                    state.curations.isEmpty() -> EmptyView(
+                        iconRes  = R.drawable.ic_no_collection,
+                        title    = "Create a collection to see it here.",
+                        subtitle = "",
+                        modifier = Modifier.fillMaxSize(),
                     )
 
                     filtered.isEmpty() -> Text(

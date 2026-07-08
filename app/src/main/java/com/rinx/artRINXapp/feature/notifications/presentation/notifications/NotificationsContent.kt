@@ -74,8 +74,8 @@ fun NotificationsContent(
                 modifier    = Modifier.align(Alignment.Center),
             )
             notifications.isEmpty() -> SearchMessageView(
-                title    = "No notifications yet",
-                subtitle = "",
+                title    = "No Notifications",
+                subtitle = "You'll see updates here when there's something new.",
                 iconRes  = R.drawable.ic_empty_notifications,
                 modifier = Modifier.align(Alignment.Center),
             )

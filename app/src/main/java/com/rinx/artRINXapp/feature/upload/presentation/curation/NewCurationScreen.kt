@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -216,6 +217,8 @@ fun NewCurationScreen(
                         showCounter   = state.description.isNotEmpty(),
                         contentHeight = Spacing.giant * 2 + Spacing.lg,
                         required      = true,
+                        hasError      = state.isDescriptionError,
+                        errorText     = "Description must be at least 10 characters.",
                     )
                 }
 
@@ -300,13 +303,18 @@ private fun FormTextField(
     showCounter: Boolean,
     contentHeight: androidx.compose.ui.unit.Dp = androidx.compose.ui.unit.Dp.Unspecified,
     required: Boolean = false,
+    hasError: Boolean = false,
+    errorText: String? = null,
 ) {
     val d = LocalDimens.current
+    val shape = RoundedCornerShape(d.cardCornerRadius)
+    Column {
     Box(
         modifier = Modifier
             .padding(horizontal = Spacing.md)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(d.cardCornerRadius))
+            .clip(shape)
+            .then(if (hasError) Modifier.border(1.5.dp, ErrorDark, shape) else Modifier)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = Spacing.md, vertical = Spacing.lg),
     ) {
@@ -356,6 +364,16 @@ private fun FormTextField(
                 },
             )
         }
+    }
+    if (hasError && errorText != null) {
+        Spacer(Modifier.height(Spacing.xs))
+        Text(
+            text = errorText,
+            style = MaterialTheme.typography.labelSmall,
+            color = ErrorDark,
+            modifier = Modifier.padding(horizontal = Spacing.md + Spacing.xs),
+        )
+    }
     }
 }
 

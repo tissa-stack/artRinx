@@ -222,7 +222,7 @@ private fun profileTypeDescription(name: String): String = when {
 
 private fun profileTypeTitleBadge(name: String): String? = when {
     name.contains("Artist", ignoreCase = true) -> "\"Artist\""
-    name.contains("Collector", ignoreCase = true) -> null
-    name.contains("Curious", ignoreCase = true) -> null
+    name.contains("Collector", ignoreCase = true) -> "\"Collector\""
+    name.contains("Curious", ignoreCase = true) -> "\"Art Curious\""
     else -> "\"Gallery\""
 }

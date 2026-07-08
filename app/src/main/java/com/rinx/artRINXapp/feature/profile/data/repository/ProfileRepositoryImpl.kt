@@ -107,7 +107,10 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getProfileTypes()
             if (response.isSuccessful) {
-                val types = response.body()?.data?.map { ProfileType(it.id, it.name) } ?: emptyList()
+                val types = response.body()?.data
+                    ?.map { ProfileType(it.id, it.name) }
+                    ?.sortedBy { it.id }
+                    ?: emptyList()
                 ApiResult.Success(types)
             } else {
                 profileError(response.code())
