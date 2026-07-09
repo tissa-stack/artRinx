@@ -154,22 +154,14 @@ fun DiscoverFeedItem(
                             )
                         },
                 )
-                // Heart + count: count centered exactly below the heart.
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    LikeButton(
-                        isLiked = post.isLiked,
-                        onClick = onLike,
-                        size = Spacing.xl,
-                    )
-                    if (post.likeCount > 0) {
-                        Text(
-                            text = post.likeCount.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = Spacing.xs),
-                        )
-                    }
-                }
+                // Heart + count: count centered below the heart; its space is always
+                // reserved so liking/unliking never reflows the content below.
+                LikeButtonWithCount(
+                    isLiked = post.isLiked,
+                    likeCount = post.likeCount,
+                    onClick = onLike,
+                    size = Spacing.xl,
+                )
             }
         }
 

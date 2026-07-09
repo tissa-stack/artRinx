@@ -61,7 +61,7 @@ import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.Curation
 import com.rinx.artRINXapp.feature.home.presentation.components.CollectionCard
 import com.rinx.artRINXapp.feature.home.presentation.components.CurationCardStack
 import com.rinx.artRINXapp.feature.home.presentation.components.EmptyCurationStack
-import com.rinx.artRINXapp.feature.home.presentation.components.LikeButton
+import com.rinx.artRINXapp.feature.home.presentation.components.LikeButtonWithCount
 import com.rinx.artRINXapp.feature.home.presentation.components.SectionHeader
 import com.rinx.artRINXapp.feature.home.presentation.components.SendMessageBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.AddToCurationSheet
@@ -343,22 +343,14 @@ private fun CurationDetailContent(
                                 )
                             },
                     )
-                    // Heart + count: count centered exactly below the heart.
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        LikeButton(
-                            isLiked = uiState.isLiked,
-                            onClick = onLike,
-                            size    = Spacing.xxl,
-                        )
-                        if (uiState.likeCount > 0) {
-                            Text(
-                                text     = uiState.likeCount.toString(),
-                                style    = MaterialTheme.typography.labelSmall,
-                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = Spacing.xs),
-                            )
-                        }
-                    }
+                    // Heart + count: count centered below the heart; its space is always
+                    // reserved so liking/unliking never reflows the content below.
+                    LikeButtonWithCount(
+                        isLiked   = uiState.isLiked,
+                        likeCount = uiState.likeCount,
+                        onClick   = onLike,
+                        size      = Spacing.xxl,
+                    )
                 }
             }
         }

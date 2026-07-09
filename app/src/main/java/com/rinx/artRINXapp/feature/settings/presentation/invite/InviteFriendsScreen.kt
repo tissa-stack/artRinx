@@ -270,17 +270,6 @@ fun InviteFriendsScreen(
                         PagingFooter(state.paging, onRetry = viewModel::retryLoadMore)
                     }
                 }
-
-                if (state.invitesPerMonth != null) {
-                    item(key = "note") {
-                        Spacer(Modifier.height(Spacing.lg))
-                        Text(
-                            text = "Note: you have ${state.invitesPerMonth} invites per month",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
               }
             }
         }

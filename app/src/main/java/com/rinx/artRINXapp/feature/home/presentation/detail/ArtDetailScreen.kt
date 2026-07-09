@@ -73,7 +73,7 @@ import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.remember
 import com.rinx.artRINXapp.feature.home.presentation.components.ArtworkCard
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
 import com.rinx.artRINXapp.feature.home.presentation.components.ShopArtButton
-import com.rinx.artRINXapp.feature.home.presentation.components.LikeButton
+import com.rinx.artRINXapp.feature.home.presentation.components.LikeButtonWithCount
 import com.rinx.artRINXapp.core.ui.ErrorSnackbarHost
 import com.rinx.artRINXapp.feature.home.presentation.components.ReportBottomSheet
 import com.rinx.artRINXapp.feature.home.presentation.components.ReportSentDialog
@@ -525,22 +525,14 @@ private fun ArtDetailContent(
                                     )
                                 },
                         )
-                        // Heart + count: count centered exactly below the heart.
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            LikeButton(
-                                isLiked = post.isLiked,
-                                onClick = onLike,
-                                size = Spacing.xxl,
-                            )
-                            if (post.likeCount > 0) {
-                                Text(
-                                    text = post.likeCount.toString(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = Spacing.xs),
-                                )
-                            }
-                        }
+                        // Heart + count: count centered below the heart; its space is always
+                        // reserved so liking/unliking never reflows the content below.
+                        LikeButtonWithCount(
+                            isLiked = post.isLiked,
+                            likeCount = post.likeCount,
+                            onClick = onLike,
+                            size = Spacing.xxl,
+                        )
                     }
                 }
             }
