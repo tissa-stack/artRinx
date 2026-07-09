@@ -169,7 +169,7 @@ fun NewArtScreen(
                             // Edit → stay; overlay shows save progress, pops back on done.
                             viewModel.onSaveEdit()
                         } else if (viewModel.onUpload() && state.privacy != PrivacyOption.PRIVATE) {
-                            // Public → navigate to Home (progress row). Private → stay; overlay shows.
+                            // Public → land on Create (progress row lives there). Private → stay; overlay shows.
                             onUploadStarted(false)
                         }
                     },

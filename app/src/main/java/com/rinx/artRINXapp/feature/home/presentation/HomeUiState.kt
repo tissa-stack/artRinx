@@ -51,9 +51,10 @@ data class HomeUiState(
     val shopPaging: PageState = PageState(),
     /** Infinite-scroll state for the For You feed (/artworks/recommended). */
     val forYouPaging: PageState = PageState(),
-    /** In-progress/just-finished PUBLIC upload, surfaced as a row at the top of the feed. */
+    // NOTE: the public upload/curation progress ROW now lives on the Create screen (CreateViewModel
+    // owns display + dismiss). HomeViewModel no longer populates these — they stay null so the
+    // Home-feed row plumbing (HomeScreen) is dormant. Kept only to avoid churning that plumbing.
     val uploadProgress: UploadProgress? = null,
-    /** In-progress/just-finished PUBLIC curation create, surfaced at the top of the feed. */
     val curationProgress: CurationProgress? = null,
     val isLoading: Boolean = true,
     /** True while a pull-to-refresh is running (lightweight spinner, not the full-screen shimmer). */

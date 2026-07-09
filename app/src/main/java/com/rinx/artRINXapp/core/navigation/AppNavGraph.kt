@@ -157,15 +157,15 @@ fun AppNavGraph(
             else -> Unit // Invite handled by InviteCodeViewModel; null = nothing pending.
         }
     }
-    // Surface a PUBLIC upload/curation FAILURE that happens while the user is away from Home. The
-    // in-feed retry row only renders on Home, so an off-Home failure would otherwise be silent. Gated
-    // on route != HOME so we never double up with that row (which still offers retry once back on Home).
+    // Surface a PUBLIC upload/curation FAILURE that happens while the user is away from the CREATE
+    // screen. The in-line retry row now renders on Create (not Home), so a failure anywhere else
+    // would otherwise be silent. Gated on route != CREATE so we never double up with that row.
     val uploadStatus: UploadStatusViewModel = hiltViewModel()
     val appContext = LocalContext.current
     LaunchedEffect(Unit) {
         uploadStatus.uploadProgress.collect { p ->
             if (p is UploadProgress.Failed && !p.isPrivate &&
-                navController.currentDestination?.route != NavRoutes.HOME
+                navController.currentDestination?.route != NavRoutes.CREATE
             ) {
                 Toast.makeText(appContext, p.message, Toast.LENGTH_LONG).show()
             }
@@ -174,7 +174,7 @@ fun AppNavGraph(
     LaunchedEffect(Unit) {
         uploadStatus.curationProgress.collect { p ->
             if (p is CurationProgress.Failed && !p.isPrivate &&
-                navController.currentDestination?.route != NavRoutes.HOME
+                navController.currentDestination?.route != NavRoutes.CREATE
             ) {
                 Toast.makeText(appContext, p.message, Toast.LENGTH_LONG).show()
             }
@@ -859,13 +859,13 @@ private fun NavHostController.exitAfterBlock(source: String) {
 }
 
 /**
- * After kicking off a background upload, leave the upload sub-flow and land on the surface where
- * the result + progress will appear: Profile (Art tab) for private uploads, Home (Discover) for
- * public ones. popUpTo(start) clears NEW_ART / ART_PREVIEW / ADD_TAGS without recreating Home.
+ * After kicking off a background upload (or after the private success overlay's Done), leave the
+ * upload sub-flow and land on the CREATE tab, where the progress row now lives — public and private
+ * alike. popUpTo(start) clears NEW_ART / ART_PREVIEW / ADD_TAGS / NEW_CURATION without recreating
+ * Home. [isPrivate] is retained for call-site clarity; both cases target Create.
  */
-private fun NavHostController.navigateAfterUpload(isPrivate: Boolean) {
-    val target = if (isPrivate) NavRoutes.PROFILE else NavRoutes.HOME
-    navigate(target) {
+private fun NavHostController.navigateAfterUpload(@Suppress("UNUSED_PARAMETER") isPrivate: Boolean) {
+    navigate(NavRoutes.CREATE) {
         popUpTo(graph.findStartDestination().id) { inclusive = false }
         launchSingleTop = true
     }

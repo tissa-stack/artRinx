@@ -15,6 +15,7 @@ fun CurationProgressRow(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    contained: Boolean = false,
 ) {
     val label = when (progress) {
         is CurationProgress.Creating -> "Creating collection…"
@@ -32,5 +33,6 @@ fun CurationProgressRow(
         onRetry = onRetry,
         onDismiss = onDismiss,
         modifier = modifier,
+        contained = contained,
     )
 }

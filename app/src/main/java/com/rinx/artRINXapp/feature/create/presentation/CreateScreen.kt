@@ -50,6 +50,8 @@ import com.rinx.artRINXapp.core.theme.BrandPrimary
 import com.rinx.artRINXapp.core.theme.LocalDimens
 import com.rinx.artRINXapp.core.theme.Spacing
 import com.rinx.artRINXapp.feature.home.presentation.components.BottomNavBar
+import com.rinx.artRINXapp.feature.home.presentation.components.CurationProgressRow
+import com.rinx.artRINXapp.feature.home.presentation.components.UploadProgressRow
 import com.rinx.artRINXapp.feature.home.presentation.components.shimmer.rememberShimmerBrush
 
 private val UploadArtColor     = Color(0xFF45B1E8)
@@ -303,6 +305,28 @@ fun CreateScreen(
                         )
                     }
                 }
+            }
+
+            // ── Upload / curation progress ────────────────────────────────
+            // Public uploads land back here (not Home). This screen owns the row + its dismissal;
+            // the terminal "Uploaded"/"Created" state auto-clears after a beat (see CreateViewModel).
+            state.uploadProgress?.let { progress ->
+                Spacer(Modifier.height(Spacing.md))
+                UploadProgressRow(
+                    progress  = progress,
+                    onRetry   = viewModel::onRetryUpload,
+                    onDismiss = viewModel::onDismissUpload,
+                    contained = true,
+                )
+            }
+            state.curationProgress?.let { progress ->
+                Spacer(Modifier.height(Spacing.md))
+                CurationProgressRow(
+                    progress  = progress,
+                    onRetry   = viewModel::onRetryCuration,
+                    onDismiss = viewModel::onDismissCuration,
+                    contained = true,
+                )
             }
 
             Spacer(Modifier.weight(1f))

@@ -252,7 +252,7 @@ fun NewCurationScreen(
                                 // Edit → stay; overlay shows save progress, pops back on done.
                                 viewModel.onSaveEdit()
                             } else if (viewModel.onCreate() && state.privacy != PrivacyOption.PRIVATE) {
-                                // Public → Home (progress row). Private → stay; overlay shows.
+                                // Public → land on Create (progress row lives there). Private → stay; overlay shows.
                                 onCreateStarted(false)
                             }
                         },

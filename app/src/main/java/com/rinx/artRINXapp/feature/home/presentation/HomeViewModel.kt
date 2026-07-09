@@ -193,28 +193,24 @@ class HomeViewModel @Inject constructor(
                 // Private uploads belong to the Profile screen, not the public feed.
                 val forHome = progress?.takeUnless { it.isPrivate }
 
-                // When a public upload begins, always jump Home to the Discover tab — that's where
-                // the progress row lives — regardless of which tab the user was on at upload time.
+                // The progress ROW now lives on the Create screen — CreateViewModel owns display AND
+                // dismiss(). Home stays PASSIVE: it must not set a row and must NOT dismiss() (that
+                // would starve the Create row of its terminal state via the shared conflated flow).
+                // We still jump to Discover on the idle → active edge so the optimistic post below
+                // lands on the tab the user sees when they next open Home.
                 val justStarted = forHome != null && !uploadActive
                 uploadActive = forHome != null
 
-                _uiState.update {
-                    it.copy(
-                        uploadProgress = forHome,
-                        activeTab = if (justStarted) HomeTab.DISCOVER else it.activeTab,
-                    )
-                }
+                if (justStarted) _uiState.update { it.copy(activeTab = HomeTab.DISCOVER) }
 
                 if (forHome is UploadProgress.Success) {
                     _uiState.update { state ->
                         val newPost = forHome.toFeedPost()
                         state.copy(
                             feedItems = listOf(newPost) + state.feedItems.filterNot { it.id == newPost.id },
-                            uploadProgress = null,
                             toastMessage = "Your artwork is now live.",
                         )
                     }
-                    uploadManager.dismiss()
                 }
             }
         }
@@ -249,13 +245,12 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             curationManager.progress.collect { progress ->
                 val forHome = progress?.takeUnless { it.isPrivate }
-                _uiState.update { it.copy(curationProgress = forHome) }
 
-                // Per product: a public curation surfaces in "Popular Curations" only on the next
-                // feed refresh — we don't optimistically prepend. Just clear the row on success.
+                // Row + dismiss are owned by the Create screen now (see observeUploads). Home stays
+                // passive. Per product: a public curation surfaces in "Popular Curations" only on the
+                // next feed refresh — we don't optimistically prepend. Just toast on success.
                 if (forHome is CurationProgress.Success) {
-                    _uiState.update { it.copy(curationProgress = null, toastMessage = "Your collection is now live.") }
-                    curationManager.dismiss()
+                    _uiState.update { it.copy(toastMessage = "Your collection is now live.") }
                 }
             }
         }
