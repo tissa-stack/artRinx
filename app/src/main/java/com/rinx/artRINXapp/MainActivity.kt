@@ -64,11 +64,10 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Block screenshots & screen recording app-wide (parity with iOS — captures come out blank).
-        // Temporarily disabled — screenshots & screen recording are allowed.
-        // window.setFlags(
-        //     WindowManager.LayoutParams.FLAG_SECURE,
-        //     WindowManager.LayoutParams.FLAG_SECURE,
-        // )
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE,
+        )
 
         // Push notifications: ensure the channel exists and register the FCM token (if signed in).
         // The POST_NOTIFICATIONS prompt is requested on the Home screen — i.e. after login/registration.

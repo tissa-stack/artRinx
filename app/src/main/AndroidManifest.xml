@@ -8,6 +8,14 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Firebase Analytics' play-services-measurement SDK auto-merges these so it *could* read the
+         Advertising ID (GAID) / run Privacy-Sandbox ad attribution. This app shows no ads and does no
+         ad attribution, so strip all three. Removing AD_ID also aligns the app with our Play Console
+         "no advertising ID" data-safety declaration. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
+
     <!-- Package visibility (Android 11+): lets the share sheet enumerate apps that accept a
          text/plain ACTION_SEND, to build the custom share-target row. -->
     <queries>
@@ -119,6 +127,13 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher" />
+
+        <!-- Explicitly stop Firebase Analytics from collecting the Advertising ID at runtime. Pairs
+             with the AD_ID permission removal above: the permission strip is the mechanism Google
+             documents, this flag makes the intent explicit so the SDK never probes for the GAID. -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
     </application>
 
 </manifest>
