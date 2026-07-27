@@ -52,6 +52,9 @@ fun ShoppableFeedItem(
 ) {
     val d = LocalDimens.current
     var descriptionExpanded by remember { mutableStateOf(false) }
+    // Only show more/less when the description actually overflows the collapsed 1 line.
+    // Keyed on the text so a recycled slot / SWR refresh doesn't carry a stale flag.
+    var descOverflow by remember(post.description) { mutableStateOf(false) }
     var showShopDialog by remember { mutableStateOf(false) }
 
     if (showShopDialog) {
@@ -217,12 +220,14 @@ fun ShoppableFeedItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                Text(
-                    text = if (descriptionExpanded) "less" else "more",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { descriptionExpanded = !descriptionExpanded },
-                )
+                if (descOverflow) {
+                    Text(
+                        text = if (descriptionExpanded) "less" else "more",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable { descriptionExpanded = !descriptionExpanded },
+                    )
+                }
             }
             Spacer(Modifier.height(Spacing.xs))
             Text(
@@ -231,6 +236,7 @@ fun ShoppableFeedItem(
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = if (descriptionExpanded) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
+                onTextLayout = { descOverflow = it.hasVisualOverflow || it.lineCount > 1 },
                 modifier = Modifier.animateContentSize(),
             )
         }
