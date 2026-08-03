@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -65,13 +66,17 @@ fun NewArtPreviewScreen(
     val state by viewModel.state.collectAsState()
     val d = LocalDimens.current
     var descExpanded by remember { mutableStateOf(false) }
+    // Only show more/less when the description actually overflows the collapsed 2 lines.
+    // Keyed on the text so it resets when the description changes.
+    var descOverflow by remember(state.description) { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            .navigationBarsPadding(),
     ) {
         // ── Top bar ───────────────────────────────────────────────────────
         Row(
@@ -266,10 +271,12 @@ fun NewArtPreviewScreen(
                             fontWeight = FontWeight.Bold,
                             color      = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier   = Modifier.weight(1f))
-                        Text(if (descExpanded) "less" else "more",
-                            style    = MaterialTheme.typography.labelSmall,
-                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable { descExpanded = !descExpanded })
+                        if (descOverflow) {
+                            Text(if (descExpanded) "less" else "more",
+                                style    = MaterialTheme.typography.labelSmall,
+                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clickable { descExpanded = !descExpanded })
+                        }
                     }
                     Spacer(Modifier.height(Spacing.xs))
                     Text(
@@ -278,6 +285,7 @@ fun NewArtPreviewScreen(
                         color    = MaterialTheme.colorScheme.onBackground,
                         maxLines = if (descExpanded) Int.MAX_VALUE else 2,
                         overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { descOverflow = it.hasVisualOverflow || it.lineCount > 2 },
                         modifier = Modifier.animateContentSize(),
                     )
                 }
